@@ -1,3 +1,5 @@
+[![codecov](https://codecov.io/gh/CS3219-AY2526Sem1/cs3219-ay2526s1-project-g03/graph/badge.svg?token=H8J2691IYM)](https://codecov.io/gh/CS3219-AY2526Sem1/cs3219-ay2526s1-project-g03)
+
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/QUdQy4ix)
 
 # CS3219 Project (PeerPrep) - AY2526S1
