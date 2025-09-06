@@ -18,14 +18,18 @@
     "dev:user": "npm run dev -w user-service",
     "build": "npm run build --workspaces --if-present",
     "lint": "concurrently \"npm run lint:frontend\" \"npm run lint:backend\"",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint:fix": "concurrently \"npm run lint:frontend:fix\" \"npm run lint:backend:fix\"",
     "lint:frontend": "npm run lint --prefix frontend",
+    "lint:frontend:fix": "npm run lint:fix --prefix frontend",
     "lint:backend": "eslint collaboration-service matching-service question-service user-service --ext .ts",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
+    "lint:backend:fix": "eslint collaboration-service matching-service question-service user-service --ext .ts --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "test": "jest"
   },
   "devDependencies": {
     "@eslint/compat": "^1.3.2",
     "@eslint/js": "^9.34.0",
+    "@types/jest": "^30.0.0",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
     "@typescript-eslint/parser": "^8.42.0",
     "concurrently": "^9.2.1",
@@ -40,7 +44,11 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
+    "jest": "^30.1.3",
+    "jest-environment-jsdom": "^30.1.2",
     "prettier": "^3.6.2",
+    "ts-jest": "^29.4.1",
+    "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0"
   }
