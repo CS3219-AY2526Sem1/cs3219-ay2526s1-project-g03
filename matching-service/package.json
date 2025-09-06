@@ -1,0 +1,24 @@
+{
+  "name": "matching-service",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./src/index.js",
+    "lint": "cd .. && npm run lint:service matching-service --ext .ts",
+    "lint:fix": "cd .. && npm run lint:service matching-service --ext .ts --fix",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.3.1"
+  }
+}
