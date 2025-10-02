@@ -51,5 +51,9 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.42.0"
+  },
+  "dependencies": {
+    "fast-csv": "^5.0.5",
+    "pg": "^8.16.3"
   }
 }

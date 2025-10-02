@@ -1,0 +1,15 @@
+{
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5433,
+            "askForPassword": true,
+            "driver": "PostgreSQL",
+            "database": "peerprep_db",
+            "username": "peerprep_user",
+            "name": "PeerPrep DB (Local)"
+        }
+    ]
+}
