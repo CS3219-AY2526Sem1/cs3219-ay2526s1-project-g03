@@ -7,9 +7,9 @@
             "port": 5433,
             "askForPassword": true,
             "driver": "PostgreSQL",
-            "database": "peerprep_db",
-            "username": "peerprep_user",
-            "name": "PeerPrep DB (Local)"
+            "name": "Question DB (Local)",
+            "database": "question-db",
+            "username": "user"
         }
     ]
 }

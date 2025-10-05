@@ -9,11 +9,17 @@ services:
       - question-data:/var/lib/postgresql/data 
       - ./question-service/db:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: question-db
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 
   # --- FRONTEND ---
   frontend:
@@ -62,10 +68,13 @@ services:
     ports:
       - '8083:8083'
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=8083
-    env_file:
-      - ./.env
+      - DB_HOST=question-db-pg        
+      - DB_PORT=5432                  
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=question-db
     depends_on: 
       - question-db-pg
     volumes:
@@ -73,6 +82,20 @@ services:
       - /app/node_modules
     networks:
       - app-network
+
+  question-test:
+    build:
+      context: ./question-service
+      dockerfile: Dockerfile
+    command: ["npm", "test"]
+    env_file:
+      - ./question-service/.env
+    depends_on:
+      question-db-pg:
+        condition: service_healthy
+    networks:
+      - app-network
+
 
   
   # Matching service

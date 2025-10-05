@@ -1,8 +1,11 @@
 # Node
 node_modules/
 **/node_modules/
+coverage/
+lcov-report/
 
 # TypeScript build output
 **/dist/
 
 .env
+.env.test
