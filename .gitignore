@@ -23,4 +23,5 @@ lcov-report/
 
 # Log files
 *.log
-npm-debug.log
+npm-debug.logcoverage/
+coverage/
