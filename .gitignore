@@ -9,3 +9,4 @@ lcov-report/
 
 .env
 .env.test
+coverage/
