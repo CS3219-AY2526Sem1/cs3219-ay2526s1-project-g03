@@ -1,13 +1,12 @@
-version: '3.8'
-
 services:
   # --- DATABASES ---
   question-db-pg:
     image: postgres:14-alpine
     container_name: question-db-pg
     ports:
-      - '5432:5432
+      - '5433:5432' 
     volumes:
+      - question-data:/var/lib/postgresql/data 
       - ./question-service/db:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: user
@@ -47,6 +46,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8080
+    env_file:
+      - ./.env
     volumes:
       - ./user-service:/app
       - /app/node_modules
@@ -63,14 +64,20 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8083
+    env_file:
+      - ./.env
+    depends_on: 
+      - question-db-pg
     volumes:
       - ./question-service:/app
       - /app/node_modules
     networks:
       - app-network
 
+  
   # Matching service
   matching-service:
+    # ... (No changes needed)
     build:
       context: ./matching-service
       dockerfile: Dockerfile
@@ -79,6 +86,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8081
+    env_file:
+      - ./.env
     volumes:
       - ./matching-service:/app
       - /app/node_modules
@@ -95,6 +104,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8082
+    env_file:
+      - ./.env
     volumes:
       - ./collaboration-service:/app
       - /app/node_modules
@@ -104,3 +115,6 @@ services:
 networks:
   app-network:
     driver: bridge
+
+volumes:
+  question-data:

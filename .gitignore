@@ -4,3 +4,23 @@ node_modules/
 
 # TypeScript build output
 **/dist/
+.env.test
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Test reports
+coverage/
+lcov-report/
+
+# Local environment files
+.env
+.env.*
+*.local
+
+# Log files
+*.log
+npm-debug.log
