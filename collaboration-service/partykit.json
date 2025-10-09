@@ -1,0 +1,6 @@
+{
+  "name": "partykit-text-editor-example",
+  "main": "src/server.ts",
+  "compatibilityDate": "2024-02-19",
+  "port": 8082
+}
