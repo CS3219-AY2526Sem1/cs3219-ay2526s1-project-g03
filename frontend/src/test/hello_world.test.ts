@@ -1,7 +1,7 @@
-import { hello } from "../hello_world";
+import {hello} from '../hello_world';
 
-describe("test hello", () => {
-  it("should return hello world", () => {
-    expect(hello()).toBe("Hello world!");
+describe('test hello', () => {
+  it('should return hello world', () => {
+    expect(hello()).toBe('Hello world!');
   });
 });
