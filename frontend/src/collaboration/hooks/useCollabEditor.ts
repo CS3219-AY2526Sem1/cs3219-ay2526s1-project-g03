@@ -11,13 +11,16 @@ const MY_COLOR = colours[Math.floor(Math.random() * colours.length)];
 export default function useCollabEditor({roomId}: {roomId: string}) {
   const [isReady, setIsReady] = useState<boolean>(false);
   const ytextRef = useRef<Y.Text | null>(null);
-
-  const provider = new YPartyKitProvider(
-    import.meta.env.PARTYKIT_HOST_URL || 'localhost:8082', //host
-    roomId //room
-  );
+  const providerRef = useRef<YPartyKitProvider | null>(null);
+  const awarenessRef = useRef<any>(null);
 
   useEffect(() => {
+    const provider = new YPartyKitProvider(
+      import.meta.env.PARTYKIT_HOST_URL || 'localhost:8082', //host
+      roomId //room
+    );
+    providerRef.current = provider;
+
     if (!provider) return;
 
     // Get the shared text from the provider's document
@@ -31,16 +34,22 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
       colorLight: MY_COLOR + '80',
     });
 
+    awarenessRef.current = provider.awareness;
+
     setIsReady(true);
     return () => {
       setIsReady(false);
+      provider.destroy(); //disconnect the WebSocket
+      providerRef.current = null;
+      ytextRef.current = null;
+      awarenessRef.current = null;
     };
-  }, [provider]);
+  }, [roomId]);
 
   return {
-    provider,
+    provider: providerRef.current,
     ytext: ytextRef.current,
-    awareness: provider?.awareness,
+    awareness: awarenessRef.current,
     isReady,
   };
 }
