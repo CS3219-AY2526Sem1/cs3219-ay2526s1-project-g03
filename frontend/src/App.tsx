@@ -1,5 +1,3 @@
-import './App.css';
-import {useState} from 'react';
 import {Route, Routes} from 'react-router-dom';
 import Register from './pages/register';
 import Input from './collaboration/pages/Input';
