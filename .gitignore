@@ -24,5 +24,8 @@ lcov-report/
 
 # Log files
 *.log
+
 npm-debug.logcoverage/
 coverage/
+
+.vscode/
