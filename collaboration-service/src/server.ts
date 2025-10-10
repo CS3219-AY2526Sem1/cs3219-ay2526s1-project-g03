@@ -26,43 +26,60 @@ export default class YjsServer implements Party.Server {
         const doc = new Y.Doc();
 
         // Load the document from the database
-        const {data, error} = await supabase
-          .from('documents')
-          .select('document')
-          .eq('name', room.id)
-          .maybeSingle();
+        try {
+          const {data, error} = await supabase
+            .from('documents')
+            .select('document')
+            .eq('name', room.id)
+            .maybeSingle();
 
-        if (error) {
-          throw new Error(error.message);
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          if (data) {
+            // If the document exists on the database,
+            // apply it to the Yjs document
+            try {
+              const buffer = Buffer.from(data.document, 'base64');
+              Y.applyUpdate(doc, new Uint8Array(buffer));
+            } catch (parseErr) {
+              console.warn(`[${room.id}] Data corrupted, creating new document`);
+            }
+          } else {
+            console.log(`[${room.id}] No existing document found, creating new document`);
+          }
+
+          // Return the Yjs document
+          return doc;
+        } catch (err) {
+          console.error(`[${room.id}] Load failed:`, err);
+          throw err;
         }
-
-        if (data) {
-          // If the document exists on the database,
-          // apply it to the Yjs document
-          Y.applyUpdate(doc, new Uint8Array(Buffer.from(data.document, 'base64')));
-        }
-
-        // Return the Yjs document
-        return doc;
       },
       callback: {
         handler: async doc => {
           // This is called every few seconds if the document has changed
 
           // convert the Yjs document to a Uint8Array
-          const content = Y.encodeStateAsUpdate(doc);
+          try {
+            const content = Y.encodeStateAsUpdate(doc);
 
-          // Save the document to the database
-          const {data: _data, error} = await supabase.from('documents').upsert(
-            {
-              name: room.id,
-              document: Buffer.from(content).toString('base64'),
-            },
-            {onConflict: 'name'}
-          );
+            // Save the document to the database
+            const {data: _data, error} = await supabase.from('documents').upsert(
+              {
+                name: room.id,
+                document: Buffer.from(content).toString('base64'),
+              },
+              {onConflict: 'name'}
+            );
 
-          if (error) {
-            console.error('failed to save:', error);
+            if (error) {
+              console.error(`[${room.id}] Failed to save:`, error);
+              throw new Error(`Failed to save into database: ${error.message}`);
+            }
+          } catch (err) {
+            console.error(`[${room.id}] Save error: `, err);
           }
         },
       },
