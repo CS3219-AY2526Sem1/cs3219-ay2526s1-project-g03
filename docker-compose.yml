@@ -1,0 +1,89 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - '3000:5173'
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - user-service
+      - question-service
+      - matching-service
+      - collaboration-service
+    networks:
+      - app-network
+
+  # User service
+  user-service:
+    build:
+      context: ./user-service
+      dockerfile: Dockerfile
+    ports:
+      - '8080:8080'
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    volumes:
+      - ./user-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+  # Question service
+  question-service:
+    build:
+      context: ./question-service
+      dockerfile: Dockerfile
+    ports:
+      - '8083:8083'
+    environment:
+      - NODE_ENV=development
+      - PORT=8083
+    volumes:
+      - ./question-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+  # Matching service
+  matching-service:
+    build:
+      context: ./matching-service
+      dockerfile: Dockerfile
+    ports:
+      - '8081:8081'
+    environment:
+      - NODE_ENV=development
+      - PORT=8081
+    volumes:
+      - ./matching-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+  # Collaboration service
+  collaboration-service:
+    build:
+      context: ./collaboration-service
+      dockerfile: Dockerfile
+    ports:
+      - '8082:8082'
+    environment:
+      - NODE_ENV=development
+      - PORT=8082
+    volumes:
+      - ./collaboration-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

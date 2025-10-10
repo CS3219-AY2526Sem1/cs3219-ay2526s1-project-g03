@@ -1,0 +1,7 @@
+# Node
+node_modules/
+**/node_modules/
+.env
+
+# TypeScript build output
+**/dist/
