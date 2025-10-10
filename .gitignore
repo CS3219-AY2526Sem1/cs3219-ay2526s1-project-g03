@@ -5,6 +5,8 @@ node_modules/
 
 # TypeScript build output
 **/dist/
+
+.partykit
 .env.test
 # Dependencies
 node_modules/

@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "lucide-react": "^0.545.0",
     "@tanstack/react-query": "^5.90.2",
     "@tanstack/react-query-devtools": "^5.90.2",
     "axios": "^1.12.2",
@@ -25,6 +26,7 @@
     "@types/react": "^19.1.10",
     "@types/react-dom": "^19.1.7",
     "@vitejs/plugin-react": "^5.0.0",
+    "codemirror": "^6.0.2",
     "eslint": "^9.34.0",
     "eslint-config-airbnb-extended": "^2.2.0",
     "eslint-config-prettier": "^10.1.8",
@@ -34,9 +36,12 @@
     "eslint-plugin-prettier": "^5.5.4",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "partykit": "^0.0.115",
     "prettier": "^3.6.2",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.42.0",
-    "vite": "^7.1.2"
+    "vite": "^7.1.2",
+    "y-codemirror.next": "^0.3.5",
+    "y-partykit": "^0.0.23"
   }
 }

@@ -56,3 +56,5 @@ jspm_packages/
 
 # Optional eslint cache
 .eslintcache
+
+node_modules
