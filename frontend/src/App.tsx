@@ -1,17 +1,22 @@
 import './App.css';
-import {BrowserRouter, Routes, Route} from 'react-router-dom';
+import {useState} from 'react';
+import {Route, Routes} from 'react-router-dom';
+import Register from './pages/register';
 import Input from './collaboration/pages/Input';
 import {CollabPage} from './collaboration/pages/CollabPage';
 
+export function Home() {
+  return <div>Home</div>;
+}
+
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route index element={<h1>Home page :D</h1>} />
-        <Route path="room" element={<Input />} />
-        <Route path="room/:roomId" element={<CollabPage />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="room" element={<Input />} />
+      <Route path="room/:roomId" element={<CollabPage />} />
+    </Routes>
   );
 }
 
