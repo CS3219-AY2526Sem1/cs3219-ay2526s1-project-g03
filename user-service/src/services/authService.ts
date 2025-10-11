@@ -9,8 +9,8 @@ export type CreateAccoutParams = {
 export const createAccount = async (data: CreateAccoutParams) => {
   // Check if user exists.
   const existingUser = await User.exists({
-    email: data.email,
-  });
+    $or: [{email: data.email}, {username: data.username}],
+  }).collation({locale: 'en', strength: 2});
 
   if (existingUser) {
     throw new Error('User already exists!');

@@ -19,53 +19,45 @@ const config: Config = {
   clearMocks: true,
 
   // The directory where Jest should output its coverage files
-  coverageDirectory: "coverage",
+  coverageDirectory: 'coverage',
 
   // An array of regexp pattern strings used to skip coverage collection
-  coveragePathIgnorePatterns: [
-    "/node_modules/"
-  ],
+  coveragePathIgnorePatterns: ['/node_modules/'],
 
   // Indicates which provider should be used to instrument code for coverage
-  coverageProvider: "v8",
+  coverageProvider: 'v8',
 
   // Indicates whether the coverage information should be collected while executing the test
   collectCoverage: true,
 
   // A list of reporter names that Jest uses when writing coverage reports
-  coverageReporters: [
-    "json",
-    "text",
-    "lcov",
-    "clover",
-    "html"
-  ],
+  coverageReporters: ['json', 'text', 'lcov', 'clover', 'html'],
 
   collectCoverageFrom: [
     // Frontend files
-    "frontend/src/**/*.{ts,js,tsx,jsx}",
+    'frontend/src/**/*.{ts,js,tsx,jsx}',
     // Backend services
-    "collaboration-service/src/**/*.{ts,js}",
-    "matching-service/src/**/*.{ts,js}",
-    "question-service/src/**/*.{ts,js}",
-    "user-service/src/**/*.{ts,js}",
+    'collaboration-service/src/**/*.{ts,js}',
+    'matching-service/src/**/*.{ts,js}',
+    'question-service/src/**/*.{ts,js}',
+    'user-service/src/**/*.{ts,js}',
     // Exclusions
-    "!**/src/**/*.d.ts",
-    "!**/src/**/__tests__/**",
-    "!**/src/**/*.test.{ts,js}",
-    "!**/src/**/*.spec.{ts,js}",
-    "!**/node_modules/**",
-    "!**/dist/**",
-    "!**/build/**"
+    '!**/src/**/*.d.ts',
+    '!**/src/**/__tests__/**',
+    '!**/src/**/*.test.{ts,js}',
+    '!**/src/**/*.spec.{ts,js}',
+    '!**/node_modules/**',
+    '!**/dist/**',
+    '!**/build/**',
   ],
 
   // Force coverage collection from ignored files using an array of glob patterns
   forceCoverageMatch: [
-    "<rootDir>/frontend/src/**/*.{ts,js, tsx}",
-    "<rootDir>/collaboration-service/src/**/*.{ts,js}",
-    "<rootDir>/matching-service/src/**/*.{ts,js}",
-    "<rootDir>/question-service/src/**/*.{ts,js}",
-    "<rootDir>/user-service/src/**/*.{ts,js}",
+    '<rootDir>/frontend/src/**/*.{ts,js, tsx}',
+    '<rootDir>/collaboration-service/src/**/*.{ts,js}',
+    '<rootDir>/matching-service/src/**/*.{ts,js}',
+    '<rootDir>/question-service/src/**/*.{ts,js}',
+    '<rootDir>/user-service/src/**/*.{ts,js}',
   ],
 
   // An object that configures minimum threshold enforcement for coverage results
@@ -74,8 +66,8 @@ const config: Config = {
       branches: 80,
       functions: 80,
       lines: 80,
-      statements: 80
-    }
+      statements: 80,
+    },
   },
 
   // A path to a custom dependency extractor
@@ -102,23 +94,10 @@ const config: Config = {
   // maxWorkers: "50%",
 
   // An array of directory names to be searched recursively up from the requiring module's location
-  moduleDirectories: [
-    "node_modules"
-  ],
+  moduleDirectories: ['node_modules'],
 
   // An array of file extensions your modules use
-  moduleFileExtensions: [
-    "js",
-    "mjs",
-    "cjs",
-    "jsx",
-    "ts",
-    "mts",
-    "cts",
-    "tsx",
-    "json",
-    "node"
-  ],
+  moduleFileExtensions: ['js', 'mjs', 'cjs', 'jsx', 'ts', 'mts', 'cts', 'tsx', 'json', 'node'],
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   // moduleNameMapper: {},
@@ -151,7 +130,7 @@ const config: Config = {
   // restoreMocks: false,
 
   // The root directory that Jest should scan for tests and modules within
-  rootDir: "./",
+  rootDir: './',
 
   // Allows you to use a custom runner instead of Jest's default test runner
   // runner: "jest-runner",
@@ -218,34 +197,35 @@ const config: Config = {
   projects: [
     // Frontend uses jsdom
     {
-      displayName: "frontend",
+      displayName: 'frontend',
 
       // A preset that is used as a base for Jest's configuration
-      preset: "ts-jest",
+      preset: 'ts-jest',
 
-      testEnvironment: "jest-environment-jsdom",
+      testEnvironment: 'jest-environment-jsdom',
 
       // A list of paths to directories that Jest should use to search for files in
-      roots: ["<rootDir>/frontend"],
+      roots: ['<rootDir>/frontend'],
     },
 
     // Backend uses node
     {
-      displayName: "backend",
+      displayName: 'backend',
 
       // A preset that is used as a base for Jest's configuration
-      preset: "ts-jest",
+      preset: 'ts-jest',
 
-      testEnvironment: "node",
+      testEnvironment: 'node',
 
       // A list of paths to directories that Jest should use to search for files in
-      roots: ["<rootDir>/collaboration-service",
-        "<rootDir>/matching-service",
-        "<rootDir>/question-service",
-        "<rootDir>/user-service",
+      roots: [
+        '<rootDir>/collaboration-service',
+        '<rootDir>/matching-service',
+        '<rootDir>/question-service',
+        '<rootDir>/user-service',
       ],
-    }
-  ]
+    },
+  ],
 };
 
 export default config;
