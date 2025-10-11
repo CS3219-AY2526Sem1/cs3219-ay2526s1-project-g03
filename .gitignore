@@ -31,3 +31,6 @@ npm-debug.logcoverage/
 coverage/
 
 .vscode/
+
+# Database files
+/user-service/db

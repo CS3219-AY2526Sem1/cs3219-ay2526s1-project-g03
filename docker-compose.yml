@@ -1,5 +1,31 @@
 services:
   # --- DATABASES ---
+  user-db-mongodb:
+    image: mongo
+    container_name: user-db-mongodb
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./user-service/db:/data/db
+    networks:
+      - app-network
+  
+  # For development purposes
+  user-db-mongo-express:
+    image: mongo-express
+    container_name: user-db-mongo-express
+    restart: unless-stopped  
+    ports:
+      - 8084:8081
+    env_file:
+      - .env
+    networks:
+      - app-network
+    depends_on:
+      - user-db-mongodb
+    
+
   question-db-pg:
     image: postgres:14-alpine
     container_name: question-db-pg
