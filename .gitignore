@@ -1,12 +1,36 @@
 # Node
 node_modules/
 **/node_modules/
-coverage/
-lcov-report/
+
 
 # TypeScript build output
 **/dist/
 
-.env
+
 .env.test
 coverage/
+.partykit
+.env.test
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Test reports
+coverage/
+lcov-report/
+
+# Local environment files
+.env
+.env.*
+*.local
+
+# Log files
+*.log
+
+npm-debug.logcoverage/
+coverage/
+
+.vscode/

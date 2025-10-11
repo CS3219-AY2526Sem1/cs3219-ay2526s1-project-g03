@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node ./src/index.js",
+    "dev": "npx partykit dev --live",
     "lint": "cd .. && npm run lint:service collaboration-service --ext .ts",
     "lint:fix": "cd .. && npm run lint:service collaboration-service --ext .ts --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -15,7 +15,11 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "@supabase/supabase-js": "^2.39.7",
+    "express": "^5.1.0",
+    "y-partykit": "^0.0.23",
+    "partykit": "^0.0.115",
+    "yjs": "^13.6.10"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

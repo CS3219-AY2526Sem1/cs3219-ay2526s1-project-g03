@@ -70,11 +70,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8083
-      - DB_HOST=question-db-pg        
-      - DB_PORT=5432                  
-      - POSTGRES_USER=user
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_DB=question-db
+    env_file:
+      - ./.env
     depends_on: 
       - question-db-pg
     volumes:
@@ -119,6 +116,7 @@ services:
 
   # Collaboration service
   collaboration-service:
+    platform: linux/amd64
     build:
       context: ./collaboration-service
       dockerfile: Dockerfile
@@ -127,6 +125,8 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=8082
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
     env_file:
       - ./.env
     volumes:
