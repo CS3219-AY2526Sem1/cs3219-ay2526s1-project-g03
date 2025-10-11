@@ -20,8 +20,12 @@ export type UserModel = mongoose.Model<IUser, {}, IUserMethods>;
 
 const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
   {
-    username: {type: String, unique: true, required: true},
-    email: {type: String, unique: true, required: true},
+    username: {type: String, required: true,
+      index: {unique: true, collation: {locale: 'en', strength: 2}}
+    },
+    email: {type: String, required: true,
+      index: {unique: true, collation: {locale: 'en', strength: 2}}
+    },
     verified: {type: Boolean, required: true, default: false},
     password: {type: String, unique: true, required: true},
     role: {type: String, required: true, default: 'user'},
