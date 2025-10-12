@@ -18,10 +18,8 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/email/verify/:code" element={<VerifyEmail />} />
       <Route path="/login" element={<Login />} />
-      // TODO: password forget, password reset
+      // TODO: password forget, password reset // Authorized users only.
       <Route path="/" element={<AuthContainer />}>
-        {' '}
-        // Authorized users only
         <Route index element={<Profile />} /> // TODO customization
         {/* <Route path="/logout" element={<Logout />} /> // TODO */}
         <Route path="room" element={<Input />} />

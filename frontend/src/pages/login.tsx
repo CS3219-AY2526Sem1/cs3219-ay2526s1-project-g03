@@ -31,7 +31,7 @@ const Login: React.FC = () => {
   return (
     <div className="login-wrapper">
       <div className="login-container">
-        <Link to="/" className="back-link">
+        <Link to="/Home" className="back-link">
           <span className="back-arrow" />
           <span>Back to Home</span>
         </Link>

@@ -13,7 +13,7 @@ const authenticate: RequestHandler = async (req, res, next) => {
     appAssert(payload, HTTP_UNAUTHORIZED, 'Invalid access token!');
 
     const session = await Session.findById(payload.sessionId);
-    appAssert(session, HTTP_UNAUTHORIZED, 'Invalide access token!');
+    appAssert(session, HTTP_UNAUTHORIZED, 'Invalid access token!');
 
     req.userId = payload.userId;
     req.sessionId = payload.sessionId;

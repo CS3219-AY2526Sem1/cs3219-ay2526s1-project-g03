@@ -31,7 +31,7 @@ const Register: React.FC = () => {
   return (
     <div className="registration-wrapper">
       <div className="registration-container">
-        <Link to="/" className="back-link">
+        <Link to="/Home" className="back-link">
           <span className="back-arrow" />
           <span>Back to Home</span>
         </Link>

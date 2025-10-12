@@ -7,4 +7,7 @@ export const verifyEmail = async verificationCode =>
 
 export const login = async data => API.post('auth/login', data);
 
-export const getUser = async () => API.get('/user');
+export const getUser = async () => {
+  const response = await API.get('/user', {withCredentials: true});
+  return response.data;
+};
