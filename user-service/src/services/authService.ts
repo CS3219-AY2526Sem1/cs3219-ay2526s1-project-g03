@@ -3,14 +3,23 @@ import {
   HTTP_INTERNAL_SERVER_ERROR,
   HTTP_NOT_FOUND,
   HTTP_UNAUTHORIZED,
+  HTTP_CONFLICT,
 } from '../constants/httpStatus';
 import VerificationType from '../constants/verificationTypes';
+import Session from '../models/session';
 import User from '../models/user';
 import VerificationCode from '../models/verificationCode';
 import appAssert from '../utils/appAssert';
-import {oneDay} from '../utils/date';
+import {daysFromNow} from '../utils/date';
 import {sendEmail} from '../utils/email';
 import {getVerifyEmail} from '../utils/verifyTemplate';
+import {
+  refreshTokenSignOptions,
+  signToken,
+  verifyToken,
+  type RefreshTokenPayload,
+} from '../utils/jwt';
+import {EMAIL_VER_DAYS, REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
 
 export type CreateAccoutParams = {
   username: string;
@@ -23,10 +32,7 @@ export const createAccount = async (data: CreateAccoutParams) => {
   const existingUser = await User.exists({
     $or: [{email: data.email}, {username: data.username}],
   }).collation({locale: 'en', strength: 2});
-
-  if (existingUser) {
-    throw new Error('User already exists!');
-  }
+  appAssert(!existingUser, HTTP_CONFLICT, 'User / Email in use!');
 
   // Create user.
   const user = await User.create({
@@ -39,7 +45,7 @@ export const createAccount = async (data: CreateAccoutParams) => {
   const emailVerificationCode = await VerificationCode.create({
     userId: user._id,
     type: VerificationType.VerifyEmail,
-    expiresAt: oneDay(),
+    expiresAt: daysFromNow(EMAIL_VER_DAYS),
   });
 
   // Send verification email.
@@ -50,7 +56,27 @@ export const createAccount = async (data: CreateAccoutParams) => {
     console.log(error);
   }
 
-  return user;
+  const userId = user._id;
+
+  const session = await Session.create({
+    userId,
+  });
+
+  const sessionId = session._id;
+
+  const refreshToken = signToken(
+    {
+      sessionId,
+    },
+    refreshTokenSignOptions
+  );
+
+  const accessToken = signToken({
+    userId,
+    sessionId,
+  });
+
+  return {user, accessToken, refreshToken};
 };
 
 export const verifyEmail = async (code: string) => {
@@ -94,5 +120,50 @@ export const loginUser = async (request: LoginParams) => {
   const isValid = await user.comparePassword(request.password);
   appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
 
-  return user;
+  const userId = user._id;
+  const session = await Session.create({
+    userId,
+  });
+
+  const sessionInfo: RefreshTokenPayload = {
+    sessionId: session._id,
+  };
+
+  const refreshToken = signToken(sessionInfo, refreshTokenSignOptions);
+  const accessToken = signToken({
+    ...sessionInfo,
+    userId,
+  });
+
+  return {user, accessToken, refreshToken};
+};
+
+export const refreshUserAccessToken = async (refreshToken: string) => {
+  const {payload} = verifyToken<RefreshTokenPayload>(refreshToken, {
+    secret: refreshTokenSignOptions.secret,
+  });
+  appAssert(payload, HTTP_UNAUTHORIZED, 'Invlaid refresh token!');
+
+  const session = await Session.findById(payload.sessionId);
+  appAssert(session, HTTP_UNAUTHORIZED, 'Session not found!');
+
+  const sessionExpiry = session.expiresAt.getTime();
+  const now = Date.now();
+  appAssert(sessionExpiry > now, HTTP_UNAUTHORIZED, 'Session expired!');
+
+  let newRefreshToken;
+
+  if (sessionExpiry - now <= daysFromNow(REFRESH_BUFFER_DAYS)) {
+    session.expiresAt = daysFromNow(REFRESH_TOKEN_DAYS);
+    await session.save();
+
+    newRefreshToken = signToken({sessionId: session._id}, refreshTokenSignOptions);
+  }
+
+  const accessToken = signToken({
+    userId: session.userId,
+    sessionId: session._id,
+  });
+
+  return {accessToken, newRefreshToken};
 };

@@ -1,8 +1,19 @@
 import z from 'zod';
 import catchErrors from '../utils/catchErrors';
-import {HTTP_CREATED, HTTP_OK} from '../constants/httpStatus';
-import {createAccount, verifyEmail, loginUser} from '../services/authService';
+import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import {
+  createAccount,
+  verifyEmail,
+  loginUser,
+  refreshUserAccessToken,
+} from '../services/authService';
 import {registerSchema, verificationCodeSchema, loginSchema} from './authSchema';
+import {
+  getAccessTokenCookieOptions,
+  getRefreshTokenCookieOptions,
+  setAuthCookies,
+} from '../utils/cookies';
+import appAssert from '../utils/appAssert';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -16,14 +27,16 @@ export const registerController = catchErrors(async (req, res) => {
     ...req.body,
   });
 
-  const user = await createAccount(request);
+  const {user, accessToken, refreshToken} = await createAccount(request);
 
-  return res.status(HTTP_CREATED).json(user);
+  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user);
 });
 
 export const verifyEmailHandler = catchErrors(async (req, res) => {
   const verificationCode = verificationCodeSchema.parse(req.params.code);
+
   await verifyEmail(verificationCode);
+
   return res.status(HTTP_OK).json({
     message: 'Email was successfully verified!',
   });
@@ -40,9 +53,24 @@ export const loginController = catchErrors(async (req, res) => {
     ? {email: request.identifier, password: request.password}
     : {username: request.identifier, password: request.password};
 
-  const {} = await loginUser(loginData);
+  const {accessToken, refreshToken} = await loginUser(loginData);
 
-  return res.status(HTTP_OK).json({
+  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_OK).json({
     message: 'Login successful!',
+  });
+});
+
+export const refreshController = catchErrors(async (req, res) => {
+  const {refreshToken} = req.cookies;
+  appAssert(refreshToken, HTTP_UNAUTHORIZED, 'Missing refresh token!');
+
+  const {accessToken, newRefreshToken} = await refreshUserAccessToken(refreshToken);
+
+  if (newRefreshToken) {
+    res.cookie('refreshToken', newRefreshToken, getRefreshTokenCookieOptions());
+  }
+
+  res.status(HTTP_OK).cookie('accessToken', accessToken, getAccessTokenCookieOptions()).json({
+    message: 'Access token refreshed',
   });
 });

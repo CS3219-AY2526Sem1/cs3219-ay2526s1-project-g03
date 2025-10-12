@@ -6,6 +6,8 @@ import errorHandler from './middleware/errorHandler';
 import {HTTP_OK} from './constants/httpStatus';
 import authRoutes from './routes/authRoutes';
 import connectToDatabase from './config/database';
+import userRoutes from './routes/userRoute';
+import authenticate from './middleware/authenticate';
 
 const app = express();
 
@@ -28,6 +30,8 @@ app.get('/', (req, res, next) =>
 );
 
 app.use('/auth', authRoutes);
+
+app.use('/user', authenticate, userRoutes);
 
 app.use(errorHandler);
 

@@ -1,6 +1,8 @@
 import type {ErrorRequestHandler, Response} from 'express';
 import {z} from 'zod';
 import {HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR} from '../constants/httpStatus';
+import AppError from '../utils/appError';
+import {clearAuthCookies, REFRESH_PATH} from '../utils/cookies';
 
 /**
  * Converts ZodErrors into HTTP BAD_REQUESTS.
@@ -11,6 +13,11 @@ import {HTTP_BAD_REQUEST, HTTP_INTERNAL_SERVER_ERROR} from '../constants/httpSta
  */
 const handleZodError = (res: Response, error: z.ZodError) =>
   res.status(HTTP_BAD_REQUEST).send(error);
+
+const handleAppError = (res: Response, error: AppError) =>
+  res.status(error.statusCode).json({
+    message: error.message,
+  });
 
 /**
  * Error handling middleware.
@@ -25,8 +32,16 @@ const handleZodError = (res: Response, error: z.ZodError) =>
 const errorHandler: ErrorRequestHandler = (error, req, res, next) => {
   console.log(`PATH: ${req.path}`, error);
 
+  if (req.path === REFRESH_PATH) {
+    clearAuthCookies(res);
+  }
+
   if (error instanceof z.ZodError) {
     return handleZodError(res, error);
+  }
+
+  if (error instanceof AppError) {
+    return handleAppError(res, error);
   }
 
   return res.status(HTTP_INTERNAL_SERVER_ERROR).send('Internal server error');

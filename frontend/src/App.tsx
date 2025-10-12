@@ -5,16 +5,25 @@ import Login from './pages/login';
 import Input from './collaboration/pages/Input';
 import {CollabPage} from './collaboration/pages/CollabPage';
 import VerifyEmail from './pages/verifyEmail';
+import Profile from './pages/profile';
+import AuthContainer from './components/authContainer';
 
 function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      <Route path="/home" element={<Home />} />
       <Route path="/register" element={<Register />} />
       <Route path="/email/verify/:code" element={<VerifyEmail />} />
       <Route path="/login" element={<Login />} />
-      <Route path="room" element={<Input />} />
-      <Route path="room/:roomId" element={<CollabPage />} />
+      // TODO: password forget, password reset
+      <Route path="/" element={<AuthContainer />}>
+        {' '}
+        // Authorized users only
+        <Route index element={<Profile />} /> // TODO customization
+        {/* <Route path="/logout" element={<Logout />} /> // TODO */}
+        <Route path="room" element={<Input />} />
+        <Route path="room/:roomId" element={<CollabPage />} />
+      </Route>
     </Routes>
   );
 }
