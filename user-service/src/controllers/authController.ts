@@ -1,33 +1,7 @@
-import {z} from 'zod';
 import catchErrors from '../utils/catchErrors';
 import {HTTP_CREATED, HTTP_OK} from '../constants/httpStatus';
 import {createAccount, verifyEmail} from '../services/authService';
-import {verificationCodeSchema} from './authSchema';
-
-/**
- * Zod schema for validating user registration input.
- * Source: https://zod.dev/api
- *
- * {string} username String, 3 - 30 characters, only alphanumerics and underscores.
- * {string} email Valid email string provided by Zod.
- * {string} password 8 - 30 characters.
- * {string} confirmPassword 8 - 30 characters, must match password.
- */
-const registerSchema = z
-  .object({
-    username: z
-      .string()
-      .min(3)
-      .max(30)
-      .regex(/[a-zA-Z0-9_]+/),
-    email: z.email(),
-    password: z.string().min(8).max(30),
-    confirmPassword: z.string().min(8).max(30),
-  })
-  .refine(val => val.password === val.confirmPassword, {
-    message: 'Passwords do not match!',
-    path: ['confirmPassword'],
-  });
+import {registerSchema, verificationCodeSchema} from './authSchema';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
