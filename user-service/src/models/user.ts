@@ -55,8 +55,6 @@ userSchema
     return this.password_;
   });
 
-// Todo: Encrypt
-
 /**
  * Salts and hashes password prior to data validation.
  */

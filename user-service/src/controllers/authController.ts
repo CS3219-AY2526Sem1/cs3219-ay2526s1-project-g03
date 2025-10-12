@@ -1,7 +1,8 @@
 import {z} from 'zod';
 import catchErrors from '../utils/catchErrors';
-import {HTTP_CREATED} from '../constants/httpStatus';
-import {createAccount} from '../services/authService';
+import {HTTP_CREATED, HTTP_OK} from '../constants/httpStatus';
+import {createAccount, verifyEmail} from '../services/authService';
+import {verificationCodeSchema} from './authSchema';
 
 /**
  * Zod schema for validating user registration input.
@@ -43,4 +44,14 @@ export const registerController = catchErrors(async (req, res) => {
   const user = await createAccount(request);
 
   return res.status(HTTP_CREATED).json(user);
+});
+
+export const verifyEmailHandler = catchErrors(async (req, res) => {
+  console.log('I am at the start!');
+  const verificationCode = verificationCodeSchema.parse(req.params.code);
+  console.log('I got in here!');
+  await verifyEmail(verificationCode);
+  return res.status(HTTP_OK).json({
+    message: 'Email was successfully verified!',
+  });
 });
