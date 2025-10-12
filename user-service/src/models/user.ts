@@ -35,9 +35,9 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
       index: {unique: true, collation: {locale: 'en', strength: 2}},
     },
     verified: {type: Boolean, required: true, default: false},
-    passwordHash: {type: String, required: true, select: false},
-    passwordSalt: {type: String, required: true, select: false},
-    passwordIterations: {type: Number, required: true, select: false, default: 600000},
+    passwordHash: {type: String, required: true},
+    passwordSalt: {type: String, required: true},
+    passwordIterations: {type: Number, required: true, default: 600000},
     role: {type: String, required: true, default: 'user', enum: ['user', 'admin']},
   },
   {

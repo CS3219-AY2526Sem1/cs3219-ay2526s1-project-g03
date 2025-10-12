@@ -1,5 +1,9 @@
 import {APP_ORIGIN} from '../constants/env';
-import {HTTP_INTERNAL_SERVER_ERROR, HTTP_NOT_FOUND} from '../constants/httpStatus';
+import {
+  HTTP_INTERNAL_SERVER_ERROR,
+  HTTP_NOT_FOUND,
+  HTTP_UNAUTHORIZED,
+} from '../constants/httpStatus';
 import VerificationType from '../constants/verificationTypes';
 import User from '../models/user';
 import VerificationCode from '../models/verificationCode';
@@ -65,4 +69,30 @@ export const verifyEmail = async (code: string) => {
   return {
     user: updatedUser,
   };
+};
+
+interface LoginWithEmail {
+  email: string;
+  password: string;
+}
+
+interface LoginWithUsername {
+  username: string;
+  password: string;
+}
+
+export type LoginParams = LoginWithEmail | LoginWithUsername;
+
+export const loginUser = async (request: LoginParams) => {
+  const user =
+    'email' in request
+      ? await User.findOne({email: request.email})
+      : await User.findOne({username: request.username});
+
+  appAssert(user, HTTP_UNAUTHORIZED, 'Invalid credentials!');
+
+  const isValid = await user.comparePassword(request.password);
+  appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
+
+  return user;
 };
