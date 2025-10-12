@@ -121,6 +121,8 @@ export const loginUser = async (request: LoginParams) => {
   appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
 
   const userId = user._id;
+  // Delete all previous sessions to enforce single login constraint.
+  await Session.deleteMany({userId});
   const session = await Session.create({
     userId,
   });

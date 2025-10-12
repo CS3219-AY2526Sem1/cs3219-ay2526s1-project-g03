@@ -1,4 +1,4 @@
-import {Route, Routes} from 'react-router-dom';
+import {Route, Routes, useNavigate} from 'react-router-dom';
 import Home from './pages/home';
 import Register from './pages/register';
 import Login from './pages/login';
@@ -7,8 +7,11 @@ import {CollabPage} from './collaboration/pages/CollabPage';
 import VerifyEmail from './pages/verifyEmail';
 import Profile from './pages/profile';
 import AuthContainer from './components/authContainer';
+import {setNavigate} from './lib/navigation';
 
 function App() {
+  const navigate = useNavigate();
+  setNavigate(navigate); // Allows use of navigate within Axios.
   return (
     <Routes>
       <Route path="/home" element={<Home />} />

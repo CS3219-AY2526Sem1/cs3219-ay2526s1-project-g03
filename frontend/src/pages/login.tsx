@@ -1,5 +1,5 @@
 import React, {useState} from 'react';
-import {Link, useNavigate} from 'react-router-dom';
+import {Link, useLocation, useNavigate} from 'react-router-dom';
 import {useMutation} from '@tanstack/react-query';
 import PeerPrepIcon from '../assets/peerprep-icon.svg';
 import GoogleIcon from '../assets/google-icon.svg';
@@ -9,6 +9,8 @@ import '../../styles/login.css';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const redirectUrl = location.state?.redirectUrl || '/';
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
@@ -20,7 +22,7 @@ const Login: React.FC = () => {
   } = useMutation({
     mutationFn: login,
     onSuccess: () => {
-      navigate('/', {
+      navigate(redirectUrl, {
         replace: true, // User cannot go back to page
       });
     },
