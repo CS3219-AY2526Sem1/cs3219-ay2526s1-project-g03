@@ -10,7 +10,7 @@ const colours = ['#FF0000', '#00FF00', '#0000FF', '#FFFF00', '#00FFFF'];
 const MY_COLOR = colours[Math.floor(Math.random() * colours.length)];
 
 const animals = ['Panda', 'Tiger', 'Lion', 'Eagle', 'Shark', 'Wolf', 'Fox', 'Bear', 'Owl', 'Cat'];
-const adjectives = ['Code Master', 'Swift', 'Clever', 'Mighty', 'Wise', 'Bold', 'Coder', 'Sharp'];
+const adjectives = ['Code Master', 'Cracked', 'Clever', 'Bug Terminator', 'Wise', 'Debugger', 'Coder', 'Sharp', 'Giga Chad'];
 
 const getRandomName = () => {
   const animal = animals[Math.floor(Math.random() * animals.length)];
@@ -29,17 +29,17 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
 
 
   useEffect(() => {
-    console.log('🔵 useEffect RUNNING for room:', roomId);
+    console.log('useEffect RUNNING for room:', roomId);
 
     if (providerRef.current) {
-      console.warn('⚠️ Provider already exists! This should not happen.');
+      console.warn('Provider already exists!');
       return;
     }
     const provider = new YPartyKitProvider(
-      import.meta.env.PARTYKIT_HOST_URL || 'localhost:8082', //host
+      import.meta.env.VITE_NGROK_COLLAB_HOST || 'localhost:8082', //host
       roomId //room
     );
-    console.log('✅ Created new provider for room:', roomId);
+    console.log('Created new provider for room:', roomId);
     console.log('   Client ID:', provider.awareness.clientID);
     providerRef.current = provider;
 
@@ -53,7 +53,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
     const myUserId = provider.awareness.clientID;
     const myName = getRandomName();
 
-    console.log('👤 Setting my user info:', {clientId: myUserId, name: myName});
+    console.log('Setting my user info:', {clientId: myUserId, name: myName});
 
     provider.awareness.setLocalStateField('user', {
       name: myName,
@@ -66,14 +66,14 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
 
     // Listens for awareness changes (users joining/leaving)
     const awarenessChangeHandler = ({added, removed}: any) => {
-      console.log('📢 Awareness change event:', {
+      console.log('Awareness change event:', {
         added: added.length,
         removed: removed.length,
         isFirst: isFirstChangeRef.current,
       });
 
       if (isFirstChangeRef.current) {
-        console.log('🔍 Initial sync - skipping toasts for:', added.length, 'users');
+        console.log('(Initial sync) skipping toasts for:', added.length, 'users');
         console.log('Added clientIDs:', added);
 
         // Checks all users currently in the room
@@ -82,7 +82,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
           name: state.user?.name || 'Unknown',
           isMe: id === myUserId,
         }));
-        console.log('👥 All users in awareness:', allUsers);
+        console.log('All users in awareness:', allUsers);
 
         isFirstChangeRef.current = false;
         return;  // Skip ALL initial users (real and ghosts)
@@ -90,17 +90,17 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
 
       // Skips events (noise) where no users were added or removed
       if (added.length === 0 && removed.length === 0) {
-        console.log('⚪ Empty awareness event - ignoring');
+        console.log('Empty awareness event. Ignored');
         return;
       }
 
-      console.log('📢 Processing awareness change (not initial sync)- added:', added, 'removed:', removed);
+      console.log('Processing awareness change (not initial sync), added:', added, 'removed:', removed);
 
       // User joined (only NEW users after initial sync)
       added.forEach((clientId: number) => {
         if (clientId !== myUserId) {
           const user = provider.awareness.getStates().get(clientId)?.user;
-          console.log('👤 New user joined:', clientId, user);
+          console.log('NEW user joined:', clientId, user);
           if (user?.name) {
             userNamesRef.current.set(clientId, user.name);
             toast.success(`${user.name} joined the room`, {
@@ -116,13 +116,13 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
         if (clientId !== myUserId) {
           // Tracks recently removed user and ignores duplicate toast within 15s
           if (recentlyRemovedRef.current.has(clientId)) {
-            console.log('⏭️ Already showed toast for', clientId, '- skipping duplicate');
+            console.log('Already showed toast for', clientId, '! Skipping duplicate');
             return;
           }
           recentlyRemovedRef.current.add(clientId);
 
           const userName = userNamesRef.current.get(clientId) || 'Coding buddy';
-          console.log('👋 User left:', clientId, userName);
+          console.log('!! User left:', clientId, userName);
           toast.error(`${userName} left the room`, {
             icon: '👋',
           });
@@ -130,7 +130,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
           // This allows showing the toast again if they rejoin and leave later
           setTimeout(() => {
             recentlyRemovedRef.current.delete(clientId);
-            console.log('🧹 Cleared recently-removed flag for', clientId);
+            console.log('Cleared recently-removed flag for', clientId);
           }, 15000);
         }
       });
@@ -140,7 +140,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
     setIsReady(true);
 
     return () => {
-      console.log('🧹 Cleanup - destroying provider for room:', roomId);
+      console.log('Cleanup! destroying provider for room:', roomId);
 
       provider.awareness.off('change', awarenessChangeHandler);
       userNamesRef.current.clear();

@@ -12,7 +12,7 @@ const SUPABASE_URL = process.env['SUPABASE_URL'] as string;
 const SUPABASE_KEY = process.env['SUPABASE_KEY'] as string;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
-  console.error('❌ FATAL ERROR: Missing required environment variables');
+  console.error('FATAL ERROR: Missing required environment variables');
   console.error('Required: SUPABASE_URL, SUPABASE_KEY');
   console.error('Please check your .env file');
   throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_KEY');
