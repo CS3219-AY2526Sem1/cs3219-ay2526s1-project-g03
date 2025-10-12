@@ -1,7 +1,8 @@
-import {Route, Routes} from 'react-router-dom';
+import {BrowserRouter, Route, Routes} from 'react-router-dom';
 import Register from './pages/register';
 import Input from './collaboration/pages/Input';
 import {CollabPage} from './collaboration/pages/CollabPage';
+import { Toaster } from 'react-hot-toast';
 
 export function Home() {
   return <div>Home</div>;
@@ -9,12 +10,16 @@ export function Home() {
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="room" element={<Input />} />
-      <Route path="room/:roomId" element={<CollabPage />} />
-    </Routes>
+    <>
+      <Toaster />
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="room" element={<Input />} />
+        <Route path="room/:roomId" element={<CollabPage />} />
+      </Routes>
+    </>
   );
 }
 
