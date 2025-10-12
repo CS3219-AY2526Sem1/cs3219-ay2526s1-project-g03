@@ -6,6 +6,7 @@ export const verifyEmail = async verificationCode =>
   API.get(`/auth/email/verify/${verificationCode}`);
 
 export const login = async data => API.post('auth/login', data);
+export const logout = async () => API.get('auth/logout');
 
 export const getUser = async () => {
   const response = await API.get('/user', {withCredentials: true});

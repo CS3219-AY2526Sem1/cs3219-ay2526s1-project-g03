@@ -21,7 +21,6 @@ function App() {
       // TODO: password forget, password reset // Authorized users only.
       <Route path="/" element={<AuthContainer />}>
         <Route index element={<Profile />} /> // TODO customization
-        {/* <Route path="/logout" element={<Logout />} /> // TODO */}
         <Route path="room" element={<Input />} />
         <Route path="room/:roomId" element={<CollabPage />} />
       </Route>

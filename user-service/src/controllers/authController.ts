@@ -14,6 +14,9 @@ import {
   setAuthCookies,
 } from '../utils/cookies';
 import appAssert from '../utils/appAssert';
+import {verifyToken} from '../utils/jwt.ts';
+import Session from '../models/session.ts';
+import {clearAuthCookies} from '../utils/cookies.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -57,6 +60,19 @@ export const loginController = catchErrors(async (req, res) => {
 
   return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_OK).json({
     message: 'Login successful!',
+  });
+});
+
+export const logoutController = catchErrors(async (req, res) => {
+  const accessToken = req.cookies.accessToken;
+  const {payload, _} = verifyToken(accessToken);
+
+  if (payload) {
+    await Session.findByIdAndDelete(payload.sessionId);
+  }
+
+  return clearAuthCookies(res).status(HTTP_OK).json({
+    message: 'Logout successful',
   });
 });
 

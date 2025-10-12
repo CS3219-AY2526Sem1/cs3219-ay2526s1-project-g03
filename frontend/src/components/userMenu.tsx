@@ -1,15 +1,29 @@
 import React from 'react';
-import {Link} from 'react-router-dom';
+import {Link, useNavigate} from 'react-router-dom';
 import PeerPrepIcon from '../assets/peerprep-icon.svg';
 import UserProfileIcon from '../assets/github-icon.svg'; // TODO: make this dynamic in future
 import NotificationIcon from '../assets/profile/notification-icon.svg';
 import LogoutIcon from '../assets/profile/logout-icon.svg';
 import '../../styles/userMenu.css';
 import useAuth from '../hooks/useAuth';
+import {useMutation} from '@tanstack/react-query';
+import {logout} from '../lib/api';
+import queryClient from '../config/queryClient';
 
 const UserMenu: React.FC = () => {
+  const navigate = useNavigate();
   const {user} = useAuth();
   const {username} = user;
+
+  const {mutate: logOut} = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.clear();
+    },
+    onSettled: () => {
+      navigate('/home', {replace: true});
+    },
+  });
 
   return (
     <div className="user-menu-wrapper">
@@ -25,9 +39,9 @@ const UserMenu: React.FC = () => {
             <img src={UserProfileIcon} alt="User Profile" className="user-profile-icon" />
             <span className="username-text">&nbsp;{username}</span>
           </Link>
-          <Link to="/logout" className="icon-link">
+          <button onClick={() => logOut()} className="icon-button">
             <img src={LogoutIcon} alt="Logout" className="exit-icon" />
-          </Link>
+          </button>
         </div>
       </header>
     </div>
