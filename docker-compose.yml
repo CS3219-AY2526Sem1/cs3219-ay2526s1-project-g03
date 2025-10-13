@@ -79,6 +79,9 @@ services:
       - /app/node_modules
     networks:
       - app-network
+    depends_on:
+      - user-db-mongodb
+    command: sh -c "npm run seed:admin || true && npm run dev" # for production change to npm start
 
   # Question service
   question-service:

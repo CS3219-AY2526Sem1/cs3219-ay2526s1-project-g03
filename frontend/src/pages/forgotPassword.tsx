@@ -60,7 +60,7 @@ const ForgotPassword: React.FC = () => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       const trimmedEmail = email.trim();
-                      if (trimmedEmail) sendResetEmail({trimmedEmail});
+                      if (trimmedEmail) sendResetEmail({email: trimmedEmail});
                     }
                   }}
                 />

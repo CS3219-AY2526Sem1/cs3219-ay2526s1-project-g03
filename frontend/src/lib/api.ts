@@ -25,3 +25,5 @@ export const changeProfilePic = async (formData: FormData) =>
   }).then(res => res.data);
 export const changePassword = async data => API.patch('/user/profile/password', data);
 export const changePersonalInfo = async data => API.patch('/user/profile/personalinfo', data);
+
+export const deleteAccount = async (data: {password: string}) => API.delete('/user/delete', {data});

@@ -2,6 +2,8 @@ import mongoose from 'mongoose';
 import {hashPassword, verifyPassword, needsRehash} from '../utils/pbkdf2';
 import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
 import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy.ts';
+import {daysFromNow} from '../utils/date.ts';
+import {ACCOUNT_DELETION_DAYS} from '../constants/expirables.ts';
 
 // Source: https://mongoosejs.com/docs/6.x/docs/typescript/statics-and-methods.html
 
@@ -19,6 +21,8 @@ export interface IUser {
   occupation?: Occupation;
   areaOfStudy?: AreaOfStudy;
   profileComplete: boolean;
+  markedForDeletion: boolean;
+  deletionScheduleAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -53,6 +57,8 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
     occupation: {type: String, enum: OCCUPATIONS},
     areaOfStudy: {type: String, enum: AREAS_OF_STUDY},
     profileComplete: {type: Boolean, required: true, default: false},
+    markedForDeletion: {type: Boolean, required: true, default: false},
+    deletionScheduleAt: {type: Date, required: false},
   },
   {
     timestamps: true,

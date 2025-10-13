@@ -1,5 +1,5 @@
 import {APP_ORIGIN} from '../constants/env.ts';
-import {EMAIL_VER_DAYS} from '../constants/expirables.ts';
+import {ACCOUNT_DELETION_DAYS, EMAIL_VER_DAYS} from '../constants/expirables.ts';
 import {
   HTTP_BAD_REQUEST,
   HTTP_CONFLICT,
@@ -145,4 +145,26 @@ export const changePersonalInfoController = catchErrors(async (req, res) => {
     message: 'Personal information updated successfully',
     user,
   });
+});
+
+export const markAccountForDeletionController = catchErrors(async (req, res) => {
+  const {password} = req.body;
+  appAssert(password, HTTP_BAD_REQUEST, 'Password is required!');
+
+  const user = await getUser(req, res);
+
+  const isValid = await user.comparePassword(password);
+  appAssert(isValid, HTTP_UNAUTHORIZED, 'Incorrect password!');
+
+  user.markedForDeletion = true;
+  user.deletionScheduleAt = daysFromNow(ACCOUNT_DELETION_DAYS);
+  await user.save();
+
+  await Session.deleteMany({userId: user._id});
+
+  return clearAuthCookies(res)
+    .status(HTTP_OK)
+    .json({
+      message: `Account marked for deletion. You have ${ACCOUNT_DELETION_DAYS} days to cancel by logging in`,
+    });
 });

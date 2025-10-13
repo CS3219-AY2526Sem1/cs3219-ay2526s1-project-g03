@@ -11,10 +11,12 @@ import {
   changePersonalInfo,
   changeProfilePic,
   changeUsernameOrEmail,
+  deleteAccount,
 } from '../lib/api';
 import queryClient from '../config/queryClient';
 import {OCCUPATIONS} from '../constants/occupation';
 import {AREAS_OF_STUDY} from '../constants/areaOfStudy';
+import API from '../config/apiClient';
 
 const ProfileSettings: React.FC = () => {
   const {user} = useAuth();
@@ -41,6 +43,8 @@ const ProfileSettings: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
+
+  const [deletePassword, setDeletePassword] = useState('');
 
   const personalInfoMutation = useMutation({
     mutationFn: changePersonalInfo,
@@ -69,6 +73,15 @@ const ProfileSettings: React.FC = () => {
       setCurrentPassword('');
       setPassword('');
       setConfirmPassword('');
+    },
+  });
+
+  const deleteAccountMutation = useMutation({
+    mutationFn: deleteAccount,
+    onSuccess: () => {
+      setDeletePassword('');
+      alert('Account marked for deletion. You have 30 days to cancel by logging in.');
+      window.location.href = '/home';
     },
   });
 
@@ -388,11 +401,44 @@ const ProfileSettings: React.FC = () => {
 
           <div className="settings-section danger-zone">
             <h2 className="section-title danger-title">Delete Account</h2>
+            {deleteAccountMutation.isError && (
+              <div className="error-message">
+                {deleteAccountMutation.error?.message ||
+                  'Failed to delete account. Please try again.'}
+              </div>
+            )}
             <p className="danger-description">
-              Once you delete your account, there is no going back. Please be certain
+              Once you delete your account, you have 30 days to cancel by logging in. After that,
+              all data will be permanently removed.
             </p>
-            <button type="button" className="delete-button">
-              Delete Account
+
+            <div className="form-group">
+              <label htmlFor="deletePassword">Enter your password to confirm</label>
+              <input
+                type="password"
+                id="deletePassword"
+                className="form-input"
+                placeholder="Enter your password"
+                value={deletePassword}
+                onChange={e => setDeletePassword(e.target.value)}
+              />
+            </div>
+
+            <button
+              type="button"
+              className="delete-button"
+              disabled={deleteAccountMutation.isPending || !deletePassword.trim()}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Are you sure? Your account will be deleted in 30 days unless you log in again.'
+                  )
+                ) {
+                  deleteAccountMutation.mutate({password: deletePassword});
+                }
+              }}
+            >
+              {deleteAccountMutation.isPending ? 'Processing...' : 'Delete Account'}
             </button>
           </div>
         </form>

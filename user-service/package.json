@@ -5,6 +5,8 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "cleanup:account": "tsx src/scripts/cleanupAccounts.ts",
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
     "dev": "tsx watch ./src/index.ts",
     "lint": "cd .. && npm run lint:service user-service --ext .ts",
     "lint:fix": "cd .. && npm run lint:service user-service --ext .ts --fix",

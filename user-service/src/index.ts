@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes';
 import connectToDatabase from './config/database';
 import userRoutes from './routes/userRoute';
 import authenticate from './middleware/authenticate';
+// import { startCleanupScheduler } from './scripts/cleanupAccounts.ts';
 
 const app = express();
 
@@ -40,4 +41,6 @@ app.listen(USER_SERVICE_PORT, async () => {
     `User Service listening on http://localhost:${USER_SERVICE_PORT} in ${NODE_ENV} environment`
   );
   await connectToDatabase();
+
+  // startCleanupScheduler(); // Only if running thread
 });

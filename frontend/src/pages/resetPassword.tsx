@@ -96,7 +96,8 @@ const ResetPassword: React.FC = () => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
                       const trimmedPassword = password.trim();
-                      if (trimmedPassword) updatePassword({verificationCode, trimmedPassword});
+                      if (trimmedPassword)
+                        updatePassword({verificationCode, password: trimmedPassword});
                     }
                   }}
                 />

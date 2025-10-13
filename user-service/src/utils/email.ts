@@ -1,5 +1,6 @@
 import resend from '../config/resend';
 import {NODE_ENV} from '../constants/env';
+import {EMAIL_SENDER} from '../constants/env.ts';
 
 type Params = {
   to: string;
@@ -8,7 +9,7 @@ type Params = {
   html: string;
 };
 
-const RSND_FROM_EMAIL = 'onboarding@resend.dev';
+const RSND_FROM_EMAIL = EMAIL_SENDER;
 const RSND_TO_EMAIL = 'delivered@resend.dev';
 
 const getToEmail = (to: string) => (NODE_ENV === 'development' ? RSND_TO_EMAIL : to);
