@@ -95,7 +95,8 @@ const ResetPassword: React.FC = () => {
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (password.trim()) updatePassword({verificationCode, password});
+                      const trimmedPassword = password.trim();
+                      if (trimmedPassword) updatePassword({verificationCode, trimmedPassword});
                     }
                   }}
                 />
@@ -105,7 +106,12 @@ const ResetPassword: React.FC = () => {
                 type="button"
                 className="submit-button"
                 disabled={isPending || !password.trim()}
-                onClick={() => updatePassword({verificationCode, password})}
+                onClick={() =>
+                  updatePassword({
+                    verificationCode: verificationCode,
+                    password: password.trim(),
+                  })
+                }
               >
                 {isPending ? 'Updating...' : 'Reset Password'}
               </button>

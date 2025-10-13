@@ -1,20 +1,18 @@
 import {Router} from 'express';
 import {
+  forgotPasswordController,
+  loginController,
+  logoutController,
   refreshController,
   registerController,
-  verifyEmailHandler,
-  loginController,
-} from '../controllers/authController';
-import {
-  forgotPasswordController,
-  logoutController,
   resendEmailController,
   resetPasswordController,
-} from '../controllers/authController.ts';
+  verifyEmailController,
+} from '../controllers/authHandler.ts';
 
 const authRoutes = Router();
 
-authRoutes.get('/email/verify/:code', verifyEmailHandler);
+authRoutes.get('/email/verify/:code', verifyEmailController);
 authRoutes.get('/refresh', refreshController);
 authRoutes.get('/logout', logoutController);
 

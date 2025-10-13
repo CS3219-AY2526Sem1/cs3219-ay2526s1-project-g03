@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 import {hashPassword, verifyPassword, needsRehash} from '../utils/pbkdf2';
+import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
+import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy.ts';
 
 // Source: https://mongoosejs.com/docs/6.x/docs/typescript/statics-and-methods.html
 
@@ -11,6 +13,12 @@ export interface IUser {
   passwordSalt: string;
   passwordIterations: number;
   role: string;
+  profilePicture?: string;
+  firstName?: string;
+  lastName?: string;
+  occupation?: Occupation;
+  areaOfStudy?: AreaOfStudy;
+  profileComplete: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +47,12 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
     passwordSalt: {type: String, required: true},
     passwordIterations: {type: Number, required: true, default: 600000},
     role: {type: String, required: true, default: 'user', enum: ['user', 'admin']},
+    profilePicture: {type: String, required: false},
+    firstName: {type: String, required: false},
+    lastName: {type: String, required: false},
+    occupation: {type: String, enum: OCCUPATIONS},
+    areaOfStudy: {type: String, enum: AREAS_OF_STUDY},
+    profileComplete: {type: Boolean, required: true, default: false},
   },
   {
     timestamps: true,

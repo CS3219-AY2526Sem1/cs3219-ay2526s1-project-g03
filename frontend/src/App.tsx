@@ -10,6 +10,9 @@ import AuthContainer from './components/authContainer';
 import {setNavigate} from './lib/navigation';
 import ForgotPassword from './pages/forgotPassword';
 import ResetPassword from './pages/resetPassword';
+import UserProfile from './pages/userProfile';
+import ProfileSettings from './pages/profileSettings';
+import CompleteProfile from './pages/completeProfile';
 
 function App() {
   const navigate = useNavigate();
@@ -18,13 +21,16 @@ function App() {
     <Routes>
       <Route path="/home" element={<Home />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/complete-profile" element={<CompleteProfile />} />
       <Route path="/email/verify/:code" element={<VerifyEmail />} />
       <Route path="/login" element={<Login />} />
       <Route path="/password/forgot" element={<ForgotPassword />} />
       <Route path="/password/reset" element={<ResetPassword />} />
-      // Authorized users only
+      // Authorized users only (defined as having verfieid email).
       <Route path="/" element={<AuthContainer />}>
         <Route index element={<Profile />} />
+        <Route path="profile/" element={<UserProfile />} />
+        <Route path="profile/settings" element={<ProfileSettings />} />
         <Route path="room" element={<Input />} />
         <Route path="room/:roomId" element={<CollabPage />} />
       </Route>

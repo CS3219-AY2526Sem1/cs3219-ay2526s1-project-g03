@@ -87,7 +87,13 @@ const Login: React.FC = () => {
               placeholder="Enter your password"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && signIn({identifier, password})}
+              onKeyDown={e =>
+                e.key === 'Enter' &&
+                signIn({
+                  identifier: identifier.trim(),
+                  password: password.trim(),
+                })
+              }
             />
           </div>
 
@@ -99,7 +105,7 @@ const Login: React.FC = () => {
             type="button"
             className="submit-button"
             disabled={isPending}
-            onClick={() => signIn({identifier, password})}
+            onClick={() => signIn({identifier: identifier.trim(), password: password.trim()})}
           >
             {isPending ? 'Signing in...' : 'Sign in'}
           </button>

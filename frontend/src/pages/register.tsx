@@ -22,7 +22,7 @@ const Register: React.FC = () => {
   } = useMutation({
     mutationFn: register,
     onSuccess: () => {
-      navigate('/', {
+      navigate('/complete-profile', {
         replace: true, // User cannot go back to page
       });
     },
@@ -112,7 +112,13 @@ const Register: React.FC = () => {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               onKeyDown={e =>
-                e.key === 'Enter' && registration({username, email, password, confirmPassword})
+                e.key === 'Enter' &&
+                registration({
+                  username: username.trim(),
+                  email: email.trim(),
+                  password: password.trim(),
+                  confirmPassword: confirmPassword.trim(),
+                })
               }
             />
           </div>
@@ -121,7 +127,14 @@ const Register: React.FC = () => {
             type="button"
             className="submit-button"
             disabled={isPending}
-            onClick={() => registration({username, email, password, confirmPassword})}
+            onClick={() =>
+              registration({
+                username: username.trim(),
+                email: email.trim(),
+                password: password.trim(),
+                confirmPassword: confirmPassword.trim(),
+              })
+            }
           >
             {isPending ? 'Creating Account...' : 'Create Account'}
           </button>

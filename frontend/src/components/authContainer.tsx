@@ -14,6 +14,13 @@ const AuthContainer: React.FC = () => {
     );
   }
   if (user) {
+    if (!user.profileComplete && window.location.pathname !== '/complete-profile') {
+      return <Navigate to="/complete-profile" replace />;
+    }
+    if (!user.verified && window.location.pathname !== '/') {
+      return <Navigate to="/" replace />;
+    }
+
     return (
       <div className="container">
         <UserMenu />

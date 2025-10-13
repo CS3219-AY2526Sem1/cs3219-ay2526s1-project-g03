@@ -1,8 +1,24 @@
 import {Router} from 'express';
-import {getUserHandler} from '../controllers/userController';
+import {
+  changePasswordHandler,
+  changePersonalInfoController,
+  changeProfilePictureController,
+  changeUsernameOrEmailController,
+  getUserController,
+} from '../controllers/userHandler.ts';
+import {upload} from '../middleware/upload.ts';
 
 const userRoutes = Router();
 
-userRoutes.get('/', getUserHandler);
+userRoutes.get('/', getUserController);
+
+userRoutes.patch('/profile/usernameoremail', changeUsernameOrEmailController);
+userRoutes.patch(
+  '/profile/picture',
+  upload.single('profilePicture'),
+  changeProfilePictureController
+);
+userRoutes.patch('/profile/password', changePasswordHandler);
+userRoutes.patch('/profile/personalInfo', changePersonalInfoController);
 
 export default userRoutes;

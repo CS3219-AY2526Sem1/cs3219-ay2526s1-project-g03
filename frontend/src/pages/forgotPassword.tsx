@@ -59,7 +59,8 @@ const ForgotPassword: React.FC = () => {
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (email.trim()) sendResetEmail({email});
+                      const trimmedEmail = email.trim();
+                      if (trimmedEmail) sendResetEmail({trimmedEmail});
                     }
                   }}
                 />
@@ -69,7 +70,7 @@ const ForgotPassword: React.FC = () => {
                 type="button"
                 className="submit-button"
                 disabled={isPending || !email.trim()}
-                onClick={() => sendResetEmail({email})}
+                onClick={() => sendResetEmail({email: email.trim()})}
               >
                 {isPending ? 'Submitting...' : 'Reset Password'}
               </button>

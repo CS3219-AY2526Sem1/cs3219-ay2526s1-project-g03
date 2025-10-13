@@ -1,25 +1,31 @@
 import z from 'zod';
-import catchErrors from '../utils/catchErrors';
-import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
+import Session from '../models/session.ts';
 import {
   createAccount,
-  verifyEmail,
+  forgotPassword,
   loginUser,
   refreshUserAccessToken,
-} from '../services/authService';
-import {registerSchema, verificationCodeSchema, loginSchema} from './authSchema';
+  resendEmail,
+  resetPassword,
+  verifyEmail,
+} from '../services/authService.ts';
+import appAssert from '../utils/appAssert.ts';
+import catchErrors from '../utils/catchErrors.ts';
 import {
+  clearAuthCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthCookies,
-} from '../utils/cookies';
-import appAssert from '../utils/appAssert';
+} from '../utils/cookies.ts';
 import {verifyToken} from '../utils/jwt.ts';
-import Session from '../models/session.ts';
-import {clearAuthCookies} from '../utils/cookies.ts';
-import {emailSchema, passwordResetSchema} from './authSchema.ts';
-import {forgotPassword, resendEmail, resetPassword} from '../services/authService.ts';
-import VerificationCode from '../models/verificationCode.ts';
+import {
+  emailSchema,
+  loginSchema,
+  passwordResetSchema,
+  registerSchema,
+  verificationCodeSchema,
+} from './userSchema.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -38,7 +44,7 @@ export const registerController = catchErrors(async (req, res) => {
   return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user);
 });
 
-export const verifyEmailHandler = catchErrors(async (req, res) => {
+export const verifyEmailController = catchErrors(async (req, res) => {
   const verificationCode = verificationCodeSchema.parse(req.params.code);
 
   await verifyEmail(verificationCode);

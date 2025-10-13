@@ -52,9 +52,11 @@
 }
 
 .user-profile-icon {
-  width: 40px;
-  height: 40px;
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
   border-radius: 50%;
+  border: 0px;
 }
 
 .username-text {
@@ -62,4 +64,37 @@
   font-weight: 700;
   color: #303030;
   margin: 0.5rem;
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  border: 3px solid #e5e7eb;
+  background: white;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: background 0.2s;
+}
+
+.settings-link:hover {
+  background: #f5f5f5;
+}
+
+.settings-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303030;
+}
+
+.settings-link .icon-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.settings-icon {
+  width: 40px;
+  height: 40px;
 }

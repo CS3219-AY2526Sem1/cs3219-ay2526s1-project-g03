@@ -1,0 +1,295 @@
+.settings-wrapper {
+  display: flex;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  width: 100%;
+  padding: 2rem;
+}
+
+.back-arrow {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-left: 3px solid #666;
+  border-bottom: 3px solid #666;
+  transform: rotate(45deg);
+  margin-right: 0.25rem;
+  transition: border-color 0.3s ease;
+}
+
+.back-link:hover .back-arrow {
+  border-color: #333;
+}
+
+.back-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #666;
+  text-decoration: none;
+  margin-bottom: 2rem;
+  font-size: 16px;
+}
+
+.back-link:hover {
+  color: #333;
+}
+
+.settings-header {
+  margin-bottom: 2rem;
+}
+
+.settings-title {
+  font-size: 45px;
+  font-weight: 800;
+  color: #303030;
+  margin-bottom: 0.5rem;
+}
+
+.settings-subtitle {
+  font-size: 20px;
+  color: #627287;
+}
+
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.success-message {
+  padding: 1rem 1.5rem;
+  background-color: #d1fae5;
+  border: 2px solid #a7f3d0;
+  border-radius: 8px;
+  color: #065f46;
+  font-size: 16px;
+}
+
+.error-message {
+  padding: 1rem 1.5rem;
+  background-color: #fee2e2;
+  border: 2px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 16px;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #303030;
+  margin: 0;
+}
+
+.section-description {
+  font-size: 16px;
+  color: #627287;
+  margin: -0.5rem 0 0 0;
+}
+
+.profile-picture-group {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.settings-profile-picture {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 0px;
+}
+
+.picture-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.upload-button {
+  display: inline-block;
+  padding: 0.625rem 1.5rem;
+  background-color: #4181f5;
+  color: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  text-align: center;
+}
+
+.upload-button:hover {
+  background-color: #3574e3;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-name {
+  font-size: 14px;
+  color: #627287;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303030;
+}
+
+.form-input {
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 16px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.form-input:focus {
+  border-color: #4285f4;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.form-input::placeholder {
+  color: #999;
+}
+
+.save-button {
+  padding: 0.875rem 2rem;
+  background-color: #4181f5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  align-self: flex-start;
+}
+
+.save-button:hover {
+  background-color: #3574e3;
+}
+
+.save-button:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.connected-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.account-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  transition: border-color 0.3s ease;
+}
+
+.account-item:hover {
+  border-color: #4181f5;
+}
+
+.account-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.account-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.account-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303030;
+}
+
+.account-status {
+  font-size: 14px;
+  color: #627287;
+}
+
+.connect-button {
+  padding: 0.5rem 1.5rem;
+  background-color: #4181f5;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.connect-button:hover {
+  background-color: #3574e3;
+}
+
+.danger-zone {
+  border: 2px solid #fee2e2;
+  background-color: #fef2f2;
+}
+
+.danger-title {
+  color: #dc2626;
+}
+
+.danger-description {
+  font-size: 16px;
+  color: #627287;
+  margin: 0 0 1.5rem 0;
+}
+
+.delete-button {
+  padding: 0.875rem 2rem;
+  background-color: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  align-self: flex-start;
+}
+
+.delete-button:hover {
+  background-color: #b91c1c;
+}
