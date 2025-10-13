@@ -91,6 +91,10 @@ const Login: React.FC = () => {
             />
           </div>
 
+          <div className="forgot-pw-link">
+            <Link to="/password/forgot">Forgot password?</Link>
+          </div>
+
           <button
             type="button"
             className="submit-button"

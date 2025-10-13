@@ -12,3 +12,6 @@ export const getUser = async () => {
   const response = await API.get('/user', {withCredentials: true});
   return response.data;
 };
+
+export const forgotPassword = async data => API.post('/auth/password/forgot', data);
+export const resetPassword = async data => API.post('/auth/password/reset', data);

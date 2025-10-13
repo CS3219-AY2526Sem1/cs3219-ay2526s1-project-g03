@@ -20,6 +20,11 @@ import {
   type RefreshTokenPayload,
 } from '../utils/jwt';
 import {EMAIL_VER_DAYS, REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
+import {email} from 'zod';
+import {hoursAgo, minutesFromNow} from '../utils/date.ts';
+import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
+import {HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
+import {getPasswordReset} from '../utils/verifyTemplate.ts';
 
 export type CreateAccoutParams = {
   username: string;
@@ -95,6 +100,74 @@ export const verifyEmail = async (code: string) => {
   return {
     user: updatedUser,
   };
+};
+
+export const forgotPassword = async (email: string) => {
+  // Always show success
+  try {
+    const user = await User.findOne({email});
+
+    appAssert(user, HTTP_NOT_FOUND, 'User not found!');
+
+    const count = await VerificationCode.countDocuments({
+      userId: user._id,
+      type: VerificationType.ResetPassword,
+      createdAt: {$gt: hoursAgo(EMAIL_TIME_LIMIT_HOURS)},
+    });
+    appAssert(
+      count < EMAIL_RATE_LIMIT,
+      HTTP_TOO_MANY_REQUESTS,
+      'Too many requests, please try again later!'
+    );
+
+    const expiresAt = minutesFromNow(PW_RESET_MINS);
+    const verificationCode = await VerificationCode.create({
+      userId: user._id,
+      type: VerificationType.ResetPassword,
+      expiresAt,
+    });
+
+    const url = `${APP_ORIGIN}/password/reset?code=${verificationCode._id}&exp=${expiresAt.getTime()}`;
+
+    const {data, error} = await sendEmail({
+      to: user.email,
+      ...getPasswordReset(url),
+    });
+    appAssert(data?.id, HTTP_INTERNAL_SERVER_ERROR, `${error?.message}`);
+
+    return {url, emailId: data.id};
+  } catch (error: any) {
+    console.log(`forgotPassword error: ${error.message}`);
+    return {};
+  }
+};
+
+type ResetPasswordParams = {
+  verificationCode: string;
+  password: string;
+};
+
+export const resetPassword = async ({verificationCode, password}: ResetPasswordParams) => {
+  const validCode = await VerificationCode.findOne({
+    _id: verificationCode,
+    type: VerificationType.ResetPassword,
+    expiresAt: {$gt: new Date()},
+  });
+  appAssert(validCode, HTTP_NOT_FOUND, 'Invalid or expired code!');
+
+  // TODO: reduce to one IO call if bottleneck
+  const user = await User.findById(validCode.userId);
+  appAssert(user, HTTP_INTERNAL_SERVER_ERROR, 'User not found!');
+  user.password = password;
+  await user.save();
+
+  await validCode.deleteOne();
+
+  await Session.deleteMany({
+    userId: user._id,
+  });
+
+  return {user};
 };
 
 interface LoginWithEmail {

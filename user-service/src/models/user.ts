@@ -59,7 +59,11 @@ userSchema
  * Salts and hashes password prior to data validation.
  */
 userSchema.pre('validate', async function (next) {
-  await this.setPassword(this.password_);
+  if (this.password_) {
+    await this.setPassword(this.password_);
+  }
+  this.password_ = undefined;
+  next();
 });
 
 /**

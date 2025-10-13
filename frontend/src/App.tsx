@@ -8,6 +8,8 @@ import VerifyEmail from './pages/verifyEmail';
 import Profile from './pages/profile';
 import AuthContainer from './components/authContainer';
 import {setNavigate} from './lib/navigation';
+import ForgotPassword from './pages/forgotPassword';
+import ResetPassword from './pages/resetPassword';
 
 function App() {
   const navigate = useNavigate();
@@ -18,9 +20,11 @@ function App() {
       <Route path="/register" element={<Register />} />
       <Route path="/email/verify/:code" element={<VerifyEmail />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/password/forgot" element={<ForgotPassword />} />
+      <Route path="/password/reset" element={<ResetPassword />} />
       // TODO: password forget, password reset // Authorized users only.
       <Route path="/" element={<AuthContainer />}>
-        <Route index element={<Profile />} /> // TODO customization
+        <Route index element={<Profile />} />
         <Route path="room" element={<Input />} />
         <Route path="room/:roomId" element={<CollabPage />} />
       </Route>

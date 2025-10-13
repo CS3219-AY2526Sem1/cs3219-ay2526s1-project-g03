@@ -13,7 +13,7 @@ const usernameSchema = z
   .min(MIN_UN_LENGTH)
   .max(MAX_UN_LENGTH)
   .regex(/[a-zA-Z0-9_]+/);
-const emailSchema = z.email();
+export const emailSchema = z.email();
 const passwordSchema = z.string().min(MIN_PW_LENGTH).max(MAX_PW_LENGTH);
 
 /**
@@ -38,6 +38,11 @@ export const registerSchema = z
   });
 
 export const verificationCodeSchema = z.string().min(MONGO_MIN_ID_LENGTH).max(MONGO_MAX_ID_LENGTH);
+
+export const passwordResetSchema = z.object({
+  verificationCode: verificationCodeSchema,
+  password: passwordSchema,
+});
 
 /**
  * Zod schema for validating user login input.

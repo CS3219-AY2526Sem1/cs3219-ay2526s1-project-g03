@@ -17,6 +17,9 @@ import appAssert from '../utils/appAssert';
 import {verifyToken} from '../utils/jwt.ts';
 import Session from '../models/session.ts';
 import {clearAuthCookies} from '../utils/cookies.ts';
+import {emailSchema, passwordResetSchema} from './authSchema.ts';
+import {forgotPassword, resetPassword} from '../services/authService.ts';
+import VerificationCode from '../models/verificationCode.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -42,6 +45,27 @@ export const verifyEmailHandler = catchErrors(async (req, res) => {
 
   return res.status(HTTP_OK).json({
     message: 'Email was successfully verified!',
+  });
+});
+
+export const forgotPasswordController = catchErrors(async (req, res) => {
+  const email = emailSchema.parse(req.body.email); // OK to send invalid email errors
+
+  await forgotPassword(email); // Errors are hidden from front end.
+
+  return res.status(HTTP_OK).json({
+    message: 'Password reset email sent!',
+  });
+});
+
+export const resetPasswordController = catchErrors(async (req, res) => {
+  4;
+  const request = passwordResetSchema.parse(req.body);
+
+  await resetPassword(request);
+
+  return clearAuthCookies(res).status(HTTP_OK).json({
+    message: 'Password reset successful!',
   });
 });
 
