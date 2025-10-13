@@ -9,10 +9,21 @@ import QuestionSettingIcon from '../assets/profile/setting-icon.svg';
 import '../../styles/profile.css';
 import useAuth from '../hooks/useAuth';
 import {Link} from 'react-router-dom';
+import {resendEmail} from '../lib/api';
 
 const Profile: React.FC = () => {
   const {user} = useAuth();
   const {username, email, verified} = user;
+
+  const handleResendEmail = async () => {
+    try {
+      await resendEmail({email});
+      alert('Verification email resent! Please check your inbox');
+    } catch (error) {
+      console.error('Failed to resend email:', error);
+      alert(error?.message || 'Failed to resend email. Please try again.');
+    }
+  };
 
   if (!verified) {
     return (
@@ -35,7 +46,10 @@ const Profile: React.FC = () => {
 
         <div className="verify-prompt-actions">
           <p className="verify-prompt-note">
-            Didn't receive the email? <button className="link-button">Resend verification</button>
+            Didn't receive the email?{' '}
+            <button onClick={handleResendEmail} className="link-button">
+              Resend verification
+            </button>
           </p>
           <Link to="/Home" className="back-link">
             <span className="back-arrow" />

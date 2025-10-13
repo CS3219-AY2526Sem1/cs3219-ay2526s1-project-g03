@@ -10,6 +10,7 @@ const VerifyEmail: React.FC = () => {
   const {isPending, isSuccess, isError} = useQuery({
     queryKey: ['emailVerification', code],
     queryFn: () => verifyEmail(code),
+    staleTime: Infinity, // Prevents double calling
   });
 
   return (

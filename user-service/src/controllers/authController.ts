@@ -18,7 +18,7 @@ import {verifyToken} from '../utils/jwt.ts';
 import Session from '../models/session.ts';
 import {clearAuthCookies} from '../utils/cookies.ts';
 import {emailSchema, passwordResetSchema} from './authSchema.ts';
-import {forgotPassword, resetPassword} from '../services/authService.ts';
+import {forgotPassword, resendEmail, resetPassword} from '../services/authService.ts';
 import VerificationCode from '../models/verificationCode.ts';
 
 /**
@@ -45,6 +45,16 @@ export const verifyEmailHandler = catchErrors(async (req, res) => {
 
   return res.status(HTTP_OK).json({
     message: 'Email was successfully verified!',
+  });
+});
+
+export const resendEmailController = catchErrors(async (req, res) => {
+  const email = emailSchema.parse(req.body.email);
+
+  await resendEmail(email);
+
+  return res.status(HTTP_OK).json({
+    message: 'Verification email resent!',
   });
 });
 

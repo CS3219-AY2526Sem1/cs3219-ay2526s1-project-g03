@@ -8,6 +8,7 @@ import {
 import {
   forgotPasswordController,
   logoutController,
+  resendEmailController,
   resetPasswordController,
 } from '../controllers/authController.ts';
 
@@ -19,6 +20,7 @@ authRoutes.get('/logout', logoutController);
 
 authRoutes.post('/register', registerController);
 authRoutes.post('/login', loginController);
+authRoutes.post('/email/resend', resendEmailController);
 authRoutes.post('/password/forgot', forgotPasswordController);
 authRoutes.post('/password/reset', resetPasswordController);
 

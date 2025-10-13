@@ -22,7 +22,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/password/forgot" element={<ForgotPassword />} />
       <Route path="/password/reset" element={<ResetPassword />} />
-      // TODO: password forget, password reset // Authorized users only.
+      // Authorized users only
       <Route path="/" element={<AuthContainer />}>
         <Route index element={<Profile />} />
         <Route path="room" element={<Input />} />

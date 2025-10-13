@@ -20,7 +20,6 @@ import {
   type RefreshTokenPayload,
 } from '../utils/jwt';
 import {EMAIL_VER_DAYS, REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
-import {email} from 'zod';
 import {hoursAgo, minutesFromNow} from '../utils/date.ts';
 import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
 import {HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
@@ -102,23 +101,46 @@ export const verifyEmail = async (code: string) => {
   };
 };
 
+const verifyUserAndEmailRate = async (email: string, type: VerificationType) => {
+  const user = await User.findOne({email});
+  appAssert(user, HTTP_NOT_FOUND, 'User not found!');
+
+  const count = await VerificationCode.countDocuments({
+    userId: user._id,
+    type,
+    createdAt: {$gt: hoursAgo(EMAIL_TIME_LIMIT_HOURS)},
+  });
+  appAssert(
+    count < EMAIL_RATE_LIMIT,
+    HTTP_TOO_MANY_REQUESTS,
+    'Too many requests, please try again later!'
+  );
+
+  return user;
+};
+
+export const resendEmail = async (email: string) => {
+  const user = await verifyUserAndEmailRate(email, VerificationType.VerifyEmail);
+
+  const emailVerificationCode = await VerificationCode.create({
+    userId: user._id,
+    type: VerificationType.VerifyEmail,
+    expiresAt: daysFromNow(EMAIL_VER_DAYS),
+  });
+
+  // Send verification email.
+  const url = `${APP_ORIGIN}/email/verify/${emailVerificationCode._id}`;
+  const {data, error} = await sendEmail({to: user.email, ...getVerifyEmail(url)});
+  if (error) {
+    console.log(error);
+  }
+  return {url, emailId: data.id};
+};
+
 export const forgotPassword = async (email: string) => {
   // Always show success
   try {
-    const user = await User.findOne({email});
-
-    appAssert(user, HTTP_NOT_FOUND, 'User not found!');
-
-    const count = await VerificationCode.countDocuments({
-      userId: user._id,
-      type: VerificationType.ResetPassword,
-      createdAt: {$gt: hoursAgo(EMAIL_TIME_LIMIT_HOURS)},
-    });
-    appAssert(
-      count < EMAIL_RATE_LIMIT,
-      HTTP_TOO_MANY_REQUESTS,
-      'Too many requests, please try again later!'
-    );
+    const user = await verifyUserAndEmailRate(email, VerificationType.ResetPassword);
 
     const expiresAt = minutesFromNow(PW_RESET_MINS);
     const verificationCode = await VerificationCode.create({
