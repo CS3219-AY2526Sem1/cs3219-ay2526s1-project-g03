@@ -63,11 +63,9 @@
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
-    "fast-csv": "^5.0.5",
     "helmet": "^8.1.0",
-    "pg": "^8.16.3"
-    "fast-csv": "^5.0.5",
     "pg": "^8.16.3",
+    "fast-csv": "^5.0.5",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
