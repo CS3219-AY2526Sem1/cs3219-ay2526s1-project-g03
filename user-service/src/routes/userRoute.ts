@@ -6,6 +6,7 @@ import {
   changeUsernameOrEmailController,
   getUserController,
   markAccountForDeletionController,
+  unlinkOAuthController,
 } from '../controllers/userHandler.ts';
 import {upload} from '../middleware/upload.ts';
 
@@ -22,5 +23,7 @@ userRoutes.patch(
 );
 userRoutes.patch('/profile/password', changePasswordHandler);
 userRoutes.patch('/profile/personalInfo', changePersonalInfoController);
+
+userRoutes.delete('/oauth/:provider', unlinkOAuthController);
 
 export default userRoutes;

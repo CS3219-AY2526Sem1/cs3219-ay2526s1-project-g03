@@ -4,6 +4,7 @@ import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
 import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy.ts';
 import {daysFromNow} from '../utils/date.ts';
 import {ACCOUNT_DELETION_DAYS} from '../constants/expirables.ts';
+import type ProfilePicType from '../constants/oAuthTypes.ts';
 
 // Source: https://mongoosejs.com/docs/6.x/docs/typescript/statics-and-methods.html
 
@@ -11,18 +12,32 @@ export interface IUser {
   username: string;
   email: string;
   verified: boolean;
-  passwordHash: string;
-  passwordSalt: string;
-  passwordIterations: number;
+  passwordHash?: string;
+  passwordSalt?: string;
+  passwordIterations?: number;
+  hasPassword?: boolean;
   role: string;
-  profilePicture?: string;
+
   firstName?: string;
   lastName?: string;
   occupation?: Occupation;
   areaOfStudy?: AreaOfStudy;
   profileComplete: boolean;
+
+  googleOAuthId?: string;
+  googleOAuthEmail?: string;
+  googleOAuthVerified?: boolean;
+
+  githubOAuthId?: string;
+  githubOAuthEmail?: string;
+  githubOAuthVerified?: boolean;
+
+  profilePicture?: string;
+  profilePictureSource?: ProfilePicType;
+
   markedForDeletion: boolean;
   deletionScheduleAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,20 +58,33 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
     },
     email: {
       type: String,
-      required: true,
-      index: {unique: true, collation: {locale: 'en', strength: 2}},
+      required: false,
+      index: {unique: true, sparse: true, collation: {locale: 'en', strength: 2}},
     },
     verified: {type: Boolean, required: true, default: false},
-    passwordHash: {type: String, required: true},
-    passwordSalt: {type: String, required: true},
-    passwordIterations: {type: Number, required: true, default: 600000},
+    passwordHash: {type: String, required: false},
+    passwordSalt: {type: String, required: false},
+    passwordIterations: {type: Number, required: false},
+    hasPassword: {type: Boolean, required: false, defaulte: false},
     role: {type: String, required: true, default: 'user', enum: ['user', 'admin']},
-    profilePicture: {type: String, required: false},
+
     firstName: {type: String, required: false},
     lastName: {type: String, required: false},
     occupation: {type: String, enum: OCCUPATIONS},
     areaOfStudy: {type: String, enum: AREAS_OF_STUDY},
     profileComplete: {type: Boolean, required: true, default: false},
+
+    googleOAuthId: {type: String, required: false},
+    googleOAuthEmail: {type: String, required: false},
+    googleOAuthVerified: {type: Boolean, required: false},
+
+    githubOAuthId: {type: String, required: false},
+    githubOAuthEmail: {type: String, required: false},
+    githubOAuthVerified: {type: Boolean, required: false},
+
+    profilePicture: {type: String, required: false},
+    profilePictureSource: {type: String, required: false},
+
     markedForDeletion: {type: Boolean, required: true, default: false},
     deletionScheduleAt: {type: Date, required: false},
   },
@@ -117,6 +145,7 @@ userSchema.method('setPassword', async function (password: string): Promise<void
   this.passwordHash = hash;
   this.passwordSalt = salt;
   this.passwordIterations = iterations;
+  this.hasPassword = true;
 });
 
 /**

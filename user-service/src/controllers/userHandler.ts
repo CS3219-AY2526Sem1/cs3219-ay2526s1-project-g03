@@ -7,10 +7,12 @@ import {
   HTTP_OK,
   HTTP_UNAUTHORIZED,
 } from '../constants/httpStatus.ts';
+import OAuthType from '../constants/oAuthTypes.ts';
 import VerificationType from '../constants/verificationTypes.ts';
 import Session from '../models/session.ts';
 import User from '../models/user.ts';
 import VerificationCode from '../models/verificationCode.ts';
+import {unlinkOAuthProvider} from '../services/authService.ts';
 import appAssert from '../utils/appAssert.ts';
 import AppError from '../utils/appError.ts';
 import catchErrors from '../utils/catchErrors.ts';
@@ -23,6 +25,7 @@ import {
   changePersonalInfoSchema,
   changePwSchema,
   changeUsernameOrEmailSchema,
+  SetPwSchema,
 } from './userSchema.ts';
 
 const getUser = async (req, res) => {
@@ -96,7 +99,12 @@ export const changeProfilePictureController = catchErrors(async (req, res) => {
 
   const user = await User.findByIdAndUpdate(
     req.userId,
-    {$set: {profilePicture: processedImage}},
+    {
+      $set: {
+        profilePicture: processedImage,
+        profilePictureSource: 'upload',
+      },
+    },
     {new: true, runValidators: true}
   );
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
@@ -107,12 +115,19 @@ export const changeProfilePictureController = catchErrors(async (req, res) => {
 });
 
 export const changePasswordHandler = catchErrors(async (req, res) => {
-  const {currentPassword, password} = changePwSchema.parse(req.body);
-
   const user = await getUser(req, res);
 
-  const isValid = await user.comparePassword(currentPassword);
-  appAssert(isValid, HTTP_UNAUTHORIZED, 'Current password is incorrect');
+  let password;
+
+  if (user.hasPassword) {
+    const {currentPassword, password: newPassword} = changePwSchema.parse(req.body);
+    const isValid = await user.comparePassword(currentPassword);
+    appAssert(isValid, HTTP_UNAUTHORIZED, 'Current password is incorrect');
+    password = newPassword;
+  } else {
+    const {password: newPassword} = SetPwSchema.parse(req.body);
+    password = newPassword;
+  }
 
   user.password = password;
   await user.save();
@@ -167,4 +182,21 @@ export const markAccountForDeletionController = catchErrors(async (req, res) => 
     .json({
       message: `Account marked for deletion. You have ${ACCOUNT_DELETION_DAYS} days to cancel by logging in`,
     });
+});
+
+export const unlinkOAuthController = catchErrors(async (req, res) => {
+  const {provider} = req.params;
+
+  appAssert(
+    provider === OAuthType.Google || provider === OAuthType.GitHub,
+    HTTP_BAD_REQUEST,
+    'Invalid provider!'
+  );
+
+  const {user} = await unlinkOAuthProvider(req.userId, provider);
+
+  return res.status(HTTP_OK).json({
+    message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked!`,
+    user,
+  });
 });

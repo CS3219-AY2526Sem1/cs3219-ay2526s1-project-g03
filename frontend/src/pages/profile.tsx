@@ -1,5 +1,6 @@
 import React from 'react';
 import FlagIcon from '../assets/profile/flag-icon.svg';
+import LockIcon from '../assets/lock-icon.svg';
 import ErrorIcon from '../assets/alert-icon.svg';
 import TargetIcon from '../assets/profile/green-target-icon.svg';
 import TrendUpIcon from '../assets/profile/trend-up-icon.svg';
@@ -65,11 +66,22 @@ const Profile: React.FC = () => {
     <div className="profile-wrapper">
       <main className="profile-main">
         <section className="welcome-section">
-          <h1 className="welcome-title">
-            Welcome back, &nbsp;
-            <span className="welcome-username-highlight">{username}</span>!
-          </h1>
-          <p className="welcome-subtitle">Ready to sharpen your coding skills today?</p>
+          <div className="welcome-content">
+            <h1 className="welcome-title">
+              Welcome back, &nbsp;
+              <span className="welcome-username-highlight">{username}</span>!
+            </h1>
+            <p className="welcome-subtitle">Ready to sharpen your coding skills today?</p>
+          </div>
+
+          {user.role === 'admin' && (
+            <Link to="/admin/manage" className="admin-link">
+              <button className="admin-manage-button">
+                <img src={LockIcon} alt="Sessions" className="lock-icon" />
+                Manage Admins
+              </button>
+            </Link>
+          )}
         </section>
 
         <section className="stats-section">

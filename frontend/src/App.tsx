@@ -13,6 +13,8 @@ import ResetPassword from './pages/resetPassword';
 import UserProfile from './pages/userProfile';
 import ProfileSettings from './pages/profileSettings';
 import CompleteProfile from './pages/completeProfile';
+import AdminManagement from './pages/adminManagement';
+import AdminContainer from './components/adminContainer';
 
 function App() {
   const navigate = useNavigate();
@@ -33,6 +35,14 @@ function App() {
         <Route path="profile/settings" element={<ProfileSettings />} />
         <Route path="room" element={<Input />} />
         <Route path="room/:roomId" element={<CollabPage />} />
+        <Route
+          path="admin/manage"
+          element={
+            <AdminContainer>
+              <AdminManagement />
+            </AdminContainer>
+          }
+        />
       </Route>
     </Routes>
   );

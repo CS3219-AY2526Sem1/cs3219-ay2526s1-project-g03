@@ -22,8 +22,13 @@ import {
 import {EMAIL_VER_DAYS, REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
 import {hoursAgo, minutesFromNow} from '../utils/date.ts';
 import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
-import {HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
+import {HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
 import {getPasswordReset} from '../utils/verifyTemplate.ts';
+import OAuthType from '../constants/oAuthTypes.ts';
+import catchErrors from '../utils/catchErrors.ts';
+import passport from 'passport';
+import {setAuthCookies} from '../utils/cookies.ts';
+import {usernameAndEmail} from '../controllers/userSchema.ts';
 
 export type CreateAccoutParams = {
   username: string;
@@ -204,17 +209,7 @@ interface LoginWithUsername {
 
 export type LoginParams = LoginWithEmail | LoginWithUsername;
 
-export const loginUser = async (request: LoginParams) => {
-  const user =
-    'email' in request
-      ? await User.findOne({email: request.email})
-      : await User.findOne({username: request.username});
-
-  appAssert(user, HTTP_UNAUTHORIZED, 'Invalid credentials!');
-
-  const isValid = await user.comparePassword(request.password);
-  appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
-
+const manageLoginSessionAndSignTokens = async user => {
   const userId = user._id;
 
   if (user.markedForDeletion) {
@@ -241,6 +236,52 @@ export const loginUser = async (request: LoginParams) => {
 
   return {user, accessToken, refreshToken};
 };
+
+export const loginUser = async (request: LoginParams) => {
+  const user =
+    'email' in request
+      ? await User.findOne({email: request.email})
+      : await User.findOne({username: request.username});
+
+  appAssert(user, HTTP_UNAUTHORIZED, 'Invalid credentials!');
+
+  const isValid = await user.comparePassword(request.password);
+  appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
+
+  return await manageLoginSessionAndSignTokens(user);
+};
+
+// See https://www.rfc-editor.org/rfc/rfc6749#section-4.1
+export const handleOAuthCallback = (strategy: OAuthType.Google | OAuthType.GitHub) =>
+  catchErrors(async (req, res) => {
+    passport.authenticate(strategy, {session: false}, async (err, user, info) => {
+      if (err) {
+        const errorMessage = encodeURIComponent(err.message);
+
+        if (req.cookies?.accessToken) {
+          return res.redirect(`${APP_ORIGIN}/profile/settings?error=${errorMessage}`);
+        }
+        return res.redirect(`${APP_ORIGIN}/login?error=${errorMessage}`);
+      }
+
+      if (!user) {
+        return res.redirect(`${APP_ORIGIN}/login?error=oauth_failed`);
+      }
+
+      if (info?.linking) {
+        return res.redirect(`${APP_ORIGIN}/profile/settings?success=${strategy}_linked`);
+      }
+
+      const {accessToken, refreshToken} = await manageLoginSessionAndSignTokens(user);
+
+      setAuthCookies({res, accessToken, refreshToken});
+
+      if (!user.proflileComplete) {
+        return res.redirect(`${APP_ORIGIN}/complete-profile`);
+      }
+      return res.redirect(`${APP_ORIGIN}/`);
+    })(req, res);
+  });
 
 export const refreshUserAccessToken = async (refreshToken: string) => {
   const {payload} = verifyToken<RefreshTokenPayload>(refreshToken, {
@@ -270,4 +311,29 @@ export const refreshUserAccessToken = async (refreshToken: string) => {
   });
 
   return {accessToken, newRefreshToken};
+};
+
+export const unlinkOAuthProvider = async (userId, provider: OAuthType) => {
+  const user = await User.findById(userId);
+  appAssert(user, HTTP_NOT_FOUND, 'User not found!');
+
+  const hasPassword = !!user.verified;
+  const hasGoogle = !!user.googleOAuthId;
+  const hasGitHub = !!user.githubOAuthId;
+
+  const authCount = [hasPassword, hasGoogle, hasGitHub].filter(Boolean).length;
+
+  appAssert(authCount > 1, HTTP_BAD_REQUEST, 'You need to have at least 1 login method!');
+  appAssert(user[`${provider}OAuthId`], HTTP_BAD_REQUEST, 'Account not linked!');
+
+  user[`${provider}OAuthId`] = undefined;
+  user[`${provider}OAuthEmail`] = undefined;
+  user[`${provider}OAuthVerified`] = undefined;
+
+  if (user.profilePictureSource === provider) {
+    user.profilePictureSource = undefined;
+  }
+
+  await user.save();
+  return {user};
 };

@@ -4,6 +4,7 @@ import Session from '../models/session.ts';
 import {
   createAccount,
   forgotPassword,
+  handleOAuthCallback,
   loginUser,
   refreshUserAccessToken,
   resendEmail,
@@ -26,6 +27,8 @@ import {
   registerSchema,
   verificationCodeSchema,
 } from './userSchema.ts';
+import passport from 'passport';
+import OAuthType from '../constants/oAuthTypes.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -130,3 +133,17 @@ export const refreshController = catchErrors(async (req, res) => {
     message: 'Access token refreshed',
   });
 });
+
+export const googleAuthController = passport.authenticate(OAuthType.Google, {
+  session: false,
+  scope: ['profile', 'email'],
+});
+
+export const googleCallbackController = handleOAuthCallback(OAuthType.Google);
+
+export const githubAuthController = passport.authenticate(OAuthType.GitHub, {
+  session: false,
+  scope: ['read:user', 'user:email'],
+});
+
+export const githubCallbackController = handleOAuthCallback(OAuthType.GitHub);

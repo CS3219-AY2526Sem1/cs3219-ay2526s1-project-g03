@@ -9,6 +9,7 @@ import {
 } from '../constants/userParams.ts';
 import {OCCUPATIONS} from '../constants/occupations.ts';
 import {AREAS_OF_STUDY} from '../constants/areaOfStudy.ts';
+import UserRoleTypes from '../constants/userRoles.ts';
 
 // Source: https://zod.dev/api
 
@@ -110,6 +111,8 @@ export const changeUsernameOrEmailSchema = z
     path: ['username'],
   });
 
+export const SetPwSchema = validatePwAndCfmPw(passwordAndConfirmPassword);
+
 /**
  * Zod schema for validating change of password.
  */
@@ -140,4 +143,8 @@ export const changePersonalInfoSchema = z.object({
   lastName: nameSchema,
   occupation: z.enum(OCCUPATIONS),
   areaOfStudy: z.enum(AREAS_OF_STUDY),
+});
+
+export const changeRoleSchema = z.object({
+  role: z.enum([UserRoleTypes.Admin, UserRoleTypes.User]),
 });

@@ -30,3 +30,8 @@ export const deleteAccount = async (data: {password: string}) => API.delete('/us
 
 export const unlinkOAuthProvider = async (provider: 'google' | 'github') =>
   API.delete(`/user/oauth/${provider}`);
+
+export const changeUserRole = async (username, role) =>
+  API.patch(`/admin/users/${username}/role`, {role});
+
+export const createAdminAccount = async data => API.post('/admin/users', data);
