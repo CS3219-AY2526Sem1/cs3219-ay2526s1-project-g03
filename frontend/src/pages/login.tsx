@@ -14,6 +14,17 @@ const Login: React.FC = () => {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
+  const [oAuthError, setOAuthError] = useState(null);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      setOAuthError(decodeURIComponent(error));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  });
+
   const {
     mutate: signIn,
     isPending,
@@ -45,15 +56,28 @@ const Login: React.FC = () => {
           <p>Sign in to continue your coding journey</p>
         </div>
 
+        {oAuthError && (
+          <div className="error">{oAuthError || 'An error occurred, please try again.'}</div>
+        )}
         <div className="oauth-buttons">
-          <button className="oauth-button">
+          <button
+            className="oauth-button"
+            onClick={() =>
+              (window.location.href = `${import.meta.env.VITE_USER_SERVICE_URL}/auth/github`)
+            }
+          >
             <div className="icon-github">
               <img src={GithubIcon} alt="GitHub" className="icon-github" />
             </div>
             <span>Continue with GitHub</span>
           </button>
 
-          <button className="oauth-button">
+          <button
+            className="oauth-button"
+            onClick={() =>
+              (window.location.href = `${import.meta.env.VITE_USER_SERVICE_URL}/auth/google`)
+            }
+          >
             <div className="icon-google">
               <img src={GoogleIcon} alt="Google" className="icon-google" />
             </div>

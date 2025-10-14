@@ -82,6 +82,30 @@
   font-size: 16px;
 }
 
+.info-message {
+  padding: 1rem 1.5rem;
+  background-color: #dbeafe;
+  border: 2px solid #93c5fd;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 16px;
+}
+
+.link-button {
+  background: none;
+  border: none;
+  color: #2563eb;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  font-weight: 600;
+}
+
+.link-button:hover {
+  color: #1e40af;
+}
+
 .settings-section {
   display: flex;
   flex-direction: column;

@@ -17,7 +17,8 @@ const UserMenu: React.FC = () => {
   const isProfilePage = location.pathname.startsWith('/profile'); // TODO: change, hardcoded
 
   const {user} = useAuth();
-  const {username, verified} = user;
+  const {username, verified, googleOAuthVerified, githubOAuthVerified} = user;
+  const isVerified = verified || googleOAuthVerified || githubOAuthVerified;
 
   const {mutate: logOut} = useMutation({
     mutationFn: logout,
@@ -33,7 +34,9 @@ const UserMenu: React.FC = () => {
     <div className="user-menu-wrapper">
       <header className="user-menu-header">
         <div className="logo-container">
-          <img src={PeerPrepIcon} alt="PeerPrep" className="header-logo" />
+          <Link to="/">
+            <img src={PeerPrepIcon} alt="PeerPrep" className="header-logo" />
+          </Link>
         </div>
         <div className="header-right">
           {isProfilePage ? (
@@ -54,7 +57,7 @@ const UserMenu: React.FC = () => {
                 <img src={NotificationIcon} alt="Notifications" className="notification-icon" />
               </button>
 
-              {verified ? (
+              {isVerified ? (
                 <Link to="/profile/" className="icon-link">
                   <img
                     src={user.profilePicture || DefaultProfileIcon}

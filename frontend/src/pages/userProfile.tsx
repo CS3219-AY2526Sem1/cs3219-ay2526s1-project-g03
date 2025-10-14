@@ -10,6 +10,7 @@ import '../../styles/userProfile.css';
 import useAuth from '../hooks/useAuth';
 import {OCCUPATIONS} from '../constants/occupation';
 import {AREAS_OF_STUDY} from '../constants/areaOfStudy';
+import {Link} from 'react-router-dom';
 
 const UserProfile: React.FC = () => {
   const {user} = useAuth();
@@ -20,6 +21,10 @@ const UserProfile: React.FC = () => {
   return (
     <div className="user-profile-wrapper">
       <div className="user-profile-container">
+        <Link to="/" className="back-link">
+          <span className="back-arrow" />
+          <span>Back to Home</span>
+        </Link>
         <div className="profile-header">
           <img
             src={user.profilePicture || DefaultProfileIcon}

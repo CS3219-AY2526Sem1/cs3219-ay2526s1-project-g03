@@ -13,7 +13,8 @@ import {resendEmail} from '../lib/api';
 
 const Profile: React.FC = () => {
   const {user} = useAuth();
-  const {username, email, verified} = user;
+  const {username, email, verified, googleOAuthVerified, githubOAuthVerified} = user;
+  const isVerified = verified || googleOAuthVerified || githubOAuthVerified;
 
   const handleResendEmail = async () => {
     try {
@@ -25,7 +26,7 @@ const Profile: React.FC = () => {
     }
   };
 
-  if (!verified) {
+  if (!isVerified) {
     return (
       <div className="verify-prompt-wrapper">
         <div className="verify-prompt-container">

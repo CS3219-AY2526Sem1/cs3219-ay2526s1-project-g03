@@ -2,20 +2,35 @@ import React, {useState} from 'react';
 import {Link, Navigate, useNavigate} from 'react-router-dom';
 import {useMutation} from '@tanstack/react-query';
 import PeerPrepIcon from '../assets/peerprep-icon.svg';
-import {changePersonalInfo, getUser} from '../lib/api.ts';
+import {changePersonalInfo, changeUsernameOrEmail} from '../lib/api.ts';
 import '../../styles/register.css';
 import {AREAS_OF_STUDY} from '../constants/areaOfStudy.ts';
 import {OCCUPATIONS} from '../constants/occupation.ts';
 import useAuth from '../hooks/useAuth.ts';
 
+// Users that reach this page are guaranteed to be new.
 const CompleteProfile: React.FC = () => {
   const {user, isLoading} = useAuth();
 
   const navigate = useNavigate();
+
+  const [username, setUsername] = useState('');
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [occupation, setOccupation] = useState('');
   const [areaOfStudy, setAreaOfStudy] = useState('');
+
+  const isOAuthUser =
+    !user?.hasPassword && (user?.googleOAuthVerified || user?.githubOAuthVerified);
+
+  React.useEffect(() => {
+    if (isOAuthUser && user) {
+      setUsername(user.username ?? '');
+      setFirstName(user.firstName ?? '');
+      setLastName(user.lastName ?? '');
+    }
+  }, [isOAuthUser, user]); // Watch for changes in both.
 
   const {
     mutate: updatePersonalInfo,
@@ -27,6 +42,23 @@ const CompleteProfile: React.FC = () => {
     onSuccess: () => {
       navigate('/', {
         replace: true, // User cannot go back to page
+      });
+    },
+  });
+
+  const {
+    mutate: updateUsername,
+    isPending: isUsernamePending,
+    isError: isUsernameError,
+    error: usernameError,
+  } = useMutation({
+    mutationFn: changeUsernameOrEmail,
+    onSuccess: () => {
+      updatePersonalInfo({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        occupation,
+        areaOfStudy,
       });
     },
   });
@@ -61,11 +93,31 @@ const CompleteProfile: React.FC = () => {
         </div>
 
         <form className="form-section">
-          {isError && <div className="error">{error?.message || 'Invalid credentials'}</div>}
+          {(isError || isUsernameError) && (
+            <div className="error">
+              {error?.message || usernameError?.message || 'Invalid credentials'}
+            </div>
+          )}
+
+          {isOAuthUser && (
+            <div className="form-group">
+              <label htmlFor="username">Username</label>
+              <input
+                autoFocus={isOAuthUser}
+                type="text"
+                id="username"
+                className="form-input"
+                placeholder="Enter your username"
+                value={username}
+                onChange={e => setUsername(e.target.value)}
+              />
+            </div>
+          )}
+
           <div className="form-group">
             <label htmlFor="firstName">First Name</label>
             <input
-              autoFocus
+              autoFocus={!isOAuthUser}
               type="text"
               id="firstName"
               className="form-input"
@@ -123,17 +175,34 @@ const CompleteProfile: React.FC = () => {
             <button
               type="button"
               className="submit-button"
-              disabled={isPending}
-              onClick={() =>
-                updatePersonalInfo({
-                  firstName: firstName.trim(),
-                  lastName: lastName.trim(),
-                  occupation,
-                  areaOfStudy,
-                })
-              }
+              disabled={isPending || isUsernamePending}
+              onClick={() => {
+                if (isOAuthUser) {
+                  const updates: any = {};
+                  if (username.trim() !== user?.username) {
+                    updates.username = username.trim();
+                  }
+                  if (Object.keys(updates).length) {
+                    updateUsername(updates);
+                  } else {
+                    updatePersonalInfo({
+                      firstName: firstName.trim(),
+                      lastName: lastName.trim(),
+                      occupation,
+                      areaOfStudy,
+                    });
+                  }
+                } else {
+                  updatePersonalInfo({
+                    firstName: firstName.trim(),
+                    lastName: lastName.trim(),
+                    occupation,
+                    areaOfStudy,
+                  });
+                }
+              }}
             >
-              {isPending ? 'Creating Account...' : 'Get started'}
+              {isPending || isUsernamePending ? 'Creating Account...' : 'Get started'}
             </button>
           </div>
         </form>

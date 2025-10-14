@@ -17,7 +17,8 @@ const AuthContainer: React.FC = () => {
     if (!user.profileComplete && window.location.pathname !== '/complete-profile') {
       return <Navigate to="/complete-profile" replace />;
     }
-    if (!user.verified && window.location.pathname !== '/') {
+    const isVerified = user.verified || user.googleOAuthVerified || user.githubOAuthVerified;
+    if (!isVerified && window.location.pathname !== '/') {
       return <Navigate to="/" replace />;
     }
 
@@ -31,7 +32,7 @@ const AuthContainer: React.FC = () => {
 
   return (
     <Navigate
-      to="/login"
+      to="/home"
       replace
       state={{
         redirectUrl: window.location.pathname,

@@ -27,3 +27,6 @@ export const changePassword = async data => API.patch('/user/profile/password', 
 export const changePersonalInfo = async data => API.patch('/user/profile/personalinfo', data);
 
 export const deleteAccount = async (data: {password: string}) => API.delete('/user/delete', {data});
+
+export const unlinkOAuthProvider = async (provider: 'google' | 'github') =>
+  API.delete(`/user/oauth/${provider}`);

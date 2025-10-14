@@ -25,7 +25,7 @@ API.interceptors.response.use(
         return BackupAPI(config);
       } catch (error) {
         queryClient.clear();
-        navigate('/login', {
+        navigate('/home', {
           state: {
             redirectUrl: window.location.pathname,
           },
