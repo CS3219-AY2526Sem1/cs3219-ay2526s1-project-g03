@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "fast-csv": "^5.0.5",
-    "pg": "^8.16.3"
+    "pg": "^8.16.3",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",

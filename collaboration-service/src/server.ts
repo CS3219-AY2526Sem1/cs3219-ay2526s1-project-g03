@@ -1,5 +1,5 @@
 import type * as Party from 'partykit/server';
-import {onConnect} from 'y-partykit';
+import {onConnect as y_onConnect} from 'y-partykit';
 
 import {createClient} from '@supabase/supabase-js';
 import {Buffer} from 'node:buffer';
@@ -18,7 +18,7 @@ export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
   async onConnect(connection: Party.Connection) {
     const room = this.room;
-    await onConnect(connection, this.room, {
+    await y_onConnect(connection, this.room, {
       async load() {
         // This is called once per "room" when the first user connects
 
