@@ -1,18 +1,18 @@
 import passport from 'passport';
-import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
 import {Strategy as GitHubStrategy} from 'passport-github2';
+import {Strategy as GoogleStrategy} from 'passport-google-oauth20';
 import {
-  GOOGLE_CLIENT_ID,
-  GOOGLE_CLIENT_SECRET,
-  GOOGLE_AUTH_REDIR_URI,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
+  GOOGLE_AUTH_REDIR_URI,
+  GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET,
 } from '../constants/env';
-import User from '../models/user';
-import {MAX_USERNAME_LEN} from '../constants/userParams.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
-import {verifyToken} from '../utils/jwt.ts';
 import {GITHUB_AUTH_REDIR_URI} from '../constants/env.ts';
+import OAuthType from '../constants/oAuthTypes.ts';
+import {MAX_USERNAME_LEN} from '../constants/userParams.ts';
+import User from '../models/user';
+import {verifyToken} from '../utils/jwt.ts';
 
 /**
  * Sanitize username to fit PeerPrep requirements.
@@ -62,6 +62,14 @@ interface IOAuthProfileData {
   profilePicture: string;
 }
 
+/**
+ * Handles OAuth login.
+ *
+ * @param req Request object.
+ * @param data Profile data of associated OAuth (Google or GitHub).
+ * @param cb Callback function.
+ * @returns User object if successful, else error.
+ */
 const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
   try {
     const {provider, oAuthId, oAuthEmail, displayName, firstName, lastName, profilePicture} = data;
@@ -74,7 +82,14 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       return cb(new Error('Email permission required!'), undefined);
     }
 
-    const isLinkingAttempt = req.query?.link === 'true';
+    // Check if user is logging in for the first time or is linking an account to an existing user.
+    let isLinkingAttempt = req.query?.link === 'true';
+    if (req.query?.state) {
+      try {
+        const state = JSON.parse(req.query.state);
+        isLinkingAttempt = state.link === true;
+      } catch (e) {}
+    }
 
     const existingAccessToken = req.cookies?.accessToken;
     if (isLinkingAttempt || existingAccessToken) {
@@ -93,6 +108,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
         return cb(new Error('Session expired. Please log in and try again'), undefined);
       }
 
+      // Checks if exisiting user with OAuth is present.
       if (userId) {
         const existingUser = await User.findOne({
           [oAuthIdField]: oAuthId,
@@ -116,6 +132,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       user[oAuthEmailField] = oAuthEmail;
       user[oAuthVerifiedField] = true;
 
+      // OAuth profile picture is used if none are available.
       if (!user.profilePicture && profilePicture) {
         user.profilePicture = profilePicture;
         user.profilePictureScoure = provider;
@@ -125,6 +142,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       return cb(null, user, {linking: true});
     }
 
+    // Creates a new user with OAuth.
     let user = await User.findOne({[oAuthIdField]: oAuthId});
     if (user) return cb(null, user);
 
@@ -148,68 +166,81 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
   }
 };
 
-const extractGoogleProfile = (profile: any): IOAuthProfileData => {
-  return {
-    provider: OAuthType.Google,
-    oAuthId: profile.id,
-    oAuthEmail: profile.emails?.[0]?.value?.trim() ?? '',
+/**
+ * Extracts and normalizes profile data from OAuth providers.
+ *
+ * @param provider OAuth provider type (Google or GitHub).
+ * @param profile Raw profile data from OAuth provider.
+ * @returns Normalized profile data structure.
+ */
+const extractOAuthProfile = (
+  provider: OAuthType.Google | OAuthType.GitHub,
+  profile: any
+): IOAuthProfileData => {
+  const displayName =
+    profile.username?.trim() ??
+    profile.displayName?.trim() ??
+    profile.emails?.[0]?.value?.split('@')[0] ??
+    '';
 
-    displayName:
-      profile.username?.trim() ??
-      profile.displayName?.trim() ??
-      profile.emails?.[0]?.value?.split('@')[0] ??
-      '',
-    firstName: profile.name?.givenName?.trim() ?? '',
-    lastName: profile.name?.familyName?.trim() ?? '',
-    profilePicture: profile.photos?.[0]?.value?.trim() ?? '',
-  };
-};
-
-const extractGithubProfile = (profile: any): IOAuthProfileData => {
   const fullName = profile.displayName?.trim() ?? '';
   const [first, ...rest] = fullName.split(' ');
 
   return {
-    provider: OAuthType.GitHub,
+    provider,
     oAuthId: profile.id,
     oAuthEmail: profile.emails?.[0]?.value?.trim() ?? '',
-    displayName:
-      profile.username?.trim() ??
-      profile.displayName?.trim() ??
-      profile.emails?.[0]?.value?.split('@')[0] ??
-      '',
-    firstName: first ?? 'User',
-    lastName: rest.join(' '),
-    profilePicture: profile.photos?.[0]?.value ?? '',
+    displayName,
+    firstName: profile.name?.givenName?.trim() ?? first ?? '',
+    lastName: profile.name?.familyName?.trim() ?? rest.join(' '),
+    profilePicture: profile.photos?.[0]?.value?.trim() ?? '',
   };
 };
 
-passport.use(
-  new GoogleStrategy(
+/**
+ * Creates an OAuth strategy configuration.
+ *
+ * @param provider OAuth provider type.
+ * @param StrategyClass The passport strategy class to use.
+ * @param config Strategy-specific configuration.
+ * @returns Configured passport strategy.
+ */
+const createOAuthStrategy = (
+  provider: OAuthType.Google | OAuthType.GitHub,
+  StrategyClass: any,
+  config: {
+    clientID: string;
+    clientSecret: string;
+    callbackURL: string;
+    scope: string[];
+  }
+) => {
+  return new StrategyClass(
     {
-      clientID: GOOGLE_CLIENT_ID,
-      clientSecret: GOOGLE_CLIENT_SECRET,
-      callbackURL: GOOGLE_AUTH_REDIR_URI,
-      scope: ['profile', 'email'],
+      ...config,
       passReqToCallback: true,
     },
     async (req, accessToken, refreshToken, profile, cb) =>
-      handleOAuthLogin(req, extractGoogleProfile(profile), cb)
-  )
+      handleOAuthLogin(req, extractOAuthProfile(provider, profile), cb)
+  );
+};
+
+passport.use(
+  createOAuthStrategy(OAuthType.Google, GoogleStrategy, {
+    clientID: GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL: GOOGLE_AUTH_REDIR_URI,
+    scope: ['profile', 'email'],
+  })
 );
 
 passport.use(
-  new GitHubStrategy(
-    {
-      clientID: GITHUB_CLIENT_ID,
-      clientSecret: GITHUB_CLIENT_SECRET,
-      callbackURL: GITHUB_AUTH_REDIR_URI,
-      scope: ['read:user', 'user:email'],
-      passReqToCallback: true,
-    },
-    async (req, accessToken, refreshToken, profile, cb) =>
-      handleOAuthLogin(req, extractGithubProfile(profile), cb)
-  )
+  createOAuthStrategy(OAuthType.GitHub, GitHubStrategy, {
+    clientID: GITHUB_CLIENT_ID,
+    clientSecret: GITHUB_CLIENT_SECRET,
+    callbackURL: GITHUB_AUTH_REDIR_URI,
+    scope: ['read:user', 'user:email'],
+  })
 );
 
 export default passport;

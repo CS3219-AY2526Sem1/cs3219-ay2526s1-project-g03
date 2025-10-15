@@ -33,6 +33,7 @@ export const OCCUPATIONS = [
   {value: 'sales', label: 'Sales'},
   {value: 'science', label: 'Science'},
   {value: 'social-services', label: 'Social Services'},
+  {value: 'student', label: 'Student'},
   {value: 'sports-recreation', label: 'Sports & Recreation'},
   {value: 'sustainability', label: 'Sustainability'},
   {value: 'tax', label: 'Tax'},

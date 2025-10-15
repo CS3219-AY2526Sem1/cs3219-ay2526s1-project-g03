@@ -1,26 +1,20 @@
-import {APP_ORIGIN} from '../constants/env.ts';
-import {ACCOUNT_DELETION_DAYS, EMAIL_VER_DAYS} from '../constants/expirables.ts';
-import {
-  HTTP_BAD_REQUEST,
-  HTTP_CONFLICT,
-  HTTP_NOT_FOUND,
-  HTTP_OK,
-  HTTP_UNAUTHORIZED,
-} from '../constants/httpStatus.ts';
+import {HTTP_BAD_REQUEST, HTTP_OK} from '../constants/httpStatus.ts';
 import OAuthType from '../constants/oAuthTypes.ts';
-import VerificationType from '../constants/verificationTypes.ts';
-import Session from '../models/session.ts';
-import User from '../models/user.ts';
-import VerificationCode from '../models/verificationCode.ts';
 import {unlinkOAuthProvider} from '../services/authService.ts';
+import {deleteUserSessions} from '../services/sessionService.ts';
+import {
+  findUserById,
+  markAccountFordeletion,
+  updatePassword,
+  updatePersonalInfo,
+  updateProfilePicture,
+  updateUsernameOrEmail,
+} from '../services/userService.ts';
 import appAssert from '../utils/appAssert.ts';
 import AppError from '../utils/appError.ts';
 import catchErrors from '../utils/catchErrors.ts';
 import {clearAuthCookies} from '../utils/cookies.ts';
-import {daysFromNow} from '../utils/date.ts';
-import {sendEmail} from '../utils/email.ts';
 import {processProfilePicture} from '../utils/imageProcessor.ts';
-import {getVerifyEmail} from '../utils/verifyTemplate.ts';
 import {
   changePersonalInfoSchema,
   changePwSchema,
@@ -28,109 +22,67 @@ import {
   SetPwSchema,
 } from './userSchema.ts';
 
-const getUser = async (req, res) => {
-  const user = await User.findById(req.userId);
-  appAssert(user, HTTP_NOT_FOUND, 'User not found!');
-
-  return user;
-};
-
+/**
+ * Gets existing user.
+ */
 export const getUserController = catchErrors(async (req, res) => {
-  const user = await getUser(req, res);
+  const user = await findUserById(req.userId);
   return res.status(HTTP_OK).json(user);
 });
 
+/**
+ * Changes username and/or password of existing user.
+ */
 export const changeUsernameOrEmailController = catchErrors(async (req, res) => {
   const request = changeUsernameOrEmailSchema.parse(req.body);
-
-  const conditions = [];
-  const update = {};
-  if (request.username) {
-    conditions.push({username: request.username});
-    update.username = request.username;
-  }
-  if (request.email) {
-    conditions.push({email: request.email});
-    update.email = request.email;
-    update.verified = false;
-  }
-
-  const existingUser = await User.findOne({
-    $and: [{_id: {$ne: req.userId}}, {$or: conditions}],
-  }).collation({locale: 'en', strength: 2});
-  appAssert(!existingUser, HTTP_CONFLICT, 'Username or email already in use!');
-
-  const user = await User.findByIdAndUpdate(
-    req.userId,
-    {$set: update},
-    {new: true, runValidators: true}
-  );
-  appAssert(user, HTTP_NOT_FOUND, 'User update failed!');
-
-  if (request.email) {
-    // Generate verification code.
-    const emailVerificationCode = await VerificationCode.create({
-      userId: user._id,
-      type: VerificationType.VerifyEmail,
-      expiresAt: daysFromNow(EMAIL_VER_DAYS),
-    });
-
-    // Send verification email.
-    const url = `${APP_ORIGIN}/email/verify/${emailVerificationCode._id}`;
-    const {error} = await sendEmail({to: user.email, ...getVerifyEmail(url)});
-
-    if (error) {
-      console.log(error);
-    }
-  }
-
+  await updateUsernameOrEmail(req.userId, request);
   return res.status(HTTP_OK).json({
     message: 'Profile updated successfully',
-    user,
   });
 });
 
+/**
+ * Changes profile picture of existing user.
+ */
 export const changeProfilePictureController = catchErrors(async (req, res) => {
+  if (req.body.delete === 'true') {
+    await updateProfilePicture(req.userId, null);
+    return res.status(HTTP_OK).json({
+      message: 'Profile picture removed successfully!',
+    });
+  }
+
   if (!req.file) {
     throw new AppError(HTTP_BAD_REQUEST, 'No file uploaded');
   }
 
   const processedImage = await processProfilePicture(req.file.buffer);
-
-  const user = await User.findByIdAndUpdate(
-    req.userId,
-    {
-      $set: {
-        profilePicture: processedImage,
-        profilePictureSource: 'upload',
-      },
-    },
-    {new: true, runValidators: true}
-  );
-  appAssert(user, HTTP_NOT_FOUND, 'User not found!');
-
+  await updateProfilePicture(req.userId, processedImage);
   return res.status(HTTP_OK).json({
     message: 'Profile picture updated successfully!',
   });
 });
 
+/**
+ * Changes password for users with existing passwords.
+ * Alternatively, sets password for user without existing password.
+ */
 export const changePasswordHandler = catchErrors(async (req, res) => {
-  const user = await getUser(req, res);
+  const user = await findUserById(req.userId);
 
   let password;
+  let currentPassword = '';
 
   if (user.hasPassword) {
-    const {currentPassword, password: newPassword} = changePwSchema.parse(req.body);
-    const isValid = await user.comparePassword(currentPassword);
-    appAssert(isValid, HTTP_UNAUTHORIZED, 'Current password is incorrect');
-    password = newPassword;
+    const parsed = changePwSchema.parse(req.body);
+    password = parsed.password;
+    currentPassword = parsed.currentPassword;
   } else {
-    const {password: newPassword} = SetPwSchema.parse(req.body);
-    password = newPassword;
+    const parsed = SetPwSchema.parse(req.body);
+    password = parsed.password;
   }
 
-  user.password = password;
-  await user.save();
+  await updatePassword(req.userId, password, currentPassword);
 
   // No need to delete sessions because this should only be the only session running
   return res.status(HTTP_OK).json({
@@ -138,52 +90,36 @@ export const changePasswordHandler = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Changes personal information of existing user.
+ */
 export const changePersonalInfoController = catchErrors(async (req, res) => {
   const request = changePersonalInfoSchema.parse(req.body);
 
-  const user = await User.findByIdAndUpdate(
-    req.userId,
-    {
-      $set: {
-        firstName: request.firstName,
-        lastName: request.lastName,
-        occupation: request.occupation,
-        areaOfStudy: request.areaOfStudy,
-        profileComplete: true,
-      },
-    },
-    {new: true, runValidators: true}
-  );
-  appAssert(user, HTTP_NOT_FOUND, 'User update failed!');
-
+  await updatePersonalInfo(req.userId, request);
   return res.status(HTTP_OK).json({
     message: 'Personal information updated successfully',
-    user,
   });
 });
 
 export const markAccountForDeletionController = catchErrors(async (req, res) => {
   const {password} = req.body;
   appAssert(password, HTTP_BAD_REQUEST, 'Password is required!');
+  const {days} = await markAccountFordeletion(req.userId, password);
 
-  const user = await getUser(req, res);
-
-  const isValid = await user.comparePassword(password);
-  appAssert(isValid, HTTP_UNAUTHORIZED, 'Incorrect password!');
-
-  user.markedForDeletion = true;
-  user.deletionScheduleAt = daysFromNow(ACCOUNT_DELETION_DAYS);
-  await user.save();
-
-  await Session.deleteMany({userId: user._id});
+  await deleteUserSessions(req.userId);
 
   return clearAuthCookies(res)
     .status(HTTP_OK)
     .json({
-      message: `Account marked for deletion. You have ${ACCOUNT_DELETION_DAYS} days to cancel by logging in`,
+      message: `Account marked for deletion. 
+      You have ${days} days to cancel by logging in`,
     });
 });
 
+/**
+ * Unlinks OAuth from existing user.
+ */
 export const unlinkOAuthController = catchErrors(async (req, res) => {
   const {provider} = req.params;
 
@@ -194,9 +130,10 @@ export const unlinkOAuthController = catchErrors(async (req, res) => {
   );
 
   const {user} = await unlinkOAuthProvider(req.userId, provider);
+  const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
 
   return res.status(HTTP_OK).json({
-    message: `${provider.charAt(0).toUpperCase() + provider.slice(1)} account unlinked!`,
+    message: `${providerName} account unlinked!`,
     user,
   });
 });

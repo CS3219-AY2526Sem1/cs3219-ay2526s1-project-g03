@@ -71,4 +71,4 @@ const verifyPassword = async (
 
 const needsRehash = (storedIterations: number): boolean => storedIterations < ITERATIONS;
 
-export {hashPassword, verifyPassword, needsRehash};
+export {hashPassword, needsRehash, verifyPassword};

@@ -88,7 +88,13 @@ const Register: React.FC = () => {
         <div className="divider">or</div>
 
         <form className="form-section">
-          {isError && <div className="error"> {error?.message || 'Invalid credentials'} </div>}
+          {isError && (
+            <div className="error">
+              {error?.message
+                ? error.message.split('\n').map((msg, idx) => <div key={idx}>{msg}</div>)
+                : 'Invalid credentials'}
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input

@@ -1,4 +1,6 @@
 import {z, type ZodRawShape} from 'zod';
+import {AREAS_OF_STUDY} from '../constants/areaOfStudy.ts';
+import {OCCUPATIONS} from '../constants/occupations.ts';
 import {
   MAX_PW_LEN,
   MAX_USERNAME_LEN,
@@ -7,8 +9,6 @@ import {
   MONGO_MAX_ID_LEN,
   MONGO_MIN_ID_LEN,
 } from '../constants/userParams.ts';
-import {OCCUPATIONS} from '../constants/occupations.ts';
-import {AREAS_OF_STUDY} from '../constants/areaOfStudy.ts';
 import UserRoleTypes from '../constants/userRoles.ts';
 
 // Source: https://zod.dev/api
@@ -24,19 +24,19 @@ const nameSchema = z
 const usernameSchema = z
   .string()
   .min(MIN_USERNAME_LEN, {
-    message: `username must be at least ${MIN_USERNAME_LEN} characters long!`,
+    message: `Username must be at least ${MIN_USERNAME_LEN} characters long!`,
   })
   .max(MAX_USERNAME_LEN, {
-    message: `username cannot be more than ${MAX_USERNAME_LEN} characters long!`,
+    message: `Username cannot be more than ${MAX_USERNAME_LEN} characters long!`,
   })
-  .regex(/^[a-zA-Z0-9_]+$/, {message: `username can only contain alphanumerics and underscores!`});
+  .regex(/^[a-zA-Z0-9_]+$/, {message: `Username can only contain alphanumerics and underscores!`});
 
 export const emailSchema = z.email();
 
 const passwordSchema = z
   .string()
-  .min(MIN_PW_LEN, {message: `password must be at least ${MIN_PW_LEN} long!`})
-  .max(MAX_PW_LEN, {message: `password cannot be more than ${MAX_PW_LEN} long!`});
+  .min(MIN_PW_LEN, {message: `Password must be at least ${MIN_PW_LEN} long!`})
+  .max(MAX_PW_LEN, {message: `Password cannot be more than ${MAX_PW_LEN} long!`});
 
 export const usernameAndEmail = z.object({
   username: usernameSchema,
@@ -55,7 +55,7 @@ export function validateUsernameOrEmail<T extends ZodRawShape>(schema: z.ZodObje
       return isEmail || isUsername;
     },
     {
-      message: 'Must be a valid username or email',
+      message: `Invalid username (at least ${MIN_USERNAME_LEN}-${MAX_USERNAME_LEN} long containing only alphanumerics) or email provided!`,
       path: ['identifier'],
     }
   );
@@ -138,11 +138,20 @@ export const passwordResetSchema = z.object({
   password: passwordSchema,
 });
 
+// Note that z.enum() runs before refine does, thus use z.string instead.
 export const changePersonalInfoSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
-  occupation: z.enum(OCCUPATIONS),
-  areaOfStudy: z.enum(AREAS_OF_STUDY),
+  occupation: z
+    .string()
+    .refine(val => OCCUPATIONS.includes(val as Occupation), {
+      message: 'Please select an occupation!',
+    }),
+  areaOfStudy: z
+    .string()
+    .refine(val => AREAS_OF_STUDY.includes(val as AreaOfStudy), {
+      message: 'Please select an area of study!',
+    }),
 });
 
 export const changeRoleSchema = z.object({

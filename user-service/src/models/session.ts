@@ -1,7 +1,14 @@
 import mongoose from 'mongoose';
-import {daysFromNow} from '../utils/date';
 import {REFRESH_TOKEN_DAYS} from '../constants/expirables';
+import {daysFromNow} from '../utils/date';
 
+/**
+ * A user session.
+ *
+ * @property userId Reference to the user this verification code belongs to.
+ * @property createdAt Timestamp when the session was created.
+ * @property expiresAt Timestamp when the session expires.
+ */
 export interface ISession {
   userId: mongoose.Types.ObjectId;
   createdAt: Date;

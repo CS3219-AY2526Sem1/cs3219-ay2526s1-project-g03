@@ -1,3 +1,9 @@
+/**
+ * Email template for verification email.
+ *
+ * @param url Link to verify email.
+ * @returns `subject`, `text`, and `html` component of an email.
+ */
 export const getVerifyEmail = (url: string) => ({
   subject: 'Confirm your PeerPrep account',
   text: `Click on the link to verify your email address: ${url}`,
@@ -26,6 +32,12 @@ export const getVerifyEmail = (url: string) => ({
     `,
 });
 
+/**
+ * Email template for resetting password.
+ *
+ * @param url Link to reset password.
+ * @returns `subject`, `text`, and `html` component of an email.
+ */
 export const getPasswordReset = (url: string) => ({
   subject: 'Reset your PeerPrep password',
   text: `Click on the link to reset your password: ${url}`,

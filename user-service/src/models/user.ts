@@ -1,13 +1,41 @@
 import mongoose from 'mongoose';
-import {hashPassword, verifyPassword, needsRehash} from '../utils/pbkdf2';
-import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
 import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy.ts';
-import {daysFromNow} from '../utils/date.ts';
-import {ACCOUNT_DELETION_DAYS} from '../constants/expirables.ts';
 import type ProfilePicType from '../constants/oAuthTypes.ts';
+import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
+import {hashPassword, needsRehash, verifyPassword} from '../utils/pbkdf2';
 
 // Source: https://mongoosejs.com/docs/6.x/docs/typescript/statics-and-methods.html
 
+/**
+ * Verification code document interface representing the structure
+ * of verification codes stored in the database.
+ *
+ * @property username Username of the user.
+ * @property email Email address tied to traditional login method.
+ * @property verified True if email is verified.
+ * @property passwordHash Hashed password.
+ * @property passwordSalt Salted password.
+ * @property passwordIterations Number of iterations used to hash and salt password.
+ * @property hasPassword User account supports non OAuth login.
+ * @property role Either `user` or `admin`.
+ * @property firstName First name.
+ * @property lastName Last name.
+ * @property occupation Occupation
+ * @property areaOfStudy Area of study.
+ * @property profileComplete True only if `firstName`, `lastName`, `occupation` and `areaOfStudy` are provided.
+ * @property googleOAuthId ID associated with Google OAuth.
+ * @property googleOAuthEmail Email associated with Google OAuth.
+ * @property googleOAuthVerified True if Ouath via Google, false otherwise.
+ * @property githubOAuthId ID associated with GitHub OAuth.
+ * @property githubOAuthEmail Email associated with GitHub OAuth.
+ * @property githubOAuthVerified True if Ouath via GitHub, false otherwise.
+ * @property profilePicutre Profile picture, either a URL or a base-64 encoded URI
+ * @property profilePictureSource Source of the profile picture.
+ * @property markedForDeletion Determines whether an account will be deleted.
+ * @property deletionScheduleAt Timestamp when the user account will be removed from the system.
+ * @property createdAt Timestamp when the user account was created.
+ * @property updatedAt Timestamp when the user account was last updated.
+ */
 export interface IUser {
   username: string;
   email: string;

@@ -21,6 +21,9 @@ const CompleteProfile: React.FC = () => {
   const [occupation, setOccupation] = useState('');
   const [areaOfStudy, setAreaOfStudy] = useState('');
 
+  const [usernameSuccess, setUsernameSucces] = useState(false);
+  const [personalInfoSuccess, setPersonalInfoSuccess] = useState(false);
+
   const isOAuthUser =
     !user?.hasPassword && (user?.googleOAuthVerified || user?.githubOAuthVerified);
 
@@ -32,6 +35,14 @@ const CompleteProfile: React.FC = () => {
     }
   }, [isOAuthUser, user]); // Watch for changes in both.
 
+  React.useEffect(() => {
+    if (isOAuthUser && usernameSuccess && personalInfoSuccess) {
+      navigate('/', {replace: true});
+    } else if (!isOAuthUser && personalInfoSuccess) {
+      navigate('/', {replace: true});
+    }
+  }, [usernameSuccess, personalInfoSuccess, isOAuthUser, navigate]);
+
   const {
     mutate: updatePersonalInfo,
     isPending,
@@ -40,9 +51,10 @@ const CompleteProfile: React.FC = () => {
   } = useMutation({
     mutationFn: changePersonalInfo,
     onSuccess: () => {
-      navigate('/', {
-        replace: true, // User cannot go back to page
-      });
+      setPersonalInfoSuccess(true);
+    },
+    onError: () => {
+      setPersonalInfoSuccess(false);
     },
   });
 
@@ -54,12 +66,10 @@ const CompleteProfile: React.FC = () => {
   } = useMutation({
     mutationFn: changeUsernameOrEmail,
     onSuccess: () => {
-      updatePersonalInfo({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        occupation,
-        areaOfStudy,
-      });
+      setUsernameSucces(true);
+    },
+    onError: () => {
+      setUsernameSucces(false);
     },
   });
 
@@ -93,11 +103,23 @@ const CompleteProfile: React.FC = () => {
         </div>
 
         <form className="form-section">
-          {(isError || isUsernameError) && (
-            <div className="error">
-              {error?.message || usernameError?.message || 'Invalid credentials'}
-            </div>
-          )}
+          {(isError || isUsernameError) &&
+            (() => {
+              const messages = [usernameError?.message, error?.message]
+                .filter(Boolean)
+                .flatMap(msg => msg.split('\n')) // Split each message by newline
+                .filter((v, i, arr) => arr.indexOf(v) === i); // Remove duplicates
+
+              return messages.length ? (
+                <div className="error">
+                  {messages.map((msg, idx) => (
+                    <div key={idx}>{msg}</div>
+                  ))}
+                </div>
+              ) : (
+                <div className="error">Invalid credentials</div>
+              );
+            })()}
 
           {isOAuthUser && (
             <div className="form-group">
@@ -185,21 +207,15 @@ const CompleteProfile: React.FC = () => {
                   if (Object.keys(updates).length) {
                     updateUsername(updates);
                   } else {
-                    updatePersonalInfo({
-                      firstName: firstName.trim(),
-                      lastName: lastName.trim(),
-                      occupation,
-                      areaOfStudy,
-                    });
+                    setUsernameSucces(true);
                   }
-                } else {
-                  updatePersonalInfo({
-                    firstName: firstName.trim(),
-                    lastName: lastName.trim(),
-                    occupation,
-                    areaOfStudy,
-                  });
                 }
+                updatePersonalInfo({
+                  firstName: firstName.trim(),
+                  lastName: lastName.trim(),
+                  occupation,
+                  areaOfStudy,
+                });
               }}
             >
               {isPending || isUsernamePending ? 'Creating Account...' : 'Get started'}

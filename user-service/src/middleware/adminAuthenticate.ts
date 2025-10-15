@@ -1,8 +1,8 @@
 import type {RequestHandler} from 'express';
-import User from '../models/user.ts';
-import appAssert from '../utils/appAssert.ts';
 import {HTTP_FORBIDDEN, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
 import UserRoleTypes from '../constants/userRoles.ts';
+import User from '../models/user.ts';
+import appAssert from '../utils/appAssert.ts';
 
 const adminAuthenticate: RequestHandler = async (req, res, next) => {
   try {

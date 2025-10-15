@@ -1,17 +1,17 @@
-import express from 'express';
-import cors from 'cors';
 import cookieParse from 'cookie-parser';
-import {APP_ORIGIN, NODE_ENV, USER_SERVICE_PORT} from './constants/env';
-import errorHandler from './middleware/errorHandler';
-import {HTTP_OK} from './constants/httpStatus';
-import authRoutes from './routes/authRoutes';
-import connectToDatabase from './config/database';
-import userRoutes from './routes/userRoute';
-import authenticate from './middleware/authenticate';
+import cors from 'cors';
+import express from 'express';
 import passport from 'passport';
-import './services/passport';
+import connectToDatabase from './config/database';
+import {APP_ORIGIN, NODE_ENV, USER_SERVICE_PORT} from './constants/env';
+import {HTTP_OK} from './constants/httpStatus';
 import adminAuthenticate from './middleware/adminAuthenticate.ts';
+import authenticate from './middleware/authenticate';
+import errorHandler from './middleware/errorHandler';
 import adminRoutes from './routes/adminRoute.ts';
+import authRoutes from './routes/authRoutes';
+import userRoutes from './routes/userRoute';
+import './services/passport';
 // import { startCleanupScheduler } from './scripts/cleanupAccounts.ts';
 
 const app = express();

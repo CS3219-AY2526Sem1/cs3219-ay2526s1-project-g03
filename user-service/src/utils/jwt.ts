@@ -1,8 +1,11 @@
+import type {SignOptions, VerifyOptions} from 'jsonwebtoken';
 import jwt from 'jsonwebtoken';
-import type {VerifyOptions, SignOptions} from 'jsonwebtoken';
+import {JWT_REFRESH_SECRET, JWT_SECRET} from '../constants/env';
+import {ACCESS_TOKEN_MINS, REFRESH_TOKEN_DAYS} from '../constants/expirables.ts';
 import type {SessionModel} from '../models/session';
 import type {User} from '../models/user';
-import {JWT_REFRESH_SECRET, JWT_SECRET} from '../constants/env';
+
+// Adapted from https://github.com/nikitapryymak/mern-auth-jwt/blob/youtube/backend/src/utils/jwt.ts
 
 export type RefreshTokenPayload = {
   sessionId: SessionModel['_id'];
@@ -22,15 +25,23 @@ const defaults: SignOptions = {
 };
 
 export const refreshTokenSignOptions: SignOptionsAndSecret = {
-  expiresIn: '30d',
+  expiresIn: `${REFRESH_TOKEN_DAYS}d`,
   secret: JWT_REFRESH_SECRET,
 };
 
 export const accessTokenSignOptions: SignOptionsAndSecret = {
-  expiresIn: '15m',
+  expiresIn: `${ACCESS_TOKEN_MINS}m`,
   secret: JWT_SECRET,
 };
 
+/**
+ * Signs a JWT token with the provided payload and options.
+ * Defaults to access token configuration if no options are provided.
+ *
+ * @param payload Token payload containing session and/or user information.
+ * @param options Optional sign options and secret. Defaults to access token settings.
+ * @returns A signed JWT token string.
+ */
 export const signToken = (
   payload: RefreshTokenPayload | AccessTokenPayload,
   options?: SignOptionsAndSecret
@@ -42,6 +53,14 @@ export const signToken = (
   });
 };
 
+/**
+ * Verifies a JWT token and returns its payload or an error message.
+ * Defaults to access token verification if no options are provided.
+ *
+ * @param token JWT token string to verify.
+ * @param options Optional verify options and secret. Defaults to access token secret.
+ * @returns An object containing either the decoded payload or an error message.
+ */
 export const verifyToken = <TPayload extends object = AccessTokenPayload>(
   token: string,
   options?: VerifyOptions & {

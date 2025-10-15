@@ -1,10 +1,17 @@
 import multer from 'multer';
-import AppError from '../utils/appError.ts';
 import {HTTP_BAD_REQUEST} from '../constants/httpStatus.ts';
 import {PROFILE_PIC_MAX_SIZE} from '../constants/userParams.ts';
+import AppError from '../utils/appError.ts';
 
 const storage = multer.memoryStorage();
 
+/**
+ * File filter to validate that only image files are uploaded.
+ *
+ * @param req Express request object.
+ * @param file Uploaded file object.
+ * @param cb Callback function to accept or reject the file.
+ */
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -13,6 +20,10 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+/**
+ * Multer upload middleware configured for profile picture uploads.
+ * Stores files in memory, validates image mime types, and enforces size limits.
+ */
 export const upload = multer({
   storage,
   fileFilter,

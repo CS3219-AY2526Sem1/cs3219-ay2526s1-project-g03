@@ -8,6 +8,9 @@ type AppAssert = (
   message: string
 ) => asserts condition;
 
+/**
+ * Asserts a condition and throws an `AppError`.
+ */
 const appAssert: AppAssert = (condition, httpStatusCode, message) =>
   assert(condition, new AppError(httpStatusCode, message));
 

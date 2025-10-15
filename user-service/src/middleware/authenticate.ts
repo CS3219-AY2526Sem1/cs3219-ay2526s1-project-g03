@@ -4,6 +4,13 @@ import appAssert from '../utils/appAssert';
 import {verifyToken} from '../utils/jwt';
 import Session from '../models/session';
 
+/**
+ * Validates user session.
+ *
+ * @param req Request object.
+ * @param res Response object.
+ * @param next Next function to be called.
+ */
 const authenticate: RequestHandler = async (req, res, next) => {
   try {
     const {accessToken} = req.cookies;

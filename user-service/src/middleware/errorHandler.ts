@@ -11,8 +11,19 @@ import {clearAuthCookies, REFRESH_PATH} from '../utils/cookies';
  * @param {Error} error - The error object thrown or passed from previous middleware.
  * @returns {Response} Returns a 400 status response with error message.
  */
-const handleZodError = (res: Response, error: z.ZodError) =>
-  res.status(HTTP_BAD_REQUEST).send(error);
+const handleZodError = (res: Response, error: z.ZodError) => {
+  const errors = error.issues.map(err => ({
+    path: err.path.join('.'),
+    message: err.message,
+  }));
+
+  const message = [...new Set(errors.map(err => err.message))].join('\n');
+
+  return res.status(HTTP_BAD_REQUEST).json({
+    errors,
+    message,
+  });
+};
 
 const handleAppError = (res: Response, error: AppError) =>
   res.status(error.statusCode).json({
@@ -22,6 +33,7 @@ const handleAppError = (res: Response, error: AppError) =>
 /**
  * Error handling middleware.
  * Catches and processes all errors that occur during processing.
+ * Invalidates user session if required.
  *
  * @param {Error} error - The error object thrown or passed from previous middleware.
  * @param {Request} req - Express request object containing request details.

@@ -14,7 +14,8 @@ import {Link} from 'react-router-dom';
 
 const UserProfile: React.FC = () => {
   const {user} = useAuth();
-  const {username, email, occupation, areaOfStudy} = user;
+  const {username, email, occupation, areaOfStudy, googleOAuthEmail, githubOAuthEmail} = user;
+  const displayEmail = email ?? googleOAuthEmail ?? githubOAuthEmail;
   const occupationLabel = OCCUPATIONS.find(o => o.value === occupation)?.label || '';
   const areaOfStudyLabel = AREAS_OF_STUDY.find(o => o.value === areaOfStudy)?.label || '';
 
@@ -34,7 +35,7 @@ const UserProfile: React.FC = () => {
           <div className="profile-hori">
             <div className="profile-info">
               <h2 className="profile-username">{username}</h2>
-              <p className="profile-email">{email}</p>
+              <p className="profile-email">{displayEmail}</p>
               <span className="member-label">
                 Member since{' '}
                 {new Date(user.createdAt).toLocaleDateString('en-US', {

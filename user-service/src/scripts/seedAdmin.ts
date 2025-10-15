@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import {ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_USERNAME, MONGO_URI} from '../constants/env.ts';
 import User from '../models/user.ts';
 
+/**
+ * Seeds an admin account into the database at the start of the application.
+ */
 const seedAdmin = async () => {
   try {
     await mongoose.connect(MONGO_URI);

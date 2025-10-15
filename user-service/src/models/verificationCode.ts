@@ -1,6 +1,15 @@
 import mongoose from 'mongoose';
 import type VerificationType from '../constants/verificationTypes';
 
+/**
+ * Verification code document interface representing the structure
+ * of verification codes stored in the database.
+ *
+ * @property userId Reference to the user this verification code belongs to.
+ * @property type Type of verification (e.g., email verification, password reset).
+ * @property createdAt Timestamp when the verification code was created.
+ * @property expiresAt Timestamp when the verification code expires.
+ */
 export interface IVerificationCode {
   userId: mongoose.Types.ObjectId;
   type: VerificationType;

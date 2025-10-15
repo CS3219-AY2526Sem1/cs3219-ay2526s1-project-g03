@@ -1,34 +1,39 @@
+import passport from 'passport';
 import {APP_ORIGIN} from '../constants/env';
+import {EMAIL_VER_DAYS} from '../constants/expirables';
+import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
 import {
+  HTTP_CONFLICT,
   HTTP_INTERNAL_SERVER_ERROR,
   HTTP_NOT_FOUND,
   HTTP_UNAUTHORIZED,
-  HTTP_CONFLICT,
 } from '../constants/httpStatus';
+import {HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
+import OAuthType from '../constants/oAuthTypes.ts';
 import VerificationType from '../constants/verificationTypes';
 import Session from '../models/session';
 import User from '../models/user';
 import VerificationCode from '../models/verificationCode';
 import appAssert from '../utils/appAssert';
+import catchErrors from '../utils/catchErrors.ts';
+import {setAuthCookies} from '../utils/cookies.ts';
 import {daysFromNow} from '../utils/date';
+import {hoursAgo, minutesFromNow} from '../utils/date.ts';
 import {sendEmail} from '../utils/email';
-import {getVerifyEmail} from '../utils/verifyTemplate';
 import {
   refreshTokenSignOptions,
   signToken,
   verifyToken,
   type RefreshTokenPayload,
 } from '../utils/jwt';
-import {EMAIL_VER_DAYS, REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
-import {hoursAgo, minutesFromNow} from '../utils/date.ts';
-import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
-import {HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
+import {getVerifyEmail} from '../utils/verifyTemplate';
 import {getPasswordReset} from '../utils/verifyTemplate.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
-import catchErrors from '../utils/catchErrors.ts';
-import passport from 'passport';
-import {setAuthCookies} from '../utils/cookies.ts';
-import {usernameAndEmail} from '../controllers/userSchema.ts';
+import {
+  createSession,
+  deleteUserSessions,
+  generateTokensForSession,
+  renewSessionIfNeeded,
+} from './sessionService.ts';
 
 export type CreateAccoutParams = {
   username: string;
@@ -36,6 +41,12 @@ export type CreateAccoutParams = {
   password: string;
 };
 
+/**
+ * Creates a new user account.
+ *
+ * @param data User username, email and password.
+ * @returns
+ */
 export const createAccount = async (data: CreateAccoutParams) => {
   // Check if user exists.
   const existingUser = await User.exists({
@@ -50,44 +61,23 @@ export const createAccount = async (data: CreateAccoutParams) => {
     password: data.password,
   });
 
-  // Generate verification code.
-  const emailVerificationCode = await VerificationCode.create({
-    userId: user._id,
-    type: VerificationType.VerifyEmail,
-    expiresAt: daysFromNow(EMAIL_VER_DAYS),
-  });
+  await sendVerificationEmail(user.email);
 
-  // Send verification email.
-  const url = `${APP_ORIGIN}/email/verify/${emailVerificationCode._id}`;
-  const {error} = await sendEmail({to: user.email, ...getVerifyEmail(url)});
-
-  if (error) {
-    console.log(error);
-  }
-
-  const userId = user._id;
-
-  const session = await Session.create({
-    userId,
-  });
-
-  const sessionId = session._id;
-
-  const refreshToken = signToken(
-    {
-      sessionId,
-    },
-    refreshTokenSignOptions
+  const session = await createSession(user._id.toString());
+  const {accessToken, refreshToken} = generateTokensForSession(
+    user._id.toString(),
+    session._id.toString()
   );
-
-  const accessToken = signToken({
-    userId,
-    sessionId,
-  });
 
   return {user, accessToken, refreshToken};
 };
 
+/**
+ * Verifies verification code.
+ *
+ * @param code Verification code.
+ * @returns User object.
+ */
 export const verifyEmail = async (code: string) => {
   const validCode = await VerificationCode.findOne({
     _id: code,
@@ -106,6 +96,13 @@ export const verifyEmail = async (code: string) => {
   };
 };
 
+/**
+ * Verifies that an email has not exceeded the rate limit.
+ *
+ * @param email Email address of user.
+ * @param type Type of verification.
+ * @returns
+ */
 const verifyUserAndEmailRate = async (email: string, type: VerificationType) => {
   const user = await User.findOne({email});
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
@@ -124,7 +121,14 @@ const verifyUserAndEmailRate = async (email: string, type: VerificationType) => 
   return user;
 };
 
-export const resendEmail = async (email: string) => {
+/**
+ * Sends an email to the user to verify their email address.
+ *
+ * @param userId ID of existing user.
+ * @param email Email address of user.
+ * @returns
+ */
+export const sendVerificationEmail = async (email: string) => {
   const user = await verifyUserAndEmailRate(email, VerificationType.VerifyEmail);
 
   const emailVerificationCode = await VerificationCode.create({
@@ -133,15 +137,22 @@ export const resendEmail = async (email: string) => {
     expiresAt: daysFromNow(EMAIL_VER_DAYS),
   });
 
-  // Send verification email.
   const url = `${APP_ORIGIN}/email/verify/${emailVerificationCode._id}`;
-  const {data, error} = await sendEmail({to: user.email, ...getVerifyEmail(url)});
+  const {error} = await sendEmail({to: email, ...getVerifyEmail(url)});
+
   if (error) {
     console.log(error);
   }
-  return {url, emailId: data.id};
+
+  return {url, emailId: emailVerificationCode._id};
 };
 
+/**
+ * Sends an email to the user to reset their password.
+ *
+ * @param email Email address of user.
+ * @returns Link to the password reset page and email ID.
+ */
 export const forgotPassword = async (email: string) => {
   // Always show success
   try {
@@ -162,9 +173,9 @@ export const forgotPassword = async (email: string) => {
     });
     appAssert(data?.id, HTTP_INTERNAL_SERVER_ERROR, `${error?.message}`);
 
-    return {url, emailId: data.id};
+    return {user, url, emailId: data.id};
   } catch (error: any) {
-    console.log(`forgotPassword error: ${error.message}`);
+    console.log(`Failed to send password reset email: ${error.message}`);
     return {};
   }
 };
@@ -174,6 +185,13 @@ type ResetPasswordParams = {
   password: string;
 };
 
+/**
+ * Resets the user password.
+ *
+ * @param verificationCode Associated verification code of the reset password email.
+ * @param password Password provided by the user.
+ * @returns
+ */
 export const resetPassword = async ({verificationCode, password}: ResetPasswordParams) => {
   const validCode = await VerificationCode.findOne({
     _id: verificationCode,
@@ -190,9 +208,7 @@ export const resetPassword = async ({verificationCode, password}: ResetPasswordP
 
   await validCode.deleteOne();
 
-  await Session.deleteMany({
-    userId: user._id,
-  });
+  await deleteUserSessions(user._id.toString());
 
   return {user};
 };
@@ -209,34 +225,35 @@ interface LoginWithUsername {
 
 export type LoginParams = LoginWithEmail | LoginWithUsername;
 
+/**
+ * Creates user session with tokens.
+ *
+ * @param user User object.
+ * @returns User object, access token and refresh token.
+ */
 const manageLoginSessionAndSignTokens = async user => {
-  const userId = user._id;
-
   if (user.markedForDeletion) {
     user.markedForDeletion = false;
     user.deletionScheduleAt = undefined;
     user.save();
   }
 
-  // Delete all previous sessions to enforce single login constraint.
-  await Session.deleteMany({userId});
-  const session = await Session.create({
-    userId,
-  });
-
-  const sessionInfo: RefreshTokenPayload = {
-    sessionId: session._id,
-  };
-
-  const refreshToken = signToken(sessionInfo, refreshTokenSignOptions);
-  const accessToken = signToken({
-    ...sessionInfo,
-    userId,
-  });
+  // Note that all previous sessions are deleted to enforce single login constraint.
+  const session = await createSession(user._id.toString());
+  const {accessToken, refreshToken} = generateTokensForSession(
+    user._id.toString(),
+    session._id.toString()
+  );
 
   return {user, accessToken, refreshToken};
 };
 
+/**
+ * Logs the user in and manages user sesions and tokens.
+ *
+ * @param request Request body.
+ * @returns
+ */
 export const loginUser = async (request: LoginParams) => {
   const user =
     'email' in request
@@ -249,6 +266,30 @@ export const loginUser = async (request: LoginParams) => {
   appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
 
   return await manageLoginSessionAndSignTokens(user);
+};
+
+/**
+ * Refreshes user access token if refresh token is valid.
+ * @param refreshToken User associated refresh token.
+ * @returns
+ */
+export const refreshUserAccessToken = async (refreshToken: string) => {
+  const {payload} = verifyToken<RefreshTokenPayload>(refreshToken, {
+    secret: refreshTokenSignOptions.secret,
+  });
+  appAssert(payload, HTTP_UNAUTHORIZED, 'Invlaid refresh token!');
+
+  const session = await Session.findById(payload.sessionId);
+  appAssert(session, HTTP_UNAUTHORIZED, 'Session not found!');
+
+  const newRefreshToken = await renewSessionIfNeeded(session);
+
+  const accessToken = signToken({
+    userId: session.userId,
+    sessionId: session._id,
+  });
+
+  return {accessToken, newRefreshToken};
 };
 
 // See https://www.rfc-editor.org/rfc/rfc6749#section-4.1
@@ -282,36 +323,6 @@ export const handleOAuthCallback = (strategy: OAuthType.Google | OAuthType.GitHu
       return res.redirect(`${APP_ORIGIN}/`);
     })(req, res);
   });
-
-export const refreshUserAccessToken = async (refreshToken: string) => {
-  const {payload} = verifyToken<RefreshTokenPayload>(refreshToken, {
-    secret: refreshTokenSignOptions.secret,
-  });
-  appAssert(payload, HTTP_UNAUTHORIZED, 'Invlaid refresh token!');
-
-  const session = await Session.findById(payload.sessionId);
-  appAssert(session, HTTP_UNAUTHORIZED, 'Session not found!');
-
-  const sessionExpiry = session.expiresAt.getTime();
-  const now = Date.now();
-  appAssert(sessionExpiry > now, HTTP_UNAUTHORIZED, 'Session expired!');
-
-  let newRefreshToken;
-
-  if (sessionExpiry - now <= daysFromNow(REFRESH_BUFFER_DAYS)) {
-    session.expiresAt = daysFromNow(REFRESH_TOKEN_DAYS);
-    await session.save();
-
-    newRefreshToken = signToken({sessionId: session._id}, refreshTokenSignOptions);
-  }
-
-  const accessToken = signToken({
-    userId: session.userId,
-    sessionId: session._id,
-  });
-
-  return {accessToken, newRefreshToken};
-};
 
 export const unlinkOAuthProvider = async (userId, provider: OAuthType) => {
   const user = await User.findById(userId);

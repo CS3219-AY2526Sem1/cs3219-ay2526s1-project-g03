@@ -12,6 +12,7 @@ import {
   changeProfilePic,
   changeUsernameOrEmail,
   deleteAccount,
+  deleteProfilePic,
   resendEmail,
   unlinkOAuthProvider,
 } from '../lib/api';
@@ -83,6 +84,14 @@ const ProfileSettings: React.FC = () => {
 
   const pictureMutation = useMutation({
     mutationFn: changeProfilePic,
+    onSuccess: () => {
+      setProfilePicture(null);
+      queryClient.invalidateQueries({queryKey: ['auth']});
+    },
+  });
+
+  const deletePictureMutation = useMutation({
+    mutationFn: deleteProfilePic,
     onSuccess: () => {
       setProfilePicture(null);
       queryClient.invalidateQueries({queryKey: ['auth']});
@@ -202,6 +211,15 @@ const ProfileSettings: React.FC = () => {
                   'Failed to update profile picture. Please try again.'}
               </div>
             )}
+            {deletePictureMutation.isSuccess && (
+              <div className="success-message">Profile picture removed successfully!</div>
+            )}
+            {deletePictureMutation.isError && (
+              <div className="error-message">
+                {deletePictureMutation.error?.message ||
+                  'Failed to remove profile picture. Please try again.'}
+              </div>
+            )}
             <div className="profile-picture-group">
               <img
                 src={
@@ -236,6 +254,21 @@ const ProfileSettings: React.FC = () => {
                     {pictureMutation.isPending ? 'Uploading...' : 'Upload Picture'}
                   </button>
                 )}
+                {(currentProfilePicture || profilePicture) && (
+                  <button
+                    type="button"
+                    className="delete-button"
+                    disabled={deletePictureMutation.isPending}
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to remove your profile picture?')) {
+                        setProfilePicture(null);
+                        deletePictureMutation.mutate();
+                      }
+                    }}
+                  >
+                    {deletePictureMutation.isPending ? 'Removing...' : 'Remove Picture'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -247,8 +280,11 @@ const ProfileSettings: React.FC = () => {
             )}
             {personalInfoMutation.isError && (
               <div className="error-message">
-                {personalInfoMutation.error?.message ||
-                  'Failed to update profile. Please try again.'}
+                {personalInfoMutation.error?.message
+                  ? personalInfoMutation.error.message
+                      .split('\n')
+                      .map((msg, idx) => <div key={idx}>{msg}</div>)
+                  : 'Failed to update profile. Please try again.'}
               </div>
             )}
             <div className="form-group">
@@ -324,8 +360,11 @@ const ProfileSettings: React.FC = () => {
             )}
             {usernameOrEmailMutation.isError && (
               <div className="error-message">
-                {usernameOrEmailMutation.error?.message ||
-                  'Failed to update profile. Please try again.'}
+                {usernameOrEmailMutation.error?.message
+                  ? usernameOrEmailMutation.error.message
+                      .split('\n')
+                      .map((msg, idx) => <div key={idx}>{msg}</div>)
+                  : 'Failed to update profile. Please try again.'}
               </div>
             )}
             <div className="form-group">
@@ -371,7 +410,11 @@ const ProfileSettings: React.FC = () => {
             )}
             {passwordMutation.isError && (
               <div className="error-message">
-                {passwordMutation.error?.message || 'Failed to update password. Please try again.'}
+                {passwordMutation.error?.message
+                  ? passwordMutation.error.message
+                      .split('\n')
+                      .map((msg, idx) => <div key={idx}>{msg}</div>)
+                  : 'Failed to update password. Please try again.'}
               </div>
             )}
 
@@ -488,7 +531,7 @@ const ProfileSettings: React.FC = () => {
                   <div>
                     <div className="account-name">GitHub</div>
                     <div className="account-status">
-                      {hasGithub ? `Connected (${user.gihubOAuthEmail})` : 'Not connected'}
+                      {hasGithub ? `Connected (${user.githubOAuthEmail})` : 'Not connected'}
                     </div>
                   </div>
                 </div>

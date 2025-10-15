@@ -23,6 +23,11 @@ export const changeProfilePic = async (formData: FormData) =>
       'Content-Type': 'multipart/form-data',
     },
   }).then(res => res.data);
+
+export const deleteProfilePic = async () => {
+  return API.patch('/user/profile/picture', {delete: 'true'});
+};
+
 export const changePassword = async data => API.patch('/user/profile/password', data);
 export const changePersonalInfo = async data => API.patch('/user/profile/personalinfo', data);
 

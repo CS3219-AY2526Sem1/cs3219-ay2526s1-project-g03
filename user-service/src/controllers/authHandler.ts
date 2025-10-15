@@ -1,16 +1,18 @@
+import passport from 'passport';
 import z from 'zod';
 import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
-import Session from '../models/session.ts';
+import OAuthType from '../constants/oAuthTypes.ts';
 import {
   createAccount,
   forgotPassword,
   handleOAuthCallback,
   loginUser,
   refreshUserAccessToken,
-  resendEmail,
   resetPassword,
+  sendVerificationEmail,
   verifyEmail,
 } from '../services/authService.ts';
+import {deleteSession} from '../services/sessionService.ts';
 import appAssert from '../utils/appAssert.ts';
 import catchErrors from '../utils/catchErrors.ts';
 import {
@@ -27,8 +29,6 @@ import {
   registerSchema,
   verificationCodeSchema,
 } from './userSchema.ts';
-import passport from 'passport';
-import OAuthType from '../constants/oAuthTypes.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -47,6 +47,9 @@ export const registerController = catchErrors(async (req, res) => {
   return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user);
 });
 
+/**
+ * Verifies verification code sent via email.
+ */
 export const verifyEmailController = catchErrors(async (req, res) => {
   const verificationCode = verificationCodeSchema.parse(req.params.code);
 
@@ -57,16 +60,22 @@ export const verifyEmailController = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Resends verification email.
+ */
 export const resendEmailController = catchErrors(async (req, res) => {
   const email = emailSchema.parse(req.body.email);
 
-  await resendEmail(email);
+  await sendVerificationEmail(email);
 
   return res.status(HTTP_OK).json({
     message: 'Verification email resent!',
   });
 });
 
+/**
+ * Sends a forgot password email.
+ */
 export const forgotPasswordController = catchErrors(async (req, res) => {
   const email = emailSchema.parse(req.body.email); // OK to send invalid email errors
 
@@ -77,6 +86,9 @@ export const forgotPasswordController = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Resets user password.
+ */
 export const resetPasswordController = catchErrors(async (req, res) => {
   4;
   const request = passwordResetSchema.parse(req.body);
@@ -88,6 +100,9 @@ export const resetPasswordController = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Logs user into application.
+ */
 export const loginController = catchErrors(async (req, res) => {
   const request = loginSchema.parse({
     ...req.body,
@@ -106,12 +121,15 @@ export const loginController = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Logs user out.
+ */
 export const logoutController = catchErrors(async (req, res) => {
   const accessToken = req.cookies.accessToken;
   const {payload, _} = verifyToken(accessToken);
 
   if (payload) {
-    await Session.findByIdAndDelete(payload.sessionId);
+    await deleteSession(payload.sessionId);
   }
 
   return clearAuthCookies(res).status(HTTP_OK).json({
@@ -119,6 +137,9 @@ export const logoutController = catchErrors(async (req, res) => {
   });
 });
 
+/**
+ * Refreshes user tokens.
+ */
 export const refreshController = catchErrors(async (req, res) => {
   const {refreshToken} = req.cookies;
   appAssert(refreshToken, HTTP_UNAUTHORIZED, 'Missing refresh token!');
@@ -134,16 +155,50 @@ export const refreshController = catchErrors(async (req, res) => {
   });
 });
 
-export const googleAuthController = passport.authenticate(OAuthType.Google, {
-  session: false,
-  scope: ['profile', 'email'],
-});
+/**
+ * Initiates Google OAuth authentication flow.
+ * Redirect's user to Google's consent screen to authorize access to their profile and email.
+ */
+export const googleAuthController = (req, res, next) => {
+  const state = req.query.link === 'true' ? JSON.stringify({link: true}) : undefined;
 
+  passport.authenticate(OAuthType.Google, {
+    session: false,
+    scope: ['profile', 'email'],
+    state: state,
+  })(req, res, next);
+};
+
+/**
+ * Handles the OAuth callback after user authorizes the application on Google.
+ * Processes the authorization code, retrieves user prfile and either
+ *   Creates a new user account.
+ *   Links to an existing user.
+ *   Logs in an existing user.
+ * On failure, redirects the user with error query parameter.
+ */
 export const googleCallbackController = handleOAuthCallback(OAuthType.Google);
 
-export const githubAuthController = passport.authenticate(OAuthType.GitHub, {
-  session: false,
-  scope: ['read:user', 'user:email'],
-});
+/**
+ * Initiates GitHub OAuth authentication flow.
+ * Redirect's user to GitHub's consent screen to authorize access to their profile and email.
+ */
+export const githubAuthController = (req, res, next) => {
+  const state = req.query.link === 'true' ? JSON.stringify({link: true}) : undefined;
 
+  passport.authenticate(OAuthType.GitHub, {
+    session: false,
+    scope: ['read:user', 'user:email'],
+    state: state,
+  })(req, res, next);
+};
+
+/**
+ * Handles the OAuth callback after user authorizes the application on GitHub.
+ * Processes the authorization code, retrieves user prfile and either
+ *   Creates a new user account.
+ *   Links to an existing user.
+ *   Logs in an existing user.
+ * On failure, redirects the user with error query parameter.
+ */
 export const githubCallbackController = handleOAuthCallback(OAuthType.GitHub);

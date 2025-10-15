@@ -32,6 +32,7 @@ export const OCCUPATIONS = [
   'sales',
   'science',
   'social-services',
+  'student',
   'sports-recreation',
   'sustainability',
   'tax',
