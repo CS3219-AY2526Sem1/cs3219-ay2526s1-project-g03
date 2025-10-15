@@ -171,6 +171,9 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
       recentlyRemovedRef.current.clear();
 
       setIsReady(false);
+      if (provider.awareness) {
+        provider.awareness.setLocalState(null);
+      }
       provider.destroy(); //disconnect the WebSocket
       providerRef.current = null;
       ytextRef.current = null;

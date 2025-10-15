@@ -8,12 +8,12 @@ import queryClient from './config/queryClient';
 import '../styles/index.css';
 
 createRoot(document.getElementById('root')!).render(
-  // <StrictMode>
+  <StrictMode>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <App />
         <ReactQueryDevtools position="bottom-right" initialIsOpen={false} />
       </BrowserRouter>
     </QueryClientProvider>
-  // </StrictMode>
+  </StrictMode>
 );
