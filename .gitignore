@@ -1,11 +1,14 @@
 # Node
 node_modules/
 **/node_modules/
-.env
+
 
 # TypeScript build output
 **/dist/
 
+
+.env.test
+coverage/
 .partykit
 .env.test
 # Dependencies

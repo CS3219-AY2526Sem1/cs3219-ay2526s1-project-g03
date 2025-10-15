@@ -1,12 +1,9 @@
-import {BrowserRouter, Route, Routes} from 'react-router-dom';
+import {Route, Routes} from 'react-router-dom';
+import Home from './pages/home';
 import Register from './pages/register';
 import Input from './collaboration/pages/Input';
 import {CollabPage} from './collaboration/pages/CollabPage';
 import { Toaster } from 'react-hot-toast';
-
-export function Home() {
-  return <div>Home</div>;
-}
 
 function App() {
   return (

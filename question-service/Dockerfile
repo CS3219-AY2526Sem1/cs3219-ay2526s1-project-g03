@@ -1,5 +1,5 @@
 # Dockerfile for backend services (user-service, question-service, matching-service, collaboration-service)
-FROM node:20-alpine
+FROM node:18-alpine AS development
 
 # Set working directory
 WORKDIR /app
