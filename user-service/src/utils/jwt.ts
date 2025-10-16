@@ -1,19 +1,20 @@
 import type {SignOptions, VerifyOptions} from 'jsonwebtoken';
-import jwt from 'jsonwebtoken';
+import * as jwt from 'jsonwebtoken';
 import {JWT_REFRESH_SECRET, JWT_SECRET} from '../constants/env';
-import {ACCESS_TOKEN_MINS, REFRESH_TOKEN_DAYS} from '../constants/expirables.ts';
-import type {SessionModel} from '../models/session';
-import type {User} from '../models/user';
+import {ACCESS_TOKEN_MINS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
+import JwtAudience from '../constants/jwtAudience';
+import {ISession} from '../models/session';
+import {IUser} from '../models/user';
 
 // Adapted from https://github.com/nikitapryymak/mern-auth-jwt/blob/youtube/backend/src/utils/jwt.ts
 
 export type RefreshTokenPayload = {
-  sessionId: SessionModel['_id'];
+  sessionId: ISession['_id'];
 };
 
 export type AccessTokenPayload = {
-  userId: User['_id'];
-  sessionId: SessionModel['_id'];
+  userId: IUser['_id'];
+  sessionId: ISession['_id'];
 };
 
 type SignOptionsAndSecret = SignOptions & {
@@ -21,7 +22,7 @@ type SignOptionsAndSecret = SignOptions & {
 };
 
 const defaults: SignOptions = {
-  audience: ['user'],
+  audience: [JwtAudience.User],
 };
 
 export const refreshTokenSignOptions: SignOptionsAndSecret = {
@@ -72,7 +73,7 @@ export const verifyToken = <TPayload extends object = AccessTokenPayload>(
     const payload = jwt.verify(token, secret, {
       ...defaults,
       ...verifyOptions,
-    }) as TPayload;
+    } as VerifyOptions) as TPayload;
     return {
       payload,
     };

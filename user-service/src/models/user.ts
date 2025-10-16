@@ -36,7 +36,7 @@ import {hashPassword, needsRehash, verifyPassword} from '../utils/pbkdf2';
  * @property createdAt Timestamp when the user account was created.
  * @property updatedAt Timestamp when the user account was last updated.
  */
-export interface IUser {
+export interface IUser extends mongoose.Document {
   username: string;
   email: string;
   verified: boolean;

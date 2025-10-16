@@ -9,7 +9,7 @@ import {daysFromNow} from '../utils/date';
  * @property createdAt Timestamp when the session was created.
  * @property expiresAt Timestamp when the session expires.
  */
-export interface ISession {
+export interface ISession extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
   createdAt: Date;
   expiresAt: Date;

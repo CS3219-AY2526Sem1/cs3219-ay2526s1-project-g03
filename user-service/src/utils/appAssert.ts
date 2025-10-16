@@ -1,4 +1,4 @@
-import assert from 'node:assert';
+import * as assert from 'node:assert';
 import type {HttpStatusCode} from '../constants/httpStatus';
 import AppError from './appError';
 

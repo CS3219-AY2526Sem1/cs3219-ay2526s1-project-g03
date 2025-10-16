@@ -1,5 +1,5 @@
-import dotenv from 'dotenv';
-import path from 'path';
+import * as dotenv from 'dotenv';
+import * as path from 'path';
 import {fileURLToPath} from 'url';
 
 // Solution adapted from:

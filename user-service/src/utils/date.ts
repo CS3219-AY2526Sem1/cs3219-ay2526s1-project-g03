@@ -14,7 +14,7 @@ export const secondsFromNow = (seconds: number) => new Date(Date.now() + seconds
 /**
  * Calculates a new date based on a specified number of minutes in the future.
  *
- * @param seconds Number of minutes from now.
+ * @param mins Number of minutes from now.
  * @returns A date object representing the future time.
  */
 export const minutesFromNow = (mins: number) =>
@@ -23,7 +23,7 @@ export const minutesFromNow = (mins: number) =>
 /**
  * Calculates a new date based on a specified number of hours in the future.
  *
- * @param seconds Number of hours from now.
+ * @param hours Number of hours from now.
  * @returns A date object representing the future time.
  */
 export const hoursFromNow = (hours: number) =>
@@ -32,26 +32,25 @@ export const hoursFromNow = (hours: number) =>
 /**
  * Calculates a new date based on a specified number of days in the future.
  *
- * @param seconds Number of days from now.
+ * @param days Number of days from now.
  * @returns A date object representing the future time.
  */
 export const daysFromNow = (days: number) =>
   new Date(Date.now() + days * HOURS * MINUTES * SECONDS * MILLISECONDS);
 
 /**
+ * Syntactic sugar.
  * Calculates a new date based on a specified number of hours in the past.
  *
- * @param seconds Number of hours ago.
+ * @param hours Number of hours ago.
  * @returns A date object representing the past time.
  */
-export const hoursAgo = (hours: number) =>
-  new Date(Date.now() - hours * MINUTES * SECONDS * MILLISECONDS);
+export const hoursAgo = (hours: number) => hoursFromNow(-hours);
 
 /**
  * Calculates a new date based on a specified number of days in the past.
  *
- * @param seconds Number of days ago.
+ * @param days Number of days ago.
  * @returns A date object representing the past time.
  */
-export const daysAgo = (days: number) =>
-  new Date(Date.now() - days * HOURS * MINUTES * SECONDS * MILLISECONDS);
+export const daysAgo = (days: number) => daysFromNow(-days);

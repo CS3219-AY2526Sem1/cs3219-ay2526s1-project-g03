@@ -142,16 +142,12 @@ export const passwordResetSchema = z.object({
 export const changePersonalInfoSchema = z.object({
   firstName: nameSchema,
   lastName: nameSchema,
-  occupation: z
-    .string()
-    .refine(val => OCCUPATIONS.includes(val as Occupation), {
-      message: 'Please select an occupation!',
-    }),
-  areaOfStudy: z
-    .string()
-    .refine(val => AREAS_OF_STUDY.includes(val as AreaOfStudy), {
-      message: 'Please select an area of study!',
-    }),
+  occupation: z.string().refine(val => OCCUPATIONS.includes(val as Occupation), {
+    message: 'Please select an occupation!',
+  }),
+  areaOfStudy: z.string().refine(val => AREAS_OF_STUDY.includes(val as AreaOfStudy), {
+    message: 'Please select an area of study!',
+  }),
 });
 
 export const changeRoleSchema = z.object({

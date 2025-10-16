@@ -224,6 +224,7 @@ const config: Config = {
         '<rootDir>/question-service',
         '<rootDir>/user-service',
       ],
+      setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
     },
   ],
 };
