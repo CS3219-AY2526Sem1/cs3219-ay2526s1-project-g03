@@ -133,6 +133,7 @@ services:
     volumes:
       - ./collaboration-service:/app
       - /app/node_modules
+      - /app/.partykit
     networks:
       - app-network
 
