@@ -13,6 +13,7 @@ import OAuthType from '../constants/oAuthTypes.ts';
 import {MAX_USERNAME_LEN} from '../constants/userParams.ts';
 import User from '../models/user';
 import {verifyToken} from '../utils/jwt.ts';
+import OAuthLink from '../models/oAuthLink.ts';
 
 /**
  * Sanitize username to fit PeerPrep requirements.
@@ -72,6 +73,32 @@ interface IOAuthProfileData {
  */
 const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
   try {
+    if (req.query.state) {
+      try {
+        const state = JSON.parse(req.query.state);
+
+        if (state.link && state.linkId) {
+          const oAuthLink = await OAuthLink.findById(state.linkId);
+
+          if (!oAuthLink) {
+            return cb(new Error('Linking session expired. Please try again.'), undefined);
+          }
+
+          // Check if session is expired
+          if (new Date() > oAuthLink.expiresAt) {
+            await oAuthLink.deleteOne();
+            return cb(new Error('Linking session expired. Please try again.'), undefined);
+          }
+
+          req.authenticatedUserId = oAuthLink.userId;
+
+          await oAuthLink.deleteOne();
+        }
+      } catch (e) {
+        return cb(new Error('Invalid linking request. Please try again.'), undefined);
+      }
+    }
+
     const {provider, oAuthId, oAuthEmail, displayName, firstName, lastName, profilePicture} = data;
 
     const oAuthIdField = `${provider}OAuthId`;
@@ -92,11 +119,12 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
     }
 
     const existingAccessToken = req.cookies?.accessToken;
-    if (isLinkingAttempt || existingAccessToken) {
-      let userId;
+    if (isLinkingAttempt || existingAccessToken || req.authenticatedUserId) {
+      let userId = req.authenticatedUserId; // From OAuthLink session
       let payload;
 
-      if (existingAccessToken) {
+      // Only check cookies if we don't already have userId from linking session
+      if (!userId && existingAccessToken) {
         const {payload: tmpPayload} = verifyToken(existingAccessToken);
         if (tmpPayload && tmpPayload.userId) {
           userId = tmpPayload.userId;
@@ -112,7 +140,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       if (userId) {
         const existingUser = await User.findOne({
           [oAuthIdField]: oAuthId,
-          _id: {$ne: payload.userId},
+          _id: {$ne: userId},
         });
 
         if (existingUser) {

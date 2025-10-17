@@ -9,3 +9,5 @@ export const REFRESH_BUFFER_DAYS = 1;
 export const ACCESS_TOKEN_MINS = 15;
 
 export const ACCOUNT_DELETION_DAYS = 30;
+
+export const OAUTH_LINK_MINS = 5;

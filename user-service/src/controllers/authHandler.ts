@@ -29,6 +29,8 @@ import {
   registerSchema,
   verificationCodeSchema,
 } from './userSchema.ts';
+import OAuthLink from '../models/oAuthLink.ts';
+import {APP_ORIGIN} from '../constants/env.ts';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -159,8 +161,29 @@ export const refreshController = catchErrors(async (req, res) => {
  * Initiates Google OAuth authentication flow.
  * Redirect's user to Google's consent screen to authorize access to their profile and email.
  */
-export const googleAuthController = (req, res, next) => {
-  const state = req.query.link === 'true' ? JSON.stringify({link: true}) : undefined;
+export const googleAuthController = async (req, res, next) => {
+  let state;
+  if (req.query.link === 'true') {
+    const accessToken = req.cookies?.accessToken;
+    if (!accessToken) {
+      return res.redirect(`${APP_ORIGIN}/profile/settings?error=session_expired`);
+    }
+
+    const {payload} = verifyToken(accessToken);
+    if (!payload || !payload.userId) {
+      return res.redirect(`${APP_ORIGIN}/profile/settings?error=session_expired`);
+    }
+
+    // Create temporary linking session (5 min expiry)
+    const oAuthLink = await OAuthLink.create({
+      userId: payload.userId,
+    });
+
+    state = JSON.stringify({
+      link: true,
+      linkId: oAuthLink._id.toString(),
+    });
+  }
 
   passport.authenticate(OAuthType.Google, {
     session: false,
@@ -183,8 +206,29 @@ export const googleCallbackController = handleOAuthCallback(OAuthType.Google);
  * Initiates GitHub OAuth authentication flow.
  * Redirect's user to GitHub's consent screen to authorize access to their profile and email.
  */
-export const githubAuthController = (req, res, next) => {
-  const state = req.query.link === 'true' ? JSON.stringify({link: true}) : undefined;
+export const githubAuthController = async (req, res, next) => {
+  let state;
+  if (req.query.link === 'true') {
+    const accessToken = req.cookies?.accessToken;
+    if (!accessToken) {
+      return res.redirect(`${APP_ORIGIN}/profile/settings?error=session_expired`);
+    }
+
+    const {payload} = verifyToken(accessToken);
+    if (!payload || !payload.userId) {
+      return res.redirect(`${APP_ORIGIN}/profile/settings?error=session_expired`);
+    }
+
+    // Create temporary linking session (5 min expiry)
+    const oAuthLink = await OAuthLink.create({
+      userId: payload.userId,
+    });
+
+    state = JSON.stringify({
+      link: true,
+      linkId: oAuthLink._id.toString(),
+    });
+  }
 
   passport.authenticate(OAuthType.GitHub, {
     session: false,
