@@ -225,6 +225,16 @@ const config: Config = {
         '<rootDir>/user-service',
       ],
       setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
+
+      transform: {
+        '^.+\\.tsx?$': ['ts-jest', {
+          tsconfig: {
+            esModuleInterop: true,
+            allowSyntheticDefaultImports: true,
+            module: 'commonjs'  // Add this line
+          }
+        }]
+      }
     },
   ],
 };

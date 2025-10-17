@@ -1,10 +1,10 @@
 import type {SignOptions, VerifyOptions} from 'jsonwebtoken';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import {JWT_REFRESH_SECRET, JWT_SECRET} from '../constants/env';
 import {ACCESS_TOKEN_MINS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
 import JwtAudience from '../constants/jwtAudience';
-import {ISession} from '../models/session';
-import {IUser} from '../models/user';
+import type {ISession} from '../models/session';
+import type {IUser} from '../models/user';
 
 // Adapted from https://github.com/nikitapryymak/mern-auth-jwt/blob/youtube/backend/src/utils/jwt.ts
 

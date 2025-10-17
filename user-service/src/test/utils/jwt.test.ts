@@ -1,4 +1,4 @@
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import {JWT_REFRESH_SECRET, JWT_SECRET} from '../../constants/env';
 import {ACCESS_TOKEN_MINS, REFRESH_TOKEN_DAYS} from '../../constants/expirables';
 import {

@@ -1,4 +1,4 @@
-import * as crypto from 'crypto';
+import crypto from 'crypto';
 import {ADMIN_EMAIL, ADMIN_USERNAME} from '../constants/env.ts';
 import {HTTP_CONFLICT, HTTP_FORBIDDEN, HTTP_NOT_FOUND} from '../constants/httpStatus.ts';
 import UserRoleTypes from '../constants/userRoles.ts';
