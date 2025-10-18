@@ -1,7 +1,7 @@
 import passport from 'passport';
 import z from 'zod';
-import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
+import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import OAuthType from '../constants/oAuthTypes';
 import {
   createAccount,
   forgotPassword,
@@ -11,26 +11,26 @@ import {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
-} from '../services/authService.ts';
-import {deleteSession} from '../services/sessionService.ts';
-import appAssert from '../utils/appAssert.ts';
-import catchErrors from '../utils/catchErrors.ts';
+} from '../services/authService';
+import appAssert from '../utils/appAssert';
+import catchErrors from '../utils/catchErrors';
 import {
   clearAuthCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthCookies,
-} from '../utils/cookies.ts';
-import {verifyToken} from '../utils/jwt.ts';
+} from '../utils/cookies';
+import {verifyToken} from '../utils/jwt';
 import {
   emailSchema,
   loginSchema,
   passwordResetSchema,
   registerSchema,
   verificationCodeSchema,
-} from './userSchema.ts';
-import OAuthLink from '../models/oAuthLink.ts';
-import {APP_ORIGIN} from '../constants/env.ts';
+} from './userSchema';
+import OAuthLink from '../models/oAuthLink';
+import {APP_ORIGIN} from '../constants/env';
+import Session from '../models/session';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -131,7 +131,7 @@ export const logoutController = catchErrors(async (req, res) => {
   const {payload, _} = verifyToken(accessToken);
 
   if (payload) {
-    await deleteSession(payload.sessionId);
+    await Session.findByIdAndDelete(payload.sessionId);
   }
 
   return clearAuthCookies(res).status(HTTP_OK).json({

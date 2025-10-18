@@ -44,7 +44,7 @@ describe('utils/jwt', () => {
       const decoded = jwt.decode(token) as any;
       expect(decoded.userId).toBe(mockUserId);
       expect(decoded.sessionId).toBe(mockSessionId);
-      expect(decoded.aud).toEqual(['user']);
+      expect(decoded.aud).toEqual(['pp-user-service']);
     });
 
     it('should sign a refresh token', () => {
@@ -58,7 +58,7 @@ describe('utils/jwt', () => {
 
       const decoded = jwt.decode(token) as any;
       expect(decoded.sessionId).toBe(mockSessionId);
-      expect(decoded.aud).toEqual(['user']);
+      expect(decoded.aud).toEqual(['pp-user-service']);
     });
 
     it('should use correct expiration for access token', () => {
@@ -158,7 +158,7 @@ describe('utils/jwt', () => {
 
       const token = jwt.sign(payload, JWT_SECRET, {
         expiresIn: '0s',
-        audience: ['user'],
+        audience: ['pp-user-service'],
       });
 
       // Delay to ensure expiry.
@@ -179,7 +179,7 @@ describe('utils/jwt', () => {
 
       // Create token with different audience
       const token = jwt.sign(payload, JWT_SECRET, {
-        audience: ['admin'],
+        audience: ['invalid'],
       });
 
       const result = verifyToken(token);

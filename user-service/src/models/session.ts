@@ -21,11 +21,13 @@ const sessionSchema = new mongoose.Schema<ISession, SessionModel, {}>({
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    index: true,
+    required: true,
   },
-  createdAt: {type: Date, required: true, default: Date.now},
-  expiresAt: {type: Date, required: true, default: daysFromNow(REFRESH_TOKEN_DAYS)},
+  createdAt: {type: Date, required: true, default: () => Date.now()},
+  expiresAt: {type: Date, required: true, default: () => daysFromNow(REFRESH_TOKEN_DAYS)},
 });
+
+sessionSchema.index({userId: 1}, {unique: true});
 
 const Session = mongoose.model<ISession, SessionModel>('Session', sessionSchema);
 

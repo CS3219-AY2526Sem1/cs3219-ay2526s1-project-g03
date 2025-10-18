@@ -1,7 +1,7 @@
-import {HTTP_BAD_REQUEST, HTTP_OK} from '../constants/httpStatus.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
-import {unlinkOAuthProvider} from '../services/authService.ts';
-import {deleteUserSessions} from '../services/sessionService.ts';
+import {HTTP_BAD_REQUEST, HTTP_OK} from '../constants/httpStatus';
+import OAuthType from '../constants/oAuthTypes';
+import Session from '../models/session';
+import {unlinkOAuthProvider} from '../services/authService';
 import {
   findUserById,
   markAccountFordeletion,
@@ -9,18 +9,18 @@ import {
   updatePersonalInfo,
   updateProfilePicture,
   updateUsernameOrEmail,
-} from '../services/userService.ts';
-import appAssert from '../utils/appAssert.ts';
-import AppError from '../utils/appError.ts';
-import catchErrors from '../utils/catchErrors.ts';
-import {clearAuthCookies} from '../utils/cookies.ts';
-import {processProfilePicture} from '../utils/imageProcessor.ts';
+} from '../services/userService';
+import appAssert from '../utils/appAssert';
+import AppError from '../utils/appError';
+import catchErrors from '../utils/catchErrors';
+import {clearAuthCookies} from '../utils/cookies';
+import {processProfilePicture} from '../utils/imageProcessor';
 import {
   changePersonalInfoSchema,
   changePwSchema,
   changeUsernameOrEmailSchema,
   SetPwSchema,
-} from './userSchema.ts';
+} from './userSchema';
 
 /**
  * Gets existing user.
@@ -107,7 +107,7 @@ export const markAccountForDeletionController = catchErrors(async (req, res) => 
   appAssert(password, HTTP_BAD_REQUEST, 'Password is required!');
   const {days} = await markAccountFordeletion(req.userId, password);
 
-  await deleteUserSessions(req.userId);
+  await Session.deleteMany({userId: req.userId});
 
   return clearAuthCookies(res)
     .status(HTTP_OK)

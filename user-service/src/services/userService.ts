@@ -1,9 +1,9 @@
-import {ACCOUNT_DELETION_DAYS} from '../constants/expirables.ts';
-import {HTTP_CONFLICT, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
-import User from '../models/user.ts';
-import appAssert from '../utils/appAssert.ts';
-import {daysFromNow} from '../utils/date.ts';
-import {sendVerificationEmail} from './authService.ts';
+import {ACCOUNT_DELETION_DAYS} from '../constants/expirables';
+import {HTTP_CONFLICT, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import User from '../models/user';
+import appAssert from '../utils/appAssert';
+import {daysFromNow} from '../utils/date';
+import {sendVerificationEmail} from './authService';
 
 /**
  * Finds an existing user by their ID.
@@ -134,7 +134,7 @@ export const updatePassword = async (
     appAssert(isValid, HTTP_UNAUTHORIZED, 'Current password is incorrect');
   }
 
-  user.password = newPassword;
+  (user as any).password = newPassword;
   await user.save();
   return user;
 };

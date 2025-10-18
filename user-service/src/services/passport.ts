@@ -8,12 +8,12 @@ import {
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
 } from '../constants/env';
-import {GITHUB_AUTH_REDIR_URI} from '../constants/env.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
-import {MAX_USERNAME_LEN} from '../constants/userParams.ts';
+import {GITHUB_AUTH_REDIR_URI} from '../constants/env';
+import OAuthType from '../constants/oAuthTypes';
+import {MAX_USERNAME_LEN} from '../constants/userParams';
 import User from '../models/user';
-import {verifyToken} from '../utils/jwt.ts';
-import OAuthLink from '../models/oAuthLink.ts';
+import {verifyToken} from '../utils/jwt';
+import OAuthLink from '../models/oAuthLink';
 
 /**
  * Sanitize username to fit PeerPrep requirements.
@@ -21,7 +21,7 @@ import OAuthLink from '../models/oAuthLink.ts';
  * @param name Existing username provided by OAuth
  * @returns Username containing only characters accepted by `usernameSchema`.
  */
-const sanitizeUsername = (name: string): string => {
+export const sanitizeUsername = (name: string): string => {
   return name.replace(/[^a-zA-Z0-9_]/g, '_');
 };
 
@@ -32,7 +32,7 @@ const sanitizeUsername = (name: string): string => {
  * @param baseUsername Existing username provided from OAuth.
  * @returns Valid unique username completely adhering to `usernameSchema`.
  */
-const generateUniqueUsername = async (baseUsername: string): Promise<string> => {
+export const generateUniqueUsername = async (baseUsername: string): Promise<string> => {
   const baseLen = baseUsername.length;
   let username = baseUsername;
   let truncBase = baseUsername;
@@ -48,6 +48,7 @@ const generateUniqueUsername = async (baseUsername: string): Promise<string> => 
       truncBase = baseUsername.slice(0, MAX_USERNAME_LEN - suffix.length);
     }
     username = truncBase + suffix;
+    counter += 1;
   }
 
   return username;
@@ -163,7 +164,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       // OAuth profile picture is used if none are available.
       if (!user.profilePicture && profilePicture) {
         user.profilePicture = profilePicture;
-        user.profilePictureScoure = provider;
+        user.profilePictureSource = provider;
       }
 
       await user.save();
@@ -201,7 +202,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
  * @param profile Raw profile data from OAuth provider.
  * @returns Normalized profile data structure.
  */
-const extractOAuthProfile = (
+export const extractOAuthProfile = (
   provider: OAuthType.Google | OAuthType.GitHub,
   profile: any
 ): IOAuthProfileData => {
@@ -254,6 +255,7 @@ const createOAuthStrategy = (
 };
 
 passport.use(
+  OAuthType.Google,
   createOAuthStrategy(OAuthType.Google, GoogleStrategy, {
     clientID: GOOGLE_CLIENT_ID,
     clientSecret: GOOGLE_CLIENT_SECRET,
@@ -263,6 +265,7 @@ passport.use(
 );
 
 passport.use(
+  OAuthType.GitHub,
   createOAuthStrategy(OAuthType.GitHub, GitHubStrategy, {
     clientID: GITHUB_CLIENT_ID,
     clientSecret: GITHUB_CLIENT_SECRET,
