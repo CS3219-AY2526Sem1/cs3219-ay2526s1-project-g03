@@ -1,5 +1,5 @@
 // src/codemirroreditor.tsx
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useCallback} from 'react';
 import YPartyKitProvider from 'y-partykit/provider';
 import * as Y from 'yjs';
 import toast from 'react-hot-toast';
@@ -81,9 +81,19 @@ const handleUsersRemoved = (
   });
 };
 
+interface CollabEditorHook {
+  provider: YPartyKitProvider | null;
+  ytext: Y.Text | null;
+  awareness: any;
+  isReady: boolean;
+  languageConfig: string; // current selected language
+  setSharedLanguage: (newLang: string) => void;
+}
 
-export default function useCollabEditor({roomId}: {roomId: string}) {
+export default function useCollabEditor({roomId}: {roomId: string}): CollabEditorHook {
   const [isReady, setIsReady] = useState<boolean>(false);
+  const [languageConfig, setLanguageConfig] = useState<string>('python'); // Default to Python
+  const configMapRef = useRef<Y.Map<string> | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
   const providerRef = useRef<YPartyKitProvider | null>(null);
   const awarenessRef = useRef<any>(null);
@@ -91,7 +101,12 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
   const userNamesRef = useRef<Map<number, string>>(new Map());
   const recentlyRemovedRef = useRef<Set<number>>(new Set());
   
-  
+  const setSharedLanguage = useCallback((newLang: string) => {
+    if (configMapRef.current) {
+      configMapRef.current.set('language', newLang);
+    }
+  }, []);
+
   useEffect(() => {
     console.log('useEffect RUNNING for room:', roomId);
     
@@ -113,6 +128,23 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
     const ytext = provider.doc.getText('codemirror');
     ytextRef.current = ytext;
     
+    const configMap = provider.doc.getMap<string>('config');
+    configMapRef.current = configMap;
+
+    if (!configMap.get('language')) {
+      console.log('Setting default language: python');
+      configMap.set('language', 'python');
+    }
+    setLanguageConfig(configMap.get('language') || 'python');
+
+    const configMapHandler = () => {
+      const newLang = configMap.get('language') || 'python';
+      setLanguageConfig(newLang);
+      console.log('Shared language updated to:', newLang);
+    };
+
+    configMap.observe(configMapHandler);
+
     // Sets up user awareness
     const currUserId = provider.awareness.clientID;
     const username = getRandomName();
@@ -166,6 +198,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
     return () => {
       console.log('Cleanup! destroying provider for room:', roomId);
 
+      configMap.unobserve(configMapHandler);
       provider.awareness.off('change', awarenessChangeHandler);
       userNamesRef.current.clear();
       recentlyRemovedRef.current.clear();
@@ -178,13 +211,16 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
       providerRef.current = null;
       ytextRef.current = null;
       awarenessRef.current = null;
+      configMapRef.current = null;
     };
-  }, [roomId]);
+  }, [roomId, setSharedLanguage]);
 
   return {
     provider: providerRef.current,
     ytext: ytextRef.current,
     awareness: awarenessRef.current,
     isReady,
+    languageConfig,
+    setSharedLanguage,
   };
 }
