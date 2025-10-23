@@ -1,0 +1,102 @@
+.user-menu-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 3rem;
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+}
+
+.header-logo {
+  width: 250px;
+  height: auto;
+}
+
+.header-right {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+}
+
+.icon-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.icon-button:hover {
+  opacity: 0.7;
+}
+
+.icon-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.notification-icon,
+.exit-icon {
+  width: 38px;
+  height: 38px;
+}
+
+.user-profile-icon {
+  width: 70px;
+  height: 70px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 0px;
+}
+
+.username-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: #303030;
+  margin: 0.5rem;
+}
+
+.settings-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  border: 3px solid #c0c0c0;
+  background: #f8f8f8;
+  color: #303030;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  transition: background 0.2s;
+}
+
+.settings-link:hover {
+  background-color: #efefef;
+  border-color: #a0a0a0;
+}
+
+.settings-text {
+  font-size: 20px;
+  font-weight: 600;
+  color: #303030;
+}
+
+.settings-link .icon-button {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.settings-icon {
+  width: 40px;
+  height: 40px;
+}
