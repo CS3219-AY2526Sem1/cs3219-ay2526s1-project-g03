@@ -1,6 +1,6 @@
 import {z, type ZodRawShape} from 'zod';
-import {AREAS_OF_STUDY} from '../constants/areaOfStudy.ts';
-import {OCCUPATIONS} from '../constants/occupations.ts';
+import {AREAS_OF_STUDY} from '../constants/areaOfStudy';
+import {OCCUPATIONS} from '../constants/occupations';
 import {
   MAX_PW_LEN,
   MAX_USERNAME_LEN,
@@ -8,8 +8,8 @@ import {
   MIN_USERNAME_LEN,
   MONGO_MAX_ID_LEN,
   MONGO_MIN_ID_LEN,
-} from '../constants/userParams.ts';
-import UserRoleTypes from '../constants/userRoles.ts';
+} from '../constants/userParams';
+import UserRoleTypes from '../constants/userRoles';
 
 // Source: https://zod.dev/api
 

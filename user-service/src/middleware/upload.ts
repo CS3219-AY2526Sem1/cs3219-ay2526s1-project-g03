@@ -1,7 +1,7 @@
 import multer from 'multer';
-import {HTTP_BAD_REQUEST} from '../constants/httpStatus.ts';
-import {PROFILE_PIC_MAX_SIZE} from '../constants/userParams.ts';
-import AppError from '../utils/appError.ts';
+import {HTTP_BAD_REQUEST} from '../constants/httpStatus';
+import {PROFILE_PIC_MAX_SIZE} from '../constants/userParams';
+import AppError from '../utils/appError';
 
 const storage = multer.memoryStorage();
 

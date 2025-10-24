@@ -1,9 +1,9 @@
-import {REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables.ts';
-import {HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
-import Session from '../models/session.ts';
-import appAssert from '../utils/appAssert.ts';
-import {daysFromNow} from '../utils/date.ts';
-import {refreshTokenSignOptions, signToken, type RefreshTokenPayload} from '../utils/jwt.ts';
+import {REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../constants/expirables';
+import {HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import Session from '../models/session';
+import appAssert from '../utils/appAssert';
+import {daysFromNow} from '../utils/date';
+import {refreshTokenSignOptions, signToken, type RefreshTokenPayload} from '../utils/jwt';
 
 /**
  * Creates a user session.
@@ -12,27 +12,22 @@ import {refreshTokenSignOptions, signToken, type RefreshTokenPayload} from '../u
  * @returns a Session object.
  */
 export const createSession = async (userId: string) => {
-  await Session.deleteMany({userId});
-  const session = await Session.create({userId});
+  const session = await Session.findOneAndUpdate(
+    {userId},
+    {
+      $set: {
+        userId,
+        createdAt: new Date(),
+        expiresAt: daysFromNow(REFRESH_TOKEN_DAYS),
+      },
+    },
+    {
+      upsert: true,
+      new: true,
+      setDefaultsOnInsert: true,
+    }
+  );
   return session;
-};
-
-/**
- * Deletes all user sessions.
- *
- * @param userId Expected ID of user.
- */
-export const deleteUserSessions = async (userId: string) => {
-  await Session.deleteMany({userId});
-};
-
-/**
- * Deletes a particular session.
- *
- * @param sessionId ID of session to be deleted.
- */
-export const deleteSession = async (sessionId: string) => {
-  await Session.findByIdAndDelete(sessionId);
 };
 
 /**
@@ -43,7 +38,6 @@ export const deleteSession = async (sessionId: string) => {
  * @returns
  */
 export const generateTokensForSession = (userId: string, sessionId: string) => {
-  const sessionInfo: RefreshTokenPayload = {sessionId};
   const refreshToken = signToken({sessionId}, refreshTokenSignOptions);
   const accessToken = signToken({userId, sessionId});
   return {accessToken, refreshToken};

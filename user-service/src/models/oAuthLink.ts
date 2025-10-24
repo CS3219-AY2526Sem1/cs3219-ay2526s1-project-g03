@@ -24,8 +24,8 @@ const oAuthSchema = new mongoose.Schema<IOAuth, OAuthModel, {}>({
     required: true,
     index: true,
   },
-  createdAt: {type: Date, required: true, default: Date.now},
-  expiresAt: {type: Date, required: true, default: minutesFromNow(OAUTH_LINK_MINS)},
+  createdAt: {type: Date, required: true, default: () => Date.now()},
+  expiresAt: {type: Date, required: true, default: () => minutesFromNow(OAUTH_LINK_MINS)},
 });
 
 const OAuthLink = mongoose.model<IOAuth, OAuthModel>('OAuthLink', oAuthSchema);

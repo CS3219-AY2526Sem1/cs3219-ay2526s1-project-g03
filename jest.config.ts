@@ -233,7 +233,7 @@ const config: Config = {
             tsconfig: {
               esModuleInterop: true,
               allowSyntheticDefaultImports: true,
-              module: 'commonjs', // Add this line
+              module: 'commonjs',
             },
           },
         ],

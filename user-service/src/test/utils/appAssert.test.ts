@@ -1,12 +1,6 @@
+import {HTTP_BAD_REQUEST, HTTP_UNAUTHORIZED} from '../../constants/httpStatus';
 import appAssert from '../../utils/appAssert';
 import AppError from '../../utils/appError';
-import {
-  HTTP_BAD_REQUEST,
-  HTTP_UNAUTHORIZED,
-  HTTP_NOT_FOUND,
-  HTTP_CONFLICT,
-  HTTP_INTERNAL_SERVER_ERROR,
-} from '../../constants/httpStatus';
 
 describe('utils/appAssert', () => {
   describe('Truthy conditions', () => {

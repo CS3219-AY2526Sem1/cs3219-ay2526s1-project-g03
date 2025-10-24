@@ -1,8 +1,9 @@
 import mongoose from 'mongoose';
-import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy.ts';
-import type ProfilePicType from '../constants/oAuthTypes.ts';
-import {OCCUPATIONS, type Occupation} from '../constants/occupations.ts';
+import {AREAS_OF_STUDY, type AreaOfStudy} from '../constants/areaOfStudy';
+import type ProfilePicType from '../constants/oAuthTypes';
+import {OCCUPATIONS, type Occupation} from '../constants/occupations';
 import {hashPassword, needsRehash, verifyPassword} from '../utils/pbkdf2';
+import UserRoleTypes from '../constants/userRoles';
 
 // Source: https://mongoosejs.com/docs/6.x/docs/typescript/statics-and-methods.html
 
@@ -29,7 +30,7 @@ import {hashPassword, needsRehash, verifyPassword} from '../utils/pbkdf2';
  * @property githubOAuthId ID associated with GitHub OAuth.
  * @property githubOAuthEmail Email associated with GitHub OAuth.
  * @property githubOAuthVerified True if Ouath via GitHub, false otherwise.
- * @property profilePicutre Profile picture, either a URL or a base-64 encoded URI
+ * @property profilePictre Profile picture, either a URL or a base-64 encoded URI
  * @property profilePictureSource Source of the profile picture.
  * @property markedForDeletion Determines whether an account will be deleted.
  * @property deletionScheduleAt Timestamp when the user account will be removed from the system.
@@ -44,7 +45,7 @@ export interface IUser extends mongoose.Document {
   passwordSalt?: string;
   passwordIterations?: number;
   hasPassword?: boolean;
-  role: string;
+  role: UserRoleTypes;
 
   firstName?: string;
   lastName?: string;
@@ -93,8 +94,13 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
     passwordHash: {type: String, required: false},
     passwordSalt: {type: String, required: false},
     passwordIterations: {type: Number, required: false},
-    hasPassword: {type: Boolean, required: false, defaulte: false},
-    role: {type: String, required: true, default: 'user', enum: ['user', 'admin']},
+    hasPassword: {type: Boolean, required: false, default: false},
+    role: {
+      type: String,
+      required: true,
+      default: UserRoleTypes.User,
+      enum: Object.values(UserRoleTypes),
+    },
 
     firstName: {type: String, required: false},
     lastName: {type: String, required: false},
@@ -125,20 +131,20 @@ const userSchema = new mongoose.Schema<IUser, UserModel, IUserMethods>(
 userSchema
   .virtual('password')
   .set(function (password: string) {
-    this.password_ = password;
+    (this as any).password_ = password;
   })
   .get(function () {
-    return this.password_;
+    return (this as any).password_;
   });
 
 /**
  * Salts and hashes password prior to data validation.
  */
 userSchema.pre('validate', async function (next) {
-  if (this.password_) {
-    await this.setPassword(this.password_);
+  if ((this as any).password_) {
+    await this.setPassword((this as any).password_);
   }
-  this.password_ = undefined;
+  (this as any).password_ = undefined;
   next();
 });
 
@@ -188,6 +194,12 @@ userSchema.methods.toJSON = function () {
   delete userObject.passwordHash;
   delete userObject.passwordSalt;
   delete userObject.passwordIterations;
+
+  delete userObject.googleOAuthId;
+  delete userObject.githubOAuthId;
+
+  delete userObject.markedForDeletion;
+  delete userObject.deletionScheduleAt;
 
   return userObject;
 };
