@@ -209,40 +209,8 @@ const config: Config = {
     },
 
     // Backend uses node
-    // {
-    //   displayName: 'backend',
-
-    //   // A preset that is used as a base for Jest's configuration
-    //   preset: 'ts-jest',
-
-    //   testEnvironment: 'node',
-
-    //   // A list of paths to directories that Jest should use to search for files in
-    //   roots: [
-    //     '<rootDir>/collaboration-service',
-    //     '<rootDir>/matching-service',
-    //     '<rootDir>/question-service',
-    //     '<rootDir>/user-service',
-    //   ],
-    //   setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
-
-    //   transform: {
-    //     '^.+\\.tsx?$': [
-    //       'ts-jest',
-    //       {
-    //         tsconfig: {
-    //           esModuleInterop: true,
-    //           allowSyntheticDefaultImports: true,
-    //           module: 'commonjs',
-    //         },
-    //       },
-    //     ],
-    //   },
-    // },
-
-    // TODELETE
     {
-      displayName: 'user-service',
+      displayName: 'backend',
 
       // A preset that is used as a base for Jest's configuration
       preset: 'ts-jest',
@@ -250,7 +218,12 @@ const config: Config = {
       testEnvironment: 'node',
 
       // A list of paths to directories that Jest should use to search for files in
-      roots: ['<rootDir>/user-service'],
+      roots: [
+        '<rootDir>/collaboration-service',
+        '<rootDir>/matching-service',
+        '<rootDir>/question-service',
+        '<rootDir>/user-service',
+      ],
       setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
 
       transform: {
@@ -266,7 +239,6 @@ const config: Config = {
         ],
       },
     },
-    // TODELETE
   ],
 };
 
