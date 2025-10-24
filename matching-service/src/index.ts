@@ -1,8 +1,12 @@
 import express from 'express';
+import http from 'http';
+import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import { APP_ORIGIN, NODE_ENV, MATCHING_SERVICE_PORT } from './constants/env';
+import { HTTP_OK } from './constants/httpStatus';
 import { errorHandler } from './middleware/errorHandler';
 import matchRoutes from './routes/matchRoutes';
+import { handleWebSocketConnection } from '../src/services/matchingService';
 
 const app = express();
 
@@ -19,6 +23,13 @@ app.use(
   })
 );
 
+// create HTTP server and integrate Express
+const server = http.createServer(app);
+
+// create WebSocket server
+const wss = new WebSocketServer({ server }); // attach WebSocket server to the HTTP server
+
+
 // health check endpoint for monitoring
 app.get('/', (req, res, next) =>
   res.status(HTTP_OK).json({
@@ -30,9 +41,16 @@ app.use('/api/matches', matchRoutes);
 
 app.use(errorHandler);
 
-app.listen(MATCHING_SERVICE_PORT, () => {
+// handle WebSocket connections
+wss.on('connection', (ws: WebSocket) => {
+  console.log('Client connected via WebSocket');
+  handleWebSocketConnection(ws); // pass the connection to your service logic
+});
+
+// start the server
+server.listen(MATCHING_SERVICE_PORT, () => {
   console.log(
-    `Matching Service listening on http://localhost:${MATCHING_SERVICE_PORT} in ${NODE_ENV} environment`
+    `Matching Service (HTTP + WebSocket) listening on http://localhost:${MATCHING_SERVICE_PORT} in ${NODE_ENV} environment`
   );
 });
 
