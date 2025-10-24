@@ -22,6 +22,8 @@ const getRandomName = (): string => {
   return `${adjective} ${animal}`;
 };
 
+
+
 const handleUsersAdded = (
   added: number[],
   currentUserId: number,
@@ -54,7 +56,8 @@ const handleUsersRemoved = (
   removed: number[],
   currentUserId: number,
   userNamesMap: Map<number, string>,
-  recentlyRemovedSet: Set<number>
+  recentlyRemovedSet: Set<number>,
+  timeoutRefsMap: Map<number, NodeJS.Timeout>
 ): void => {
   removed.forEach((clientId) => {
     if (clientId === currentUserId) {
@@ -74,10 +77,18 @@ const handleUsersRemoved = (
       icon: '👋',
     });
     
+    // Clears any existing timeout for this client (prevents duplicates)
+    if (timeoutRefsMap.has(clientId)) {
+      clearTimeout(timeoutRefsMap.get(clientId));
+    }
+    
     // Clears debounce flag after timeout to allow future notifications
-    setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       recentlyRemovedSet.delete(clientId);
+      timeoutRefsMap.delete(clientId);
     }, USER_CONFIG.DUPLICATE_TOAST_DEBOUNCE_MS);
+    
+    timeoutRefsMap.set(clientId, timeoutId);
   });
 };
 
@@ -90,7 +101,7 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
   const isFirstChangeRef = useRef<boolean>(true);
   const userNamesRef = useRef<Map<number, string>>(new Map());
   const recentlyRemovedRef = useRef<Set<number>>(new Set());
-  
+  const timeoutRefs = useRef(new Map<number, NodeJS.Timeout>());
   
   useEffect(() => {
     console.log('useEffect RUNNING for room:', roomId);
@@ -157,7 +168,10 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
       console.log('Processing awareness change (not initial sync), added:', added, 'removed:', removed);
 
       handleUsersAdded(added, currUserId, provider.awareness, userNamesRef.current);
-      handleUsersRemoved(removed, currUserId, userNamesRef.current, recentlyRemovedRef.current);
+      console.log(timeoutRefs.current);
+      handleUsersRemoved(removed, currUserId, userNamesRef.current, recentlyRemovedRef.current, timeoutRefs.current);
+      console.log(timeoutRefs.current);
+
     };
 
     provider.awareness.on('change', awarenessChangeHandler);
@@ -169,6 +183,11 @@ export default function useCollabEditor({roomId}: {roomId: string}) {
       provider.awareness.off('change', awarenessChangeHandler);
       userNamesRef.current.clear();
       recentlyRemovedRef.current.clear();
+
+      timeoutRefs.current.forEach((timeoutId) => {
+        clearTimeout(timeoutId);
+      });
+      timeoutRefs.current.clear();
 
       setIsReady(false);
       if (provider.awareness) {
