@@ -8,11 +8,19 @@ import * as Y from 'yjs';
 
 // TODO : separate database connection
 // Create a single supabase client for interacting with your database
-const supabase = createClient(
-  process.env['SUPABASE_URL'] as string,
-  process.env['SUPABASE_KEY'] as string,
-  {auth: {persistSession: false}}
-);
+const SUPABASE_URL = process.env['SUPABASE_URL'] as string;
+const SUPABASE_KEY = process.env['SUPABASE_KEY'] as string;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('FATAL ERROR: Missing required environment variables');
+  console.error('Required: SUPABASE_URL, SUPABASE_KEY');
+  console.error('Please check your .env file');
+  throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_KEY');
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {persistSession: false}
+});
 
 export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
@@ -22,7 +30,7 @@ export default class YjsServer implements Party.Server {
       async load() {
         // This is called once per "room" when the first user connects
 
-        // Let's make a Yjs document
+        // Creates the backend Yjs document
         const doc = new Y.Doc();
 
         // Load the document from the database
@@ -50,7 +58,7 @@ export default class YjsServer implements Party.Server {
             console.log(`[${room.id}] No existing document found, creating new document`);
           }
 
-          // Return the Yjs document
+          // Return the Yjs document to y-partykit to manage
           return doc;
         } catch (err) {
           console.error(`[${room.id}] Load failed:`, err);

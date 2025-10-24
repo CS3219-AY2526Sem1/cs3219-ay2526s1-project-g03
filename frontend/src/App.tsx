@@ -4,6 +4,7 @@ import Register from './pages/register';
 import Login from './pages/login';
 import Input from './collaboration/pages/Input';
 import {CollabPage} from './collaboration/pages/CollabPage';
+import { Toaster } from 'react-hot-toast';
 import VerifyEmail from './pages/verifyEmail';
 import Profile from './pages/profile';
 import AuthContainer from './components/authContainer';
@@ -20,31 +21,35 @@ function App() {
   const navigate = useNavigate();
   setNavigate(navigate); // Allows use of navigate within Axios.
   return (
-    <Routes>
-      <Route path="/home" element={<Home />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/complete-profile" element={<CompleteProfile />} />
-      <Route path="/email/verify/:code" element={<VerifyEmail />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/password/forgot" element={<ForgotPassword />} />
-      <Route path="/password/reset" element={<ResetPassword />} />
-      // Authorized users only (defined as having verfieid email).
-      <Route path="/" element={<AuthContainer />}>
-        <Route index element={<Profile />} />
-        <Route path="profile/" element={<UserProfile />} />
-        <Route path="profile/settings" element={<ProfileSettings />} />
-        <Route path="room" element={<Input />} />
-        <Route path="room/:roomId" element={<CollabPage />} />
-        <Route
-          path="admin/manage"
-          element={
-            <AdminContainer>
-              <AdminManagement />
-            </AdminContainer>
-          }
-        />
-      </Route>
-    </Routes>
+    <>
+      <Toaster />
+
+      <Routes>
+        <Route path="/home" element={<Home />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
+        <Route path="/email/verify/:code" element={<VerifyEmail />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/password/forgot" element={<ForgotPassword />} />
+        <Route path="/password/reset" element={<ResetPassword />} />
+        // Authorized users only (defined as having verfieid email).
+        <Route path="/" element={<AuthContainer />}>
+          <Route index element={<Profile />} />
+          <Route path="profile/" element={<UserProfile />} />
+          <Route path="profile/settings" element={<ProfileSettings />} />
+          <Route path="room" element={<Input />} />
+          <Route path="room/:roomId" element={<CollabPage />} />
+          <Route
+            path="admin/manage"
+            element={
+              <AdminContainer>
+                <AdminManagement />
+              </AdminContainer>
+            }
+          />
+        </Route>
+      </Routes>
+    </>
   );
 }
 
