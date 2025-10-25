@@ -24,10 +24,25 @@
 .selection-header {
     display: flex;
     justify-content: space-between;
+    width: 100%;
     align-items: center;
     font-weight: 600;
-    border-bottom: 1px solid #ccc;
+    border: none;
+    background: none;
+    /*border-top: none;*/
+    /*border-left: none;*/
+    /*border-right: none;*/
     padding: 1rem;
+}
+
+.selection-header img {
+    width: 18px;
+    height: 18px;
+    opacity: 0.6;
+}
+
+.true {
+    border-bottom: 1px solid #ccc !important;
 }
 
 .selection-content {
@@ -59,4 +74,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
+    justify-content: flex-start;
 }
+

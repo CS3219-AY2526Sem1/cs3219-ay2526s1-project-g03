@@ -1,7 +1,7 @@
 .dashboard-container {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: 1rem;
     align-items: center;
 }
 
@@ -9,6 +9,7 @@
     text-align: center;
     margin-top: -3rem;
     justify-content: space-between;
+    margin-bottom: 1rem;
 }
 
 .dashboard-header h1 {

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import Chip from '../../../components/chip/chip';
+import {TOPIC_CATEGORIES} from '../constants/topicCategories';
+import ArrowUpIcon from '../../../assets/arrow-up-icon.svg';
+import ArrowDownIcon from '../../../assets/arrow-down-icon.svg';
 import './topicSelector.css'
 
 interface TopicSelectorProps {
@@ -7,29 +10,9 @@ interface TopicSelectorProps {
   onSelectionChange: (newSelection: string[]) => void; // Function prop
 }
 
-// dummy values
-// TODO: Create an API to fetch topics from question-service db
-
-const topicCategories = [
-  {
-    title: 'Core Data Structure Topics',
-    topics: ['Arrays', 'Strings', 'Trees & Graphs', 'Linked Lists', 'Tries', 'Hash Maps', 'Heaps/ Priority Queues', 'Stack & Queue']
-  },
-  {
-    title: 'Common Algorithm Topics',
-    topics: ['Binary Search', 'Sorting', 'DFS/BFS', 'Two Pointers', 'Sliding Window']
-  },
-  {
-    title: 'Advanced Techniques Topics',
-    topics: ['Recursion & Backtracking', 'Dynamic Programming', 'Greedy Algorithms']
-  },
-  {
-    title: 'Design & Architecture',
-    topics: ['System Design', 'Object-Oriented Design', 'API & Database Design']
-  }
-];
-
 const TopicSelector = ({ currentSelection, onSelectionChange } : TopicSelectorProps) => {
+
+  const [isOpen, setIsOpen] = useState<boolean>(true);
 
   const handleToggleTopic = (topic: string) => {
     const newSelection: string[] = currentSelection.includes(topic)
@@ -65,37 +48,43 @@ const TopicSelector = ({ currentSelection, onSelectionChange } : TopicSelectorPr
         }
       </div>
       <div className="selection-container">
-        <div className="selection-header">
+        <button className={`selection-header ${isOpen}`} onClick={() => setIsOpen(!isOpen)}>
           <span>Choose Topics</span>
-        </div>
+          <img
+            src={isOpen ? ArrowUpIcon : ArrowDownIcon}
+            alt={isOpen ? 'Collapse' : 'Expand'}
+          />
+        </button>
 
-        <div className="selection-content">
-          {topicCategories.map(category => {
-            const allInCategorySelected = category.topics.every(topic => currentSelection.includes(topic));
-            return (
-              <div key={category.title} className="category-section">
-                <div className="category-header">
-                  <input
-                    type="checkbox"
-                    checked={allInCategorySelected}
-                    onChange={(e) => handleSelectCategory(category.topics, e.target.checked)}
-                  />
-                  <div className="category-title">{category.title}</div>
-                </div>
-                <div className="chip-group">
-                  {category.topics.map(topic => (
-                    <Chip
-                      key={topic}
-                      label={topic}
-                      isSelected={currentSelection.includes(topic)}
-                      onClick={() => handleToggleTopic(topic)}
+        {isOpen && (
+          <div className="selection-content">
+            {TOPIC_CATEGORIES.map(category => {
+              const allInCategorySelected = category.topics.every(topic => currentSelection.includes(topic));
+              return (
+                <div key={category.title} className="category-section">
+                  <div className="category-header">
+                    <input
+                      type="checkbox"
+                      checked={allInCategorySelected}
+                      onChange={(e) => handleSelectCategory(category.topics, e.target.checked)}
                     />
-                  ))}
+                    <div className="category-title">{category.title}</div>
+                  </div>
+                  <div className="chip-group">
+                    {category.topics.map(topic => (
+                      <Chip
+                        key={topic}
+                        label={topic}
+                        isSelected={currentSelection.includes(topic)}
+                        onClick={() => handleToggleTopic(topic)}
+                      />
+                    ))}
+                </div>
               </div>
-            </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
