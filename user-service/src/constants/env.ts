@@ -8,7 +8,7 @@ const findProjectRoot = (targetDirName = TARGET_DIR): string => {
 
   while (true) {
     const base = path.basename(currentDir);
-    if (base == targetDirName) {
+    if (base === targetDirName) {
       return currentDir;
     }
 

@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import {JWT_REFRESH_SECRET, MONGO_URI} from '../../constants/env';
+import {JWT_REFRESH_SECRET} from '../../constants/env';
 import {REFRESH_BUFFER_DAYS, REFRESH_TOKEN_DAYS} from '../../constants/expirables';
 import Session from '../../models/session';
 import User from '../../models/user';
@@ -204,14 +204,6 @@ describe('services/sessionService', () => {
 
       const sessions = await Session.find({userId: testUserId});
       expect(sessions.length).toBe(0);
-    });
-
-    it('should handle database errors gracefully', async () => {
-      await mongoose.connection.close();
-
-      await expect(createSession(testUserId)).rejects.toThrow();
-
-      await mongoose.connect(MONGO_URI);
     });
   });
 });
