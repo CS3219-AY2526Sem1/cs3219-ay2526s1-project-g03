@@ -35,4 +35,5 @@ coverage/
 
 .vscode/
 
-user-service/db
+# Database files
+/user-service/db
