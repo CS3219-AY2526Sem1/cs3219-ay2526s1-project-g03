@@ -7,10 +7,5 @@ export default function CollabEditor({roomId}: {roomId: string}) {
     return <div>Loading...</div>;
   }
 
-  return (
-    <div style={{padding: '20px'}}>
-      <h2>Happy Coding :D</h2>
-      <CodeMirror ytext={ytext} awareness={awareness} />
-    </div>
-  );
+  return <CodeMirror ytext={ytext} awareness={awareness} />;
 }
