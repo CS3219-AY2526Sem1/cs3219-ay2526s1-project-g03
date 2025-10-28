@@ -39,7 +39,8 @@ export function CollabPage() {
       <SessionHeader sessionStartTime={sessionStartTime} handlePenaltyOver={handlePenaltyOver} />
 
       <div className="flex-1 flex overflow-hidden">
-        <QuestionPanel />
+        {/* hard code questionId for now */}
+        <QuestionPanel questionId="0a2c15e1-d520-476a-a417-21df70553ab9" />
 
         <div className="flex-1 flex flex-col bg-white">
           {/* Editor Header */}
