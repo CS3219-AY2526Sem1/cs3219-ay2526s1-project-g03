@@ -1,5 +1,5 @@
 import {useCallback, useState, useEffect} from 'react';
-import {fetchRoomTimestamp} from '../../config/apiClient';
+import axios from 'axios';
 
 interface UseSessionReturn {
   sessionStartTime: number | null;
@@ -7,6 +7,21 @@ interface UseSessionReturn {
   handlePenaltyOver: () => void;
   isLoading: boolean;
   error: string | null;
+}
+
+/**
+ * Fetch the creation timestamp of a collaboration room
+ * @param roomId - The ID of the collaboration room
+ * @returns Promise with roomId and createdAt timestamp
+ */
+export async function fetchRoomTimestamp(roomId: string): Promise<{
+  roomId: string;
+  createdAt: string;
+}> {
+  const collaborationServiceUrl =
+    import.meta.env.VITE_COLLABORATION_SERVICE_URL || 'http://localhost:8082';
+  const response = await axios.get(`${collaborationServiceUrl}/party/${roomId}`);
+  return response.data;
 }
 
 export function useSession(roomId: string | undefined): UseSessionReturn {
