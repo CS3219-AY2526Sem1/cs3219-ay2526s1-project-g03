@@ -1,0 +1,108 @@
+import { Pool, QueryResult } from 'pg'; // Import QueryResult
+import { pool } from '../config/database'; // This is the *mocked* pool
+import {
+  selectQuestion,
+  Difficulty,
+  Question,
+} from '../services/questionService'; // Import ONLY the service
+
+// Mock the database module
+jest.mock('../config/database', () => {
+  const actual = jest.requireActual('../config/database');
+  
+  // Explicitly type the mock function to expect SQL query arguments
+  // and return a Promise that resolves to a QueryResult.
+  const mockQuery = jest.fn<Promise<QueryResult<any>>, [string, any[]]>();
+  // Set a default implementation
+  mockQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+
+  const mockEnd = jest.fn().mockResolvedValue(undefined);
+  const mockPool = { query: mockQuery, end: mockEnd };
+  
+  return { 
+    ...actual, 
+    // Explicitly cast the exported pool to satisfy the module's type
+    pool: mockPool as unknown as Pool 
+  };
+});
+
+
+const mockedQuery = pool.query as unknown as jest.Mock<Promise<QueryResult<any>>, [string, any[]]>;
+
+describe('questionService (Unit)', () => {
+
+  // Reset mocks before each test
+  beforeEach(() => {
+    // Use the correctly typed mock
+    mockedQuery.mockClear();
+    // Reset to default implementation
+    mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+  });
+
+  // Test 1: Check the logic WITH excluded IDs
+  it('builds query correctly WITH excluded IDs', async () => {
+    
+    const criteria = { topic: 'Array', difficulty: 'Easy' as Difficulty };
+    const excludedIds = ['id-1', 'id-2'];
+    
+    // Mock the database response
+    const mockQuestion: Question = {
+      question_id: 'q-123', title: 'Test Q', description: 'Test D',
+      difficulty: 'Easy', created_by: 'admin',
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+    };
+    
+    // Use the correctly typed mock
+    mockedQuery.mockResolvedValue({ rows: [mockQuestion] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+
+    // Call the function directly (no server, no HTTP)
+    const result = await selectQuestion(criteria, excludedIds);
+
+    // Assert the result
+    expect(result).toEqual(mockQuestion);
+    // Assert the mock query was called
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+
+    // --- This is the "white box" part ---
+    // Check the *exact* SQL string and parameters it tried to run
+    const queryArgs = mockedQuery.mock.calls[0];
+    const queryString = queryArgs[0] as string;
+    const queryParams = queryArgs[1] as any[];
+
+    // Check query logic
+    expect(queryString).toContain('WHERE qt.topic_name = $1');
+    expect(queryString).toContain('AND q.difficulty = $2');
+    expect(queryString).toContain('AND q.question_id NOT IN ($3,$4)'); // Check dynamic placeholders
+    expect(queryString).toContain('ORDER BY RANDOM() LIMIT 1');
+
+    // Check query parameters
+    expect(queryParams).toEqual(['Array', 'Easy', 'id-1', 'id-2']);
+  });
+
+  // Test 2: Check the logic WITHOUT excluded IDs
+  it('builds query correctly WITHOUT excluded IDs', async () => {
+    
+    const criteria = { topic: 'DP', difficulty: 'Hard' as Difficulty };
+    const excludedIds: string[] = []; // Empty array
+    
+    // Call the function
+    const result = await selectQuestion(criteria, excludedIds);
+
+    // Assert the result
+    expect(result).toBeNull();
+    // Assert the mock query
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
+
+    // --- Check the logic again ---
+    const queryArgs = mockedQuery.mock.calls[0];
+    const queryString = queryArgs[0] as string;
+    const queryParams = queryArgs[1] as any[];
+
+    // Check that the NOT IN clause is missing
+    expect(queryString).not.toContain('NOT IN');
+
+    // Check that the parameters are correct
+    expect(queryParams).toEqual(['DP', 'Hard']);
+  });
+});
+

@@ -115,14 +115,24 @@ services:
       dockerfile: Dockerfile
     command: ["npm", "test"]
     env_file:
-      - ./question-service/.env
+      - ./question-service/.env.test
     depends_on:
       question-db-pg:
         condition: service_healthy
     networks:
       - app-network
 
-
+# --- UI for Postgres Database ---
+  adminer:
+    image: adminer
+    container_name: adminer-ui        
+    restart: unless-stopped          
+    ports:
+      - "8087:8080" 
+    networks:
+      - app-network
+    depends_on:
+      - question-db-pg
   
   # Matching service
   matching-service:
@@ -163,6 +173,29 @@ services:
       - /app/node_modules
     networks:
       - app-network
+
+  # History service
+  history-service:
+    build:
+      context: ./history-service
+      dockerfile: Dockerfile
+    ports:
+      - '8085:8085'
+    environment:
+      - PORT=8085
+      - MONGO_URI=${HISTORY_DB_MONGO_URI}
+    env_file:
+      - ./.env
+    depends_on:
+      - user-db-mongodb 
+    volumes:
+      - ./history-service:/app
+      - /app/node_modules
+    networks:
+      - app-network 
+    command: npm run dev
+    
+
 
 networks:
   app-network:
