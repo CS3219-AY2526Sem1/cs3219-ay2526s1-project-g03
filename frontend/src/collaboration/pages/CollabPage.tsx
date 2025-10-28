@@ -1,52 +1,42 @@
 import {useParams, useNavigate} from 'react-router-dom';
 import CollabEditor from '../components/CollabEditor';
 import {useState} from 'react';
-import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
+import {Code, Image, Play} from 'lucide-react';
 import QuestionPanel from '../components/QuestionPanel';
 import SessionHeader from '../components/SessionHeader';
 import SubmissionPanel from '../components/SubmissionPanel';
+import {useSession} from '../hooks/useSession';
 
 export function CollabPage() {
   const {roomId} = useParams<{roomId: string}>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('code');
+  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, isLoading, error} = useSession(roomId);
 
   if (!roomId) {
     navigate('/room');
     return null;
   }
 
-  //TODO: handle leave room/exit - remove cursor and user from partykit room
   function handleLeaveRoom() {
     navigate('/room');
   }
 
-  // return (
-  // <div className="w-[75em] h-screen flex flex-col">
-  //   <div className="p-2.5 mb-5 flex justify-between items-center w-full">
-  //     <h2>Room: {roomId}</h2>
-  //     <button
-  //       onClick={handleLeaveRoom}
-  //       className="px-4 py-2 bg-red-500 text-white border-none rounded cursor-pointer hover:bg-red-600"
-  //     >
-  //       Leave Room
-  //     </button>
-  //   </div>
-  // <div className="flex h-screen flex-col">
-  //   <SessionHeader sessionTime="15:42" penaltyTime="09:01" />
-  //   <div className="flex flex-1 overflow-hidden">
-  //     <QuestionPanel />
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-gray-600">Loading session...</div>
+      </div>
+    );
+  }
 
-  //     <CollabEditor roomId={roomId} />
+  if (error) {
+    console.warn('Session timestamp error:', error);
+  }
 
-  //     <SubmissionPanel />
-  //   </div>
-  // </div>
-
-  // );
   return (
     <div className="flex flex-col h-screen bg-gray-50">
-      <SessionHeader />
+      <SessionHeader sessionStartTime={sessionStartTime} handlePenaltyOver={handlePenaltyOver} />
 
       <div className="flex-1 flex overflow-hidden">
         <QuestionPanel />
@@ -156,7 +146,7 @@ export function CollabPage() {
         </div>
 
         {/* Right Panel - Chat */}
-        <SubmissionPanel />
+        <SubmissionPanel isPenaltyOver={isPenaltyOver} handleLeaveRoom={handleLeaveRoom} />
       </div>
     </div>
   );

@@ -1,6 +1,30 @@
 import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
+import {useState} from 'react';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
-export default function SubmissionPanel() {
+export default function SubmissionPanel({
+  isPenaltyOver,
+  handleLeaveRoom,
+}: {
+  isPenaltyOver: boolean;
+  handleLeaveRoom: () => void;
+}) {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  function handleEndSession() {
+    setIsDialogOpen(true);
+  }
+
+  async function handleEarlySessionEnd() {
+    // TODO: Add service call here for early session end tracking
+  }
+
+  async function handleConfirmEndSession() {
+    if (!isPenaltyOver) {
+      await handleEarlySessionEnd();
+    }
+    handleLeaveRoom();
+  }
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
       {/* User Avatars */}
@@ -62,12 +86,31 @@ export default function SubmissionPanel() {
             <span>View Solution</span>
           </button>
 
-          <button className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2">
+          <button
+            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2"
+            onClick={handleEndSession}
+          >
             <LogOut size={18} />
-            <span>End Session (Penalty)</span>
+            <span>End Session {isPenaltyOver ?? '(Penalty)'}</span>
           </button>
         </div>
       </div>
+
+      {/* End Session Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        onConfirm={handleConfirmEndSession}
+        title={isPenaltyOver ? 'End Session?' : 'End Session Early?'}
+        message={
+          isPenaltyOver
+            ? 'The penalty period has ended. Ending the session now will not incur any penalties. Are you sure you want to end this session?'
+            : 'Warning: Ending the session before the penalty period expires may result in penalties. Are you sure you want to end the session anyway?'
+        }
+        confirmText={isPenaltyOver ? 'Yes, End Session' : 'Yes, End Anyway'}
+        cancelText={isPenaltyOver ? 'Cancel' : 'Stay in Session'}
+        variant={isPenaltyOver ? 'normal' : 'warning'}
+      />
     </div>
   );
 }
