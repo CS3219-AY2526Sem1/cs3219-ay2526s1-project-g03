@@ -16,6 +16,7 @@ import ProfileSettings from './pages/profileSettings';
 import CompleteProfile from './pages/completeProfile';
 import AdminManagement from './pages/adminManagement';
 import AdminContainer from './components/adminContainer';
+import Dashboard from './pages/dashboard/dashboard'
 
 function App() {
   const navigate = useNavigate();
@@ -37,6 +38,7 @@ function App() {
           <Route index element={<Profile />} />
           <Route path="profile/" element={<UserProfile />} />
           <Route path="profile/settings" element={<ProfileSettings />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="room" element={<Input />} />
           <Route path="room/:roomId" element={<CollabPage />} />
           <Route
