@@ -7,8 +7,8 @@ import {
   GOOGLE_AUTH_REDIR_URI,
   GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET,
+  GITHUB_AUTH_REDIR_URI,
 } from '../constants/env';
-import {GITHUB_AUTH_REDIR_URI} from '../constants/env';
 import OAuthType from '../constants/oAuthTypes';
 import {MAX_USERNAME_LEN} from '../constants/userParams';
 import User from '../models/user';
@@ -21,9 +21,7 @@ import OAuthLink from '../models/oAuthLink';
  * @param name Existing username provided by OAuth
  * @returns Username containing only characters accepted by `usernameSchema`.
  */
-export const sanitizeUsername = (name: string): string => {
-  return name.replace(/[^a-zA-Z0-9_]/g, '_');
-};
+export const sanitizeUsername = (name: string): string => name.replace(/[^a-zA-Z0-9_]/g, '_');
 
 /**
  * Generates placeholder username for OAuth users in event of username collision.
@@ -182,8 +180,8 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       [oAuthIdField]: oAuthId,
       [oAuthEmailField]: oAuthEmail,
       [oAuthVerifiedField]: true,
-      firstName: firstName,
-      lastName: lastName,
+      firstName,
+      lastName,
       profilePicture,
       profilePictureSource: provider,
       profileComplete: false,
@@ -243,8 +241,8 @@ const createOAuthStrategy = (
     callbackURL: string;
     scope: string[];
   }
-) => {
-  return new StrategyClass(
+) =>
+  new StrategyClass(
     {
       ...config,
       passReqToCallback: true,
@@ -252,7 +250,6 @@ const createOAuthStrategy = (
     async (req, accessToken, refreshToken, profile, cb) =>
       handleOAuthLogin(req, extractOAuthProfile(provider, profile), cb)
   );
-};
 
 passport.use(
   OAuthType.Google,

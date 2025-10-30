@@ -537,7 +537,7 @@ describe('models/User', () => {
 
     it('should find user by ID', async () => {
       const createdUser = await User.findOne({username: TEST_USERNAME});
-      const foundUser = await User.findById(createdUser!._id);
+      const foundUser = await User.findById(createdUser._id);
 
       expect(foundUser).not.toBeNull();
       expect(foundUser._id.toString()).toBe(createdUser._id.toString());
@@ -574,7 +574,7 @@ describe('models/User', () => {
       });
 
       expect(user).not.toBeNull();
-      expect(user!.email).toBe(TEST_EMAIL);
+      expect(user.email).toBe(TEST_EMAIL);
     });
   });
 

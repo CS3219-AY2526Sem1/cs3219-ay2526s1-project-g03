@@ -1,15 +1,13 @@
-import {changeUserRole, createAdminAccount} from '../../services/adminService';
-import User from '../../models/user';
-import UserRoleTypes from '../../constants/userRoles';
-import AppError from '../../utils/appError';
-import {HTTP_CONFLICT, HTTP_FORBIDDEN, HTTP_NOT_FOUND} from '../../constants/httpStatus';
 import {ADMIN_EMAIL, ADMIN_USERNAME} from '../../constants/env';
+import {HTTP_CONFLICT, HTTP_FORBIDDEN, HTTP_NOT_FOUND} from '../../constants/httpStatus';
+import UserRoleTypes from '../../constants/userRoles';
+import User from '../../models/user';
+import {changeUserRole, createAdminAccount} from '../../services/adminService';
+import AppError from '../../utils/appError';
 // Mock sendEmail
 jest.mock('../../utils/email', () => ({
   sendEmail: jest.fn().mockResolvedValue({data: {id: 'email-123'}, error: null}),
 }));
-
-import {sendEmail} from '../../utils/email';
 
 describe('services/adminService', () => {
   const TEST_USERNAME = 'testuser';
