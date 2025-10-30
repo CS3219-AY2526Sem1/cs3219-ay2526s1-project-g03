@@ -12,7 +12,7 @@ import type { MatchCriteria, MatchRequestPayload, MatchPayload} from '../../../m
 import './practiceSessionForm.css'
 
 const difficulties: string[] = ['Easy', 'Medium', 'Hard'];
-const languages: string[] = ['C++', 'Java', 'Java Script', 'Python'];
+const languages: string[] = ['C++', 'Java', 'JavaScript', 'Python'];
 
 const PracticeSessionForm = () => {
   const {user} = useAuth();
