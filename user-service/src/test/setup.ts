@@ -1,4 +1,7 @@
 // Mock environment variables
+import {MongoMemoryServer} from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+
 process.env.NODE_ENV = 'test';
 process.env.MONGO_URI = 'mongodb://localhost:27017/test';
 process.env.JWT_SECRET = 'test-jwt-secret';
@@ -18,9 +21,6 @@ process.env.GITHUB_CLIENT_SECRET = 'test-github-client-secret';
 process.env.GITHUB_AUTH_ORIGIN = 'http://localhost:3000';
 process.env.GITHUB_AUTH_REDIR_URI = 'http://localhost:3000/auth/github/callback';
 
-import {MongoMemoryServer} from 'mongodb-memory-server';
-import mongoose from 'mongoose';
-
 let mongoServer: MongoMemoryServer;
 
 beforeAll(async () => {
@@ -28,7 +28,7 @@ beforeAll(async () => {
   const mongoUri = mongoServer.getUri();
 
   await mongoose.connect(mongoUri);
-}, 30000); // Increase timeout for MongoDB setup
+}, 30000);
 
 afterAll(async () => {
   await mongoose.disconnect();
@@ -36,7 +36,7 @@ afterAll(async () => {
 }, 30000);
 
 afterEach(async () => {
-  const collections = mongoose.connection.collections;
+  const {collections} = mongoose.connection;
   for (const key in collections) {
     await collections[key].deleteMany({});
   }

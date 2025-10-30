@@ -46,7 +46,7 @@ export const registerController = catchErrors(async (req, res) => {
 
   const {user, accessToken, refreshToken} = await createAccount(request);
 
-  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user);
+  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user.toJSON());
 });
 
 /**
@@ -93,6 +93,7 @@ export const forgotPasswordController = catchErrors(async (req, res) => {
  */
 export const resetPasswordController = catchErrors(async (req, res) => {
   4;
+
   const request = passwordResetSchema.parse(req.body);
 
   await resetPassword(request);
@@ -127,8 +128,8 @@ export const loginController = catchErrors(async (req, res) => {
  * Logs user out.
  */
 export const logoutController = catchErrors(async (req, res) => {
-  const accessToken = req.cookies.accessToken;
-  const {payload, _} = verifyToken(accessToken);
+  const {accessToken} = req.cookies;
+  const {payload} = verifyToken(accessToken);
 
   if (payload) {
     await Session.findByIdAndDelete(payload.sessionId);
@@ -188,7 +189,7 @@ export const googleAuthController = async (req, res, next) => {
   passport.authenticate(OAuthType.Google, {
     session: false,
     scope: ['profile', 'email'],
-    state: state,
+    state,
   })(req, res, next);
 };
 
@@ -233,7 +234,7 @@ export const githubAuthController = async (req, res, next) => {
   passport.authenticate(OAuthType.GitHub, {
     session: false,
     scope: ['read:user', 'user:email'],
-    state: state,
+    state,
   })(req, res, next);
 };
 

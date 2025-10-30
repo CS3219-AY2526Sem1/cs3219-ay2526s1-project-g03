@@ -19,7 +19,7 @@ import {
   changePersonalInfoSchema,
   changePwSchema,
   changeUsernameOrEmailSchema,
-  SetPwSchema,
+  setPwSchema,
 } from './userSchema';
 
 /**
@@ -27,7 +27,7 @@ import {
  */
 export const getUserController = catchErrors(async (req, res) => {
   const user = await findUserById(req.userId);
-  return res.status(HTTP_OK).json(user);
+  return res.status(HTTP_OK).json(user.toJSON());
 });
 
 /**
@@ -78,7 +78,7 @@ export const changePasswordHandler = catchErrors(async (req, res) => {
     password = parsed.password;
     currentPassword = parsed.currentPassword;
   } else {
-    const parsed = SetPwSchema.parse(req.body);
+    const parsed = setPwSchema.parse(req.body);
     password = parsed.password;
   }
 

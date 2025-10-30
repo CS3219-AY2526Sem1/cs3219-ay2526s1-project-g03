@@ -3,7 +3,7 @@ import {REFRESH_TOKEN_DAYS} from '../../constants/expirables';
 import Session from '../../models/session';
 import User from '../../models/user';
 
-describe('models/Session', () => {
+describe('models/session', () => {
   let testUserId;
 
   beforeEach(async () => {

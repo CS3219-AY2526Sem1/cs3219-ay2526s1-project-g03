@@ -1,6 +1,5 @@
 import resend from '../config/resend';
-import {NODE_ENV} from '../constants/env';
-import {EMAIL_SENDER} from '../constants/env';
+import {NODE_ENV, EMAIL_SENDER} from '../constants/env';
 
 type Params = {
   to: string;

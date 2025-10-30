@@ -1,43 +1,41 @@
 import mongoose from 'mongoose';
 import {
-  createAccount,
-  verifyEmail,
-  sendVerificationEmail,
-  forgotPassword,
-  resetPassword,
-  loginUser,
-  refreshUserAccessToken,
-  unlinkOAuthProvider,
-} from '../../services/authService';
-import User from '../../models/user';
-import Session from '../../models/session';
-import VerificationCode from '../../models/verificationCode';
-import VerificationType from '../../constants/verificationTypes';
-import OAuthType from '../../constants/oAuthTypes';
-import AppError from '../../utils/appError';
+  EMAIL_RATE_LIMIT,
+  EMAIL_TIME_LIMIT_HOURS,
+  EMAIL_VER_DAYS,
+  PW_RESET_MINS,
+} from '../../constants/expirables';
 import {
   HTTP_CONFLICT,
   HTTP_NOT_FOUND,
-  HTTP_UNAUTHORIZED,
-  HTTP_INTERNAL_SERVER_ERROR,
   HTTP_TOO_MANY_REQUESTS,
-  HTTP_BAD_REQUEST,
+  HTTP_UNAUTHORIZED,
 } from '../../constants/httpStatus';
-import {verifyToken} from '../../utils/jwt';
+import OAuthType from '../../constants/oAuthTypes';
+import VerificationType from '../../constants/verificationTypes';
+import Session from '../../models/session';
+import User from '../../models/user';
+import VerificationCode from '../../models/verificationCode';
 import {
-  EMAIL_VER_DAYS,
-  EMAIL_RATE_LIMIT,
-  EMAIL_TIME_LIMIT_HOURS,
-  PW_RESET_MINS,
-} from '../../constants/expirables';
+  createAccount,
+  forgotPassword,
+  loginUser,
+  refreshUserAccessToken,
+  resetPassword,
+  sendVerificationEmail,
+  unlinkOAuthProvider,
+  verifyEmail,
+} from '../../services/authService';
+import AppError from '../../utils/appError';
+import {verifyToken} from '../../utils/jwt';
 
 // Mock sendEmail
 jest.mock('../../utils/email', () => ({
   sendEmail: jest.fn().mockResolvedValue({data: {id: 'email-123'}, error: null}),
 }));
 
-import {sendEmail} from '../../utils/email';
 import {APP_ORIGIN, JWT_REFRESH_SECRET} from '../../constants/env';
+import {sendEmail} from '../../utils/email';
 
 describe('services/authService', () => {
   const TEST_USERNAME = 'testuser';
