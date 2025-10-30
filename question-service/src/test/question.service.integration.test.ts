@@ -1,69 +1,117 @@
-import * as request from 'supertest';
+import request from 'supertest';
 import app from '../index';
-import { pool, closePool } from '../config/database'; // Import pool for direct checks if needed
-
-// Close the database pool after all integration tests have run
-afterAll(async () => {
-  await closePool();
-});
+import { closePool } from '../config/database';
 
 describe('Question Service API (Integration)', () => {
-
-  // Test the health check endpoint
-  it('health check should return status and timestamp', async () => {
-    const res = await request(app).get('/health');
-    expect([200, 503]).toContain(res.statusCode);
-    expect(res.body).toHaveProperty('status');
-    expect(res.body).toHaveProperty('database');
-    expect(res.body).toHaveProperty('timestamp');
+  afterAll(async () => {
+    await closePool();
   });
 
-  // Test the GET /api/topics endpoint
-  it('GET /api/topics should return an array or an error status', async () => {
-    const res = await request(app).get('/api/topics');
-    expect([200, 500]).toContain(res.statusCode); // Expect 200 or 500 (if DB not ready)
-    if (res.statusCode === 200) {
-      expect(Array.isArray(res.body)).toBe(true);
-    }
+  describe('Health Check', () => {
+    it('should return status and timestamp', async () => {
+      const res = await request(app).get('/health');
+      expect([200, 503]).toContain(res.statusCode);
+      expect(res.body).toHaveProperty('status');
+      expect(res.body).toHaveProperty('database');
+      expect(res.body).toHaveProperty('timestamp');
+    });
   });
 
-  // Test the main POST /api/questions/select endpoint
-  it('POST /api/questions/select should accept criteria and excludedIds', async () => {
-    const payload = {
-      criteria: { topic: 'Array', difficulty: 'Easy' }, // Make sure 'Array' exists in your test DB
-      excludedIds: ['00000000-0000-0000-0000-000000000000'] // A fake UUID
-    };
+  describe('Questions API', () => {
+    describe('GET /api/questions', () => {
+      it('should return all questions', async () => {
+        const res = await request(app).get('/api/questions');
+        expect(res.statusCode).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+      });
+    });
 
-    const res = await request(app)
-      .post('/api/questions/select')
-      .send(payload)
-      .set('Accept', 'application/json');
+    describe('GET /api/questions/:id', () => {
+      it('should return question by id if exists', async () => {
+        // First get all questions to get a valid ID
+        const allQuestionsRes = await request(app).get('/api/questions');
+        if (allQuestionsRes.body.length > 0) {
+          const questionId = allQuestionsRes.body[0].question_id;
+          const res = await request(app).get(`/api/questions/${questionId}`);
+          expect(res.statusCode).toBe(200);
+          expect(res.body).toHaveProperty('question_id', questionId);
+        }
+      });
 
-    // Depending on seeded data, this may return 200 with a question or 404 if none found.
-    // 400 is also possible if criteria are bad. 500 if the DB connection fails.
-    expect([200, 400, 404, 500]).toContain(res.statusCode);
+      it('should return 404 for non-existent question', async () => {
+        const res = await request(app).get('/api/questions/652c60dc-f518-4a7c-9c3c-bab6bf4b6cc0');
+        expect(res.statusCode).toBe(404);
+      });
+    });
 
-    if (res.statusCode === 200) {
-      expect(res.body).toHaveProperty('question_id');
-      expect(res.body).toHaveProperty('title');
-      expect(res.body).toHaveProperty('difficulty');
-      // We know it's not the one we excluded
-      expect(res.body.question_id).not.toBe('00000000-0000-0000-0000-000000000000');
-    }
+    describe('GET /api/topics', () => {
+      it('should return array of topics', async () => {
+        const res = await request(app).get('/api/topics');
+        expect(res.statusCode).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+      });
+    });
 
-    if (res.statusCode === 404) {
-      expect(res.body).toHaveProperty('message', 'No suitable question found for the given criteria.');
-    }
+    describe('POST /api/questions/select', () => {
+      it('should return a question matching criteria', async () => {
+        const payload = {
+          criteria: { topic: 'Array', difficulty: 'Easy' },
+          excludedIds: []
+        };
+
+        const res = await request(app)
+          .post('/api/questions/select')
+          .send(payload);
+
+        if (res.statusCode === 200) {
+          expect(res.body).toMatchObject({
+            question_id: expect.any(String),
+            title: expect.any(String),
+            difficulty: expect.stringMatching(/^(Easy|Medium|Hard)$/)
+          });
+        } else {
+          expect([404]).toContain(res.statusCode); // No matching questions found
+        }
+      });
+
+      it('should validate request payload', async () => {
+        const invalidPayload = {
+          criteria: { topic: '', difficulty: 'Invalid' }
+        };
+
+        const res = await request(app)
+          .post('/api/questions/select')
+          .send(invalidPayload);
+
+        expect(res.statusCode).toBe(400);
+        expect(res.body).toHaveProperty('message');
+      });
+
+      it('should handle excludedIds correctly', async () => {
+        // First get all questions
+        const allQuestionsRes = await request(app).get('/api/questions');
+        if (allQuestionsRes.body.length > 0) {
+          const firstQuestion = allQuestionsRes.body[0];
+          
+          const payload = {
+            criteria: { 
+              topic: firstQuestion.topic,
+              difficulty: firstQuestion.difficulty 
+            },
+            excludedIds: [firstQuestion.question_id]
+          };
+
+          const res = await request(app)
+            .post('/api/questions/select')
+            .send(payload);
+
+          if (res.statusCode === 200) {
+            expect(res.body.question_id).not.toBe(firstQuestion.question_id);
+          } else {
+            expect([404]).toContain(res.statusCode);
+          }
+        }
+      });
+    });
   });
-
-  it('POST /api/questions/select validates body', async () => {
-    const res = await request(app)
-      .post('/api/questions/select')
-      .send({ topic: 'Array' }); // Missing criteria.difficulty and excludedIds
-    
-    // This expects your controller's validation logic to catch the bad body
-    expect(res.statusCode).toBe(400); 
-    expect(res.body).toHaveProperty('message');
-  });
-
 });

@@ -5,10 +5,14 @@
     "module": "commonjs",
     "target": "esnext",
     "lib": ["esnext"],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
@@ -23,5 +27,6 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist"]
 }
+

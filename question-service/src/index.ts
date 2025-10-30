@@ -1,6 +1,6 @@
 import express = require('express');
 import { Request, Response, NextFunction } from 'express';
-import * as cors from 'cors';
+import cors = require('cors');
 import helmet from 'helmet';
 import questionRoutes from './routes/questionRoutes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';

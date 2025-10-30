@@ -1,32 +1,36 @@
-import { Pool, QueryResult } from 'pg'; // Import QueryResult
-import { pool } from '../config/database'; // This is the *mocked* pool
-import {
-  selectQuestion,
-  Difficulty,
-  Question,
-} from '../services/questionService'; // Import ONLY the service
-
-// Mock the database module
+// --- FIX ---
+// jest.mock MUST be the first statement in the file.
+// This tells Jest to replace the module *before* any other code imports it.
 jest.mock('../config/database', () => {
   const actual = jest.requireActual('../config/database');
   
-  // Explicitly type the mock function to expect SQL query arguments
-  // and return a Promise that resolves to a QueryResult.
+  // Explicitly type the mock function
   const mockQuery = jest.fn<Promise<QueryResult<any>>, [string, any[]]>();
   // Set a default implementation
-  mockQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+  mockQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>);
 
   const mockEnd = jest.fn().mockResolvedValue(undefined);
   const mockPool = { query: mockQuery, end: mockEnd };
   
   return { 
     ...actual, 
-    // Explicitly cast the exported pool to satisfy the module's type
     pool: mockPool as unknown as Pool 
   };
 });
+// --- END FIX ---
 
 
+import { Pool, QueryResult } from 'pg'; // Import QueryResult
+import {
+  selectQuestion,
+  Difficulty,
+  Question,
+} from '../services/questionService'; // Import ONLY the service
+import { pool } from '../config/database'; // This is now the *mocked* pool
+
+
+// We must cast pool.query once, outside the mock, to the correct Jest mock type.
+// This tells TypeScript what 'pool.query' is, so we can access .mock.calls etc.
 const mockedQuery = pool.query as unknown as jest.Mock<Promise<QueryResult<any>>, [string, any[]]>;
 
 describe('questionService (Unit)', () => {
@@ -36,7 +40,7 @@ describe('questionService (Unit)', () => {
     // Use the correctly typed mock
     mockedQuery.mockClear();
     // Reset to default implementation
-    mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+    mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>);
   });
 
   // Test 1: Check the logic WITH excluded IDs
@@ -53,7 +57,7 @@ describe('questionService (Unit)', () => {
     };
     
     // Use the correctly typed mock
-    mockedQuery.mockResolvedValue({ rows: [mockQuestion] } as unknown as QueryResult<any>); // FIX: Add 'as unknown'
+    mockedQuery.mockResolvedValue({ rows: [mockQuestion] } as unknown as QueryResult<any>);
 
     // Call the function directly (no server, no HTTP)
     const result = await selectQuestion(criteria, excludedIds);
@@ -65,7 +69,8 @@ describe('questionService (Unit)', () => {
 
     // --- This is the "white box" part ---
     // Check the *exact* SQL string and parameters it tried to run
-    const queryArgs = mockedQuery.mock.calls[0];
+    // FIX: Add '!' to tell TypeScript 'mock.calls[0]' is not undefined
+    const queryArgs = mockedQuery.mock.calls[0]!; 
     const queryString = queryArgs[0] as string;
     const queryParams = queryArgs[1] as any[];
 
@@ -94,7 +99,8 @@ describe('questionService (Unit)', () => {
     expect(mockedQuery).toHaveBeenCalledTimes(1);
 
     // --- Check the logic again ---
-    const queryArgs = mockedQuery.mock.calls[0];
+    // FIX: Add '!' to tell TypeScript 'mock.calls[0]' is not undefined
+    const queryArgs = mockedQuery.mock.calls[0]!;
     const queryString = queryArgs[0] as string;
     const queryParams = queryArgs[1] as any[];
 
