@@ -24,6 +24,61 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
+  
+  async onRequest(request: Party.Request) {
+    // CORS headers for frontend access
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Content-Type': 'application/json',
+    };
+
+    // Handle preflight OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {status: 204, headers: corsHeaders});
+    }
+
+    if (request.method === 'GET') {
+      try {
+        const {data, error} = await supabase
+          .from('documents')
+          .select('created_at')
+          .eq('name', this.room.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 is "not found" error, which is okay
+          console.error(`[${this.room.id}] Failed to fetch timestamp:`, error);
+          return new Response(
+            JSON.stringify({
+              error: 'Failed to fetch room timestamp',
+            }),
+            {status: 500, headers: corsHeaders}
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            roomId: this.room.id,
+            createdAt: data?.created_at || new Date().toISOString(),
+          }),
+          {status: 200, headers: corsHeaders}
+        );
+      } catch (err) {
+        console.error(`[${this.room.id}] Request error:`, err);
+        return new Response(
+          JSON.stringify({
+            error: 'Internal server error',
+          }),
+          {status: 500, headers: corsHeaders}
+        );
+      }
+    }
+
+    return new Response('Method not allowed', {status: 405, headers: corsHeaders});
+  }
+
   async onConnect(connection: Party.Connection) {
     const room = this.room;
     await y_onConnect(connection, this.room, {
