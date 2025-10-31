@@ -20,8 +20,6 @@ jest.mock('../../constants/expirables', () => ({
   REFRESH_TOKEN_DAYS: 30, // MOCK_REFRESH_TOKEN_DAYS
 }));
 
-const MOCK_JWT_SERCRET = 'test-secret';
-const MOCK_JWT_REFRESH_SECRET = 'JWT_REFRESH_SECRET';
 const MOCK_ACCESS_TOKEN_MINS = 15;
 const MOCK_REFRESH_TOKEN_DAYS = 30;
 

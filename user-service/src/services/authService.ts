@@ -1,14 +1,19 @@
 import passport from 'passport';
 import {APP_ORIGIN} from '../constants/env';
-import {EMAIL_VER_DAYS} from '../constants/expirables';
-import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables';
+import {
+  EMAIL_VER_DAYS,
+  EMAIL_RATE_LIMIT,
+  EMAIL_TIME_LIMIT_HOURS,
+  PW_RESET_MINS,
+} from '../constants/expirables';
 import {
   HTTP_CONFLICT,
   HTTP_INTERNAL_SERVER_ERROR,
   HTTP_NOT_FOUND,
   HTTP_UNAUTHORIZED,
+  HTTP_BAD_REQUEST,
+  HTTP_TOO_MANY_REQUESTS,
 } from '../constants/httpStatus';
-import {HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus';
 import OAuthType from '../constants/oAuthTypes';
 import VerificationType from '../constants/verificationTypes';
 import Session from '../models/session';
@@ -17,8 +22,7 @@ import VerificationCode from '../models/verificationCode';
 import appAssert from '../utils/appAssert';
 import catchErrors from '../utils/catchErrors';
 import {setAuthCookies} from '../utils/cookies';
-import {daysFromNow} from '../utils/date';
-import {hoursAgo, minutesFromNow} from '../utils/date';
+import {daysFromNow, hoursAgo, minutesFromNow} from '../utils/date';
 import {sendEmail} from '../utils/email';
 import {
   refreshTokenSignOptions,
@@ -26,8 +30,7 @@ import {
   verifyToken,
   type RefreshTokenPayload,
 } from '../utils/jwt';
-import {getVerifyEmail} from '../utils/verifyTemplate';
-import {getPasswordReset} from '../utils/verifyTemplate';
+import {getVerifyEmail, getPasswordReset} from '../utils/verifyTemplate';
 import {createSession, generateTokensForSession, renewSessionIfNeeded} from './sessionService';
 
 export type CreateAccoutParams = {
@@ -269,7 +272,7 @@ export const loginUser = async (request: LoginParams) => {
   const isValid = await user.comparePassword(request.password);
   appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
 
-  return await manageLoginSessionAndSignTokens(user);
+  return manageLoginSessionAndSignTokens(user);
 };
 
 /**
@@ -332,7 +335,7 @@ export const unlinkOAuthProvider = async (userId, provider: OAuthType) => {
   const user = await User.findById(userId);
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
 
-  const hasPassword = user.hasPassword;
+  const {hasPassword} = user;
   const hasGoogle = !!user.googleOAuthId;
   const hasGitHub = !!user.githubOAuthId;
 

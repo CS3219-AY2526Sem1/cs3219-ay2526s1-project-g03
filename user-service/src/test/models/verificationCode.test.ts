@@ -2,7 +2,7 @@ import VerificationType from '../../constants/verificationTypes';
 import User from '../../models/user';
 import VerificationCode from '../../models/verificationCode';
 
-describe('models/VerificationCode', () => {
+describe('models/verificationCode', () => {
   const TEST_EXPIRY_BEFORE = new Date(Date.now() - 1000000);
   const TEST_EXPIRY = new Date(Date.now() + 1000000);
   const TEST_EXPIRY_AFTER = new Date(Date.now() + 2000000);
