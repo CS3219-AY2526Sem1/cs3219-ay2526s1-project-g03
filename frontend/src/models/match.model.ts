@@ -10,7 +10,7 @@ export interface MatchRequestPayload {
 }
 
 export interface MatchPayload {
-  criteria?: MatchCriteria;
   partnerId: string;
   sessionId: string;
+  criteria: MatchCriteria;
 }

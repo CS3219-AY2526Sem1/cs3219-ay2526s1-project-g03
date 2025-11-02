@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
 import Chip from '../../../components/chip/chip';
 import TopicSelector from '../topicSelector/topicSelector';
@@ -6,7 +7,7 @@ import MatchingStatusModal from '../matchingStatusModal/matchingStatusModal';
 import MatchFoundModal from '../matchFoundModal/matchFoundModal';
 import CodeIcon from '../../../assets/code-icon.svg';
 import UserIcon from '../../../assets/user-icon-white.svg';
-import { findMatch } from '../../../lib/api';
+import { findMatch, cancelMatch } from '../../../lib/api';
 import useAuth from '../../../hooks/useAuth';
 import type { MatchCriteria, MatchRequestPayload, MatchPayload} from '../../../models/match.model';
 import './practiceSessionForm.css'
@@ -26,6 +27,7 @@ const PracticeSessionForm = () => {
   const [matchData, setMatchData] = useState<MatchPayload | null>(null); // From WebSocket
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [partnerDetails, setPartnerDetails] = useState<any | null>(null); // TODO: change the any type to a predefined interface
+  const [partnerHasAccepted, setPartnerHasAccepted] = useState<boolean>(false);
 
   useEffect(() => {
     // cleanup function: close WebSocket if component unmounts while waiting
@@ -37,96 +39,124 @@ const PracticeSessionForm = () => {
     };
   }, []); // run only on mount/unmount
 
+  const connectWebSocket = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected.');
+      return;
+    }
+
+    // Get URL from .env (VITE_MATCHING_SERVICE_WS_URL)
+    const websocketUrl = import.meta.env.VITE_MATCHING_SERVICE_WS_URL;
+    ws.current = new WebSocket(websocketUrl);
+
+    ws.current.onopen = () => {
+      console.log('WebSocket connection opened');
+      ws.current?.send(JSON.stringify({type: 'register', userId: _id}));
+    };
+
+    ws.current.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      console.log('WebSocket message received:', message);
+
+      switch (message.type) {
+        case 'match_found':
+          setShowWaitingModal(false);
+          setMatchData(message.payload);
+          setPartnerDetails({id: message.payload.userId, name: "Alex"}); //TODO: fetch partner details
+          setShowMatchModal(true);
+          console.log(`Match found via WebSocket! Partner: ${matchData?.partnerId}, Session: ${matchData?.sessionId}`);
+          break;
+
+        case 'partner_accepted':
+          setPartnerHasAccepted(true);
+          console.log("Partner accepted.")
+          toast.success('Your partner has accepted! Accept now to start collaborating1');
+          break;
+
+        case 'match_confirmed':
+          console.log("Match confirmed by server! Navigating...");
+          // navigate(`/room/${message.payload.sessionId}`);
+          break;
+
+        case 'partner_declined':
+          console.log("Partner declined. Returning to search...");
+          setShowMatchModal(false);
+          toast.error('Match Declined. Returning you to the queue...');
+          // reset the state
+          setPartnerDetails(null);
+          // requeue them
+          handleFindPartner();
+          break
+
+        default:
+          console.warn(`Unknown message type received: ${message.type}`);
+      }
+    };
+  }
+
   const {
-    mutate: matchFinding,
-    isPending,
-    isError,
-    error,
+    mutate: findMatchMutate,
+    isPending: isFinding,
+    isError: isFindError,
+    error: findError,
   } = useMutation({
     mutationFn: findMatch,
     onSuccess: (data) => {
       console.log('Success:', data);
       if (data.data.status == 'waiting') {
-        setCurrentCriteria({ difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics});
+        setCurrentCriteria({difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics});
         setShowWaitingModal(true);
-        const websocketUrl = import.meta.env.VITE_MATCHING_SERVICE_WS_URL;
-
-        if (!websocketUrl) {
-          console.error("WebSocket URL is not defined in .env file!");
-          return;
-        }
-
-        ws.current = new WebSocket(websocketUrl);
-
-        // this serve as a registration to the websocket so that websocket knows which user to message to when a match is found
-        ws.current.onopen = () => {
-          console.log('WebSocket connection opened');
-          ws.current?.send(JSON.stringify({ type: 'register', userId: _id }));
-        };
-
-        ws.current.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data);
-            console.log('WebSocket message received:', message);
-            if (message.type === 'match_found') {
-              setShowWaitingModal(false);
-              setMatchData(message.payload);
-              setPartnerDetails({id: message.payload.userId, name: "Alex" });
-              setShowMatchModal(true);
-              console.log(`Match found via WebSocket! Partner: ${matchData.partnerId}, Session: ${matchData.sessionId}`);
-              // TODO: Navigate to session page using message.payload.sessionId
-              ws.current?.close(); // Close the connection
-            }
-          } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
-          }
-        };
-
-        ws.current.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          // TODO: Handle error, maybe close modal and show error message
-          setShowWaitingModal(false);
-        };
-
-        ws.current.onclose = () => {
-          console.log('WebSocket connection closed');
-          ws.current = null; // Clean up ref
-        };
-
-      } else if (data.data.status == 'matched') {
-        console.log(`Matched immediately with ${data.data.partnerId}. Session: ${data.data.sessionId}`);
-        setMatchData({partnerId: data.data.partnerId, sessionId: data.data.sessionId});
-        setPartnerDetails({id: data.data.partnerId, name: "Alex" });
+        connectWebSocket();
+      } else if (data.data.status === 'matched') {
+        // Matched immediately!
+        setMatchData(data.data);
+        setPartnerDetails({id: data.data.partnerId, name: "Alex"});
         setShowMatchModal(true);
+        console.log(`Match found immediately! Partner: ${data.data.partnerId}, Session: ${data.data.sessionId}`);
+        connectWebSocket(); // Connect now to handle accept/decline
       }
     },
-    onError: (data) => {
+      onError: (data) => {
       console.log('Error:', data);
     }
   });
 
+  const {
+    mutate: cancelMatchMutate,
+    isPending: isCancelling,
+    isError: isCancelError,
+    error: cancelError,
+  } = useMutation({
+    mutationFn: cancelMatch,
+    onSuccess: (data) => {
+      setShowWaitingModal(false);
+      console.log('Successfully cancel match, ', data)
+    },
+    onError: (data) => {
+      console.log('Error:', data);
+  }
+  })
+
   const handleFindPartner = () => {
     const criteria: MatchCriteria = {difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics};
     const payload:  MatchRequestPayload= {userId: _id, criteria: criteria};
-    matchFinding(payload);
+    findMatchMutate(payload);
   }
 
   const handleCancelSearch = () => {
-    // TODO: make an API to remove the user from the queue
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      console.log("Closing WebSocket connection due to cancellation");
-      ws.current.close();
-    }
-    setShowWaitingModal(false);
+    cancelMatchMutate({userId: _id});
   }
 
-  const handleAccept = (sessionId: string) => {
-    // TODO: navigate to session
+  const handleAccept = () => {
+    console.log("Accepting match...");
+    ws.current?.send(JSON.stringify({ type: 'accept_match', sessionId: matchData?.sessionId }));
   }
 
-  const handleDecline = (partnerId: string) => {
+  const handleDecline = () => {
+    console.log("Declining match...");
+    ws.current?.send(JSON.stringify({ type: 'decline_match', sessionId: matchData?.sessionId }));
     setShowMatchModal(false);
-    // TODO: put the partner back into the queue?
+    setMatchData(null);
   }
 
   const handleSelect = (item: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -193,7 +223,7 @@ const PracticeSessionForm = () => {
         />
       </div>
 
-      <button className="find-partner-button" onClick={() => handleFindPartner()} disabled={isPending}>
+      <button className="find-partner-button" onClick={() => handleFindPartner()} disabled={isFinding}>
         <img src={UserIcon} alt="Find a Partner" className="user-icon" />
         <span> Find a Partner </span>
       </button>
@@ -201,6 +231,7 @@ const PracticeSessionForm = () => {
         <MatchingStatusModal
           criteria = {currentCriteria}
           onCancel = {handleCancelSearch}
+          disabled = {isCancelling}
           initialCountdown = {30}
           usersOnline={116} // TODO: hardcorded
           avgWaitTime={45} // TODO: hardcoded
@@ -209,8 +240,8 @@ const PracticeSessionForm = () => {
       {showMatchModal && partnerDetails && matchData && (
         <MatchFoundModal
           partner={partnerDetails}
-          onAccept={() => handleAccept(matchData.sessionId)}
-          onDecline={() => handleDecline(matchData.partnerId)}
+          onAccept={() => handleAccept()}
+          onDecline={() => handleDecline()}
         />
       )}
     </div>

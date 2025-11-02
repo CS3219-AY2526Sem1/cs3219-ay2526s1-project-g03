@@ -23,7 +23,9 @@ function App() {
   setNavigate(navigate); // Allows use of navigate within Axios.
   return (
     <>
-      <Toaster />
+      <Toaster position="bottom-right" toastOptions={{
+        duration: 5000, // Stay on screen for 5 seconds
+      }} />
 
       <Routes>
         <Route path="/home" element={<Home />} />
