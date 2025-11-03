@@ -1,5 +1,5 @@
 import mongoose from 'mongoose';
-import type VerificationType from '../constants/verificationTypes';
+import VerificationType from '../constants/verificationTypes';
 
 /**
  * Verification code document interface representing the structure
@@ -21,8 +21,8 @@ export type VerificationCodeModel = mongoose.Model<IVerificationCode, {}, {}>;
 
 const verificationCodeSchema = new mongoose.Schema<IVerificationCode, VerificationCodeModel, {}>({
   userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true},
-  type: {type: String, required: true},
-  createdAt: {type: Date, required: true, default: Date.now},
+  type: {type: String, required: true, enum: Object.values(VerificationType)},
+  createdAt: {type: Date, required: true, default: () => Date.now()},
   expiresAt: {type: Date, required: true},
 });
 

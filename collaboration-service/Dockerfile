@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 8082
 
 # Start the application
-CMD ["npm", "run", "dev"]
+CMD sh -c 'echo "SUPABASE_URL=$SUPABASE_URL" > .env && echo "SUPABASE_KEY=$SUPABASE_KEY" >> .env && npm run dev'

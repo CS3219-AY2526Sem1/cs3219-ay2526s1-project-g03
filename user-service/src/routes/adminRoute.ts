@@ -1,8 +1,5 @@
 import {Router} from 'express';
-import {
-  changeUserRoleController,
-  createAdminAccountController,
-} from '../controllers/adminHandler.ts';
+import {changeUserRoleController, createAdminAccountController} from '../controllers/adminHandler';
 
 const adminRoutes = Router();
 

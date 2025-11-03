@@ -1,6 +1,6 @@
 import sharp from 'sharp';
-import {HTTP_BAD_REQUEST} from '../constants/httpStatus.ts';
-import AppError from './appError.ts';
+import {HTTP_BAD_REQUEST} from '../constants/httpStatus';
+import AppError from './appError';
 
 const IMAGE_DIMENSIONS = 400;
 

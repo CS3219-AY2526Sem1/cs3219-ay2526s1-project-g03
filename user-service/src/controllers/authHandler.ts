@@ -1,7 +1,7 @@
 import passport from 'passport';
 import z from 'zod';
-import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
+import {HTTP_CREATED, HTTP_OK, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
+import OAuthType from '../constants/oAuthTypes';
 import {
   createAccount,
   forgotPassword,
@@ -11,26 +11,26 @@ import {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
-} from '../services/authService.ts';
-import {deleteSession} from '../services/sessionService.ts';
-import appAssert from '../utils/appAssert.ts';
-import catchErrors from '../utils/catchErrors.ts';
+} from '../services/authService';
+import appAssert from '../utils/appAssert';
+import catchErrors from '../utils/catchErrors';
 import {
   clearAuthCookies,
   getAccessTokenCookieOptions,
   getRefreshTokenCookieOptions,
   setAuthCookies,
-} from '../utils/cookies.ts';
-import {verifyToken} from '../utils/jwt.ts';
+} from '../utils/cookies';
+import {verifyToken} from '../utils/jwt';
 import {
   emailSchema,
   loginSchema,
   passwordResetSchema,
   registerSchema,
   verificationCodeSchema,
-} from './userSchema.ts';
-import OAuthLink from '../models/oAuthLink.ts';
-import {APP_ORIGIN} from '../constants/env.ts';
+} from './userSchema';
+import OAuthLink from '../models/oAuthLink';
+import {APP_ORIGIN} from '../constants/env';
+import Session from '../models/session';
 
 /**
  * Handles POST request for user registration (`POST /auth/register`).
@@ -46,7 +46,7 @@ export const registerController = catchErrors(async (req, res) => {
 
   const {user, accessToken, refreshToken} = await createAccount(request);
 
-  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user);
+  return setAuthCookies({res, accessToken, refreshToken}).status(HTTP_CREATED).json(user.toJSON());
 });
 
 /**
@@ -93,6 +93,7 @@ export const forgotPasswordController = catchErrors(async (req, res) => {
  */
 export const resetPasswordController = catchErrors(async (req, res) => {
   4;
+
   const request = passwordResetSchema.parse(req.body);
 
   await resetPassword(request);
@@ -127,11 +128,11 @@ export const loginController = catchErrors(async (req, res) => {
  * Logs user out.
  */
 export const logoutController = catchErrors(async (req, res) => {
-  const accessToken = req.cookies.accessToken;
-  const {payload, _} = verifyToken(accessToken);
+  const {accessToken} = req.cookies;
+  const {payload} = verifyToken(accessToken);
 
   if (payload) {
-    await deleteSession(payload.sessionId);
+    await Session.findByIdAndDelete(payload.sessionId);
   }
 
   return clearAuthCookies(res).status(HTTP_OK).json({
@@ -188,7 +189,7 @@ export const googleAuthController = async (req, res, next) => {
   passport.authenticate(OAuthType.Google, {
     session: false,
     scope: ['profile', 'email'],
-    state: state,
+    state,
   })(req, res, next);
 };
 
@@ -233,7 +234,7 @@ export const githubAuthController = async (req, res, next) => {
   passport.authenticate(OAuthType.GitHub, {
     session: false,
     scope: ['read:user', 'user:email'],
-    state: state,
+    state,
   })(req, res, next);
 };
 

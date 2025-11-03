@@ -20,8 +20,6 @@ jest.mock('../../constants/expirables', () => ({
   REFRESH_TOKEN_DAYS: 30, // MOCK_REFRESH_TOKEN_DAYS
 }));
 
-const MOCK_JWT_SERCRET = 'test-secret';
-const MOCK_JWT_REFRESH_SECRET = 'JWT_REFRESH_SECRET';
 const MOCK_ACCESS_TOKEN_MINS = 15;
 const MOCK_REFRESH_TOKEN_DAYS = 30;
 
@@ -44,7 +42,7 @@ describe('utils/jwt', () => {
       const decoded = jwt.decode(token) as any;
       expect(decoded.userId).toBe(mockUserId);
       expect(decoded.sessionId).toBe(mockSessionId);
-      expect(decoded.aud).toEqual(['user']);
+      expect(decoded.aud).toEqual(['pp-user-service']);
     });
 
     it('should sign a refresh token', () => {
@@ -58,7 +56,7 @@ describe('utils/jwt', () => {
 
       const decoded = jwt.decode(token) as any;
       expect(decoded.sessionId).toBe(mockSessionId);
-      expect(decoded.aud).toEqual(['user']);
+      expect(decoded.aud).toEqual(['pp-user-service']);
     });
 
     it('should use correct expiration for access token', () => {
@@ -158,7 +156,7 @@ describe('utils/jwt', () => {
 
       const token = jwt.sign(payload, JWT_SECRET, {
         expiresIn: '0s',
-        audience: ['user'],
+        audience: ['pp-user-service'],
       });
 
       // Delay to ensure expiry.
@@ -179,7 +177,7 @@ describe('utils/jwt', () => {
 
       // Create token with different audience
       const token = jwt.sign(payload, JWT_SECRET, {
-        audience: ['admin'],
+        audience: ['invalid'],
       });
 
       const result = verifyToken(token);

@@ -1,13 +1,37 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import {fileURLToPath} from 'url';
+
+// Force search to project root to bypass CJS and ESNext conflicts.
+const TARGET_DIR = 'cs3219-ay2526s1-project-g03';
+const findProjectRoot = (targetDirName = TARGET_DIR): string => {
+  // Check if using docker or local github folder testing.
+  if (process.cwd().startsWith('/app')) {
+    return '/app';
+  }
+  
+  let currentDir = process.cwd();
+  while (true) {
+    const base = path.basename(currentDir);
+    if (base === targetDirName) {
+      return currentDir;
+    }
+    const parentDir = path.dirname(currentDir);
+    if (parentDir === currentDir) {
+      throw new Error(`Could not find directory ${targetDirName} in path hierarchy.`);
+    }
+    currentDir = parentDir;
+  }
+};
+dotenv.config({path: path.join(findProjectRoot(), '.env')});
+
+dotenv.config({path: path.join(findProjectRoot(), '.env')});
 
 // Solution adapted from:
 // https://stackoverflow.com/questions/64383909/dirname-is-not-defined-error-in-node-js-14-version
-const filename = fileURLToPath(import.meta.url);
-const dirname = path.dirname(filename);
+// const filename = fileURLToPath(import.meta.url);
+// const dirname = path.dirname(filename);
 
-dotenv.config({path: path.resolve(dirname, '../../../.env')});
+// dotenv.config({path: path.resolve(dirname, '../../../.env')});
 
 /**
  * Processes all environment variables.

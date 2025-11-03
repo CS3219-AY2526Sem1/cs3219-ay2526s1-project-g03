@@ -8,21 +8,84 @@ import * as Y from 'yjs';
 
 // TODO : separate database connection
 // Create a single supabase client for interacting with your database
-const supabase = createClient(
-  process.env['SUPABASE_URL'] as string,
-  process.env['SUPABASE_KEY'] as string,
-  {auth: {persistSession: false}}
-);
+const SUPABASE_URL = process.env['SUPABASE_URL'] as string;
+const SUPABASE_KEY = process.env['SUPABASE_KEY'] as string;
+
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  console.error('FATAL ERROR: Missing required environment variables');
+  console.error('Required: SUPABASE_URL, SUPABASE_KEY');
+  console.error('Please check your .env file');
+  throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_KEY');
+}
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {persistSession: false}
+});
 
 export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
+  
+  async onRequest(request: Party.Request) {
+    // CORS headers for frontend access
+    const corsHeaders = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Content-Type': 'application/json',
+    };
+
+    // Handle preflight OPTIONS request
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {status: 204, headers: corsHeaders});
+    }
+
+    if (request.method === 'GET') {
+      try {
+        const {data, error} = await supabase
+          .from('documents')
+          .select('created_at')
+          .eq('name', this.room.id)
+          .single();
+
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 is "not found" error, which is okay
+          console.error(`[${this.room.id}] Failed to fetch timestamp:`, error);
+          return new Response(
+            JSON.stringify({
+              error: 'Failed to fetch room timestamp',
+            }),
+            {status: 500, headers: corsHeaders}
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            roomId: this.room.id,
+            createdAt: data?.created_at || new Date().toISOString(),
+          }),
+          {status: 200, headers: corsHeaders}
+        );
+      } catch (err) {
+        console.error(`[${this.room.id}] Request error:`, err);
+        return new Response(
+          JSON.stringify({
+            error: 'Internal server error',
+          }),
+          {status: 500, headers: corsHeaders}
+        );
+      }
+    }
+
+    return new Response('Method not allowed', {status: 405, headers: corsHeaders});
+  }
+
   async onConnect(connection: Party.Connection) {
     const room = this.room;
     await y_onConnect(connection, this.room, {
       async load() {
         // This is called once per "room" when the first user connects
 
-        // Let's make a Yjs document
+        // Creates the backend Yjs document
         const doc = new Y.Doc();
 
         // Load the document from the database
@@ -50,7 +113,7 @@ export default class YjsServer implements Party.Server {
             console.log(`[${room.id}] No existing document found, creating new document`);
           }
 
-          // Return the Yjs document
+          // Return the Yjs document to y-partykit to manage
           return doc;
         } catch (err) {
           console.error(`[${room.id}] Load failed:`, err);

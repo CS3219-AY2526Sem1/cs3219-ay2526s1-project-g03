@@ -1,10 +1,10 @@
 import crypto from 'crypto';
-import {ADMIN_EMAIL, ADMIN_USERNAME} from '../constants/env.ts';
-import {HTTP_CONFLICT, HTTP_FORBIDDEN, HTTP_NOT_FOUND} from '../constants/httpStatus.ts';
-import UserRoleTypes from '../constants/userRoles.ts';
-import User from '../models/user.ts';
-import appAssert from '../utils/appAssert.ts';
-import {forgotPassword} from './authService.ts';
+import {ADMIN_EMAIL, ADMIN_USERNAME} from '../constants/env';
+import {HTTP_CONFLICT, HTTP_FORBIDDEN, HTTP_NOT_FOUND} from '../constants/httpStatus';
+import UserRoleTypes from '../constants/userRoles';
+import User from '../models/user';
+import appAssert from '../utils/appAssert';
+import {forgotPassword} from './authService';
 
 /**
  * Change user role.

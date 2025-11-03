@@ -12,7 +12,7 @@ import {
   resendEmailController,
   resetPasswordController,
   verifyEmailController,
-} from '../controllers/authHandler.ts';
+} from '../controllers/authHandler';
 
 const authRoutes = Router();
 

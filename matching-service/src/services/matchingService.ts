@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws';
 import type { MatchCriteria } from '../models/matchModel';
 
-const waitingQueue: Map<string, string[]> = new Map<string, string[]>;
+const waitingQueue: Map<string, string[]> = new Map<string, string[]>();
 
 // store active WebSocket connections mapped to userId
 const activeConnections = new Map<string, WebSocket>();
