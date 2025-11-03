@@ -202,10 +202,34 @@ const config: Config = {
       // A preset that is used as a base for Jest's configuration
       preset: 'ts-jest',
 
-      testEnvironment: 'jest-environment-jsdom',
+      testEnvironment: 'jsdom',
 
       // A list of paths to directories that Jest should use to search for files in
       roots: ['<rootDir>/frontend'],
+
+      setupFilesAfterEnv: ['<rootDir>/frontend/src/test/setup.ts'],
+
+      transform: {
+        '^.+\\.tsx?$': [
+          'ts-jest',
+          {
+            tsconfig: {
+              jsx: 'react-jsx',
+              esModuleInterop: true,
+              allowSyntheticDefaultImports: true,
+              module: 'commonjs',
+            },
+            diagnostics: false,  // Disables TypeScript errors
+            babelConfig: true,
+            useESM: true,
+          },
+        ],
+      },
+
+      moduleNameMapper: {
+        '\\.css$': 'identity-obj-proxy',
+        '\\.svg$': '<rootDir>/frontend/src/test/__mocks__/fileMock.ts',
+      },
     },
 
     // Backend uses node
@@ -233,7 +257,7 @@ const config: Config = {
             tsconfig: {
               esModuleInterop: true,
               allowSyntheticDefaultImports: true,
-              module: 'commonjs', // Add this line
+              module: 'commonjs',
             },
           },
         ],

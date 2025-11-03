@@ -1,24 +1,28 @@
 import passport from 'passport';
 import {APP_ORIGIN} from '../constants/env';
-import {EMAIL_VER_DAYS} from '../constants/expirables';
-import {EMAIL_RATE_LIMIT, EMAIL_TIME_LIMIT_HOURS, PW_RESET_MINS} from '../constants/expirables.ts';
+import {
+  EMAIL_VER_DAYS,
+  EMAIL_RATE_LIMIT,
+  EMAIL_TIME_LIMIT_HOURS,
+  PW_RESET_MINS,
+} from '../constants/expirables';
 import {
   HTTP_CONFLICT,
   HTTP_INTERNAL_SERVER_ERROR,
   HTTP_NOT_FOUND,
   HTTP_UNAUTHORIZED,
+  HTTP_BAD_REQUEST,
+  HTTP_TOO_MANY_REQUESTS,
 } from '../constants/httpStatus';
-import {HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
-import OAuthType from '../constants/oAuthTypes.ts';
+import OAuthType from '../constants/oAuthTypes';
 import VerificationType from '../constants/verificationTypes';
 import Session from '../models/session';
 import User from '../models/user';
 import VerificationCode from '../models/verificationCode';
 import appAssert from '../utils/appAssert';
-import catchErrors from '../utils/catchErrors.ts';
-import {setAuthCookies} from '../utils/cookies.ts';
-import {daysFromNow} from '../utils/date';
-import {hoursAgo, minutesFromNow} from '../utils/date.ts';
+import catchErrors from '../utils/catchErrors';
+import {setAuthCookies} from '../utils/cookies';
+import {daysFromNow, hoursAgo, minutesFromNow} from '../utils/date';
 import {sendEmail} from '../utils/email';
 import {
   refreshTokenSignOptions,
@@ -26,14 +30,8 @@ import {
   verifyToken,
   type RefreshTokenPayload,
 } from '../utils/jwt';
-import {getVerifyEmail} from '../utils/verifyTemplate';
-import {getPasswordReset} from '../utils/verifyTemplate.ts';
-import {
-  createSession,
-  deleteUserSessions,
-  generateTokensForSession,
-  renewSessionIfNeeded,
-} from './sessionService.ts';
+import {getVerifyEmail, getPasswordReset} from '../utils/verifyTemplate';
+import {createSession, generateTokensForSession, renewSessionIfNeeded} from './sessionService';
 
 export type CreateAccoutParams = {
   username: string;
@@ -98,6 +96,9 @@ export const verifyEmail = async (code: string) => {
 
 /**
  * Verifies that an email has not exceeded the rate limit.
+ * Note: operations here are not atomic, ie. under race conditions,
+ * it is possible to exceed.
+ * However, size of database is maintained small by consistently deletion of expired codes.
  *
  * @param email Email address of user.
  * @param type Type of verification.
@@ -107,11 +108,17 @@ const verifyUserAndEmailRate = async (email: string, type: VerificationType) => 
   const user = await User.findOne({email});
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
 
+  await VerificationCode.deleteMany({
+    type,
+    createdAt: {$lte: hoursAgo(EMAIL_TIME_LIMIT_HOURS)},
+  });
+
+  // Due to deletion above, no longer need to check for time here.
   const count = await VerificationCode.countDocuments({
     userId: user._id,
     type,
-    createdAt: {$gt: hoursAgo(EMAIL_TIME_LIMIT_HOURS)},
   });
+
   appAssert(
     count < EMAIL_RATE_LIMIT,
     HTTP_TOO_MANY_REQUESTS,
@@ -203,12 +210,12 @@ export const resetPassword = async ({verificationCode, password}: ResetPasswordP
   // TODO: reduce to one IO call if bottleneck
   const user = await User.findById(validCode.userId);
   appAssert(user, HTTP_INTERNAL_SERVER_ERROR, 'User not found!');
-  user.password = password;
+  (user as any).password = password;
   await user.save();
 
   await validCode.deleteOne();
 
-  await deleteUserSessions(user._id.toString());
+  await Session.deleteMany({userId: user._id.toString()});
 
   return {user};
 };
@@ -265,7 +272,7 @@ export const loginUser = async (request: LoginParams) => {
   const isValid = await user.comparePassword(request.password);
   appAssert(isValid, HTTP_UNAUTHORIZED, 'Invalid credentials!');
 
-  return await manageLoginSessionAndSignTokens(user);
+  return manageLoginSessionAndSignTokens(user);
 };
 
 /**
@@ -328,7 +335,7 @@ export const unlinkOAuthProvider = async (userId, provider: OAuthType) => {
   const user = await User.findById(userId);
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
 
-  const hasPassword = !!user.verified;
+  const {hasPassword} = user;
   const hasGoogle = !!user.googleOAuthId;
   const hasGitHub = !!user.githubOAuthId;
 

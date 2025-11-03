@@ -1,6 +1,6 @@
 // src/codemirror.tsx
 import React, {useEffect, useRef} from 'react';
-import {EditorState} from '@codemirror/state';
+import {EditorState, Compartment, type Extension} from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -21,7 +21,13 @@ import {
   foldGutter,
   foldKeymap,
 } from '@codemirror/language';
-import {defaultKeymap, history, historyKeymap} from '@codemirror/commands';
+
+import {javascript} from '@codemirror/lang-javascript';
+import {python} from '@codemirror/lang-python';
+import {cpp} from '@codemirror/lang-cpp';
+import {java} from '@codemirror/lang-java';
+
+import {defaultKeymap, history, historyKeymap, indentMore, indentLess} from '@codemirror/commands';
 import {searchKeymap, highlightSelectionMatches} from '@codemirror/search';
 import {
   autocompletion,
@@ -34,17 +40,31 @@ import {yCollab} from 'y-codemirror.next';
 import * as Y from 'yjs';
 import {Awareness} from 'y-protocols/awareness';
 
+const languageCompartment = new Compartment();
+
+const languageMap: { [key: string]: () => Extension } = {
+  javascript: () => javascript(),
+  python: () => python(),
+  cpp: () => cpp(),
+  java: () => java(),
+  default: () => [], // plain text mode
+};
+
 interface CodeMirrorProps {
   ytext: Y.Text;
   awareness: Awareness;
+  languageConfig: string;
 }
 
-export default function CodeMirror({ytext, awareness}: CodeMirrorProps) {
+export default function CodeMirror({ytext, awareness, languageConfig}: CodeMirrorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
     if (!editorRef.current || !ytext || !awareness) return;
+
+    const lazyInitialLang = languageMap[languageConfig.toLowerCase()] || languageMap.default;
+    const initialLanguageExtension = lazyInitialLang();
 
     // Create the editor view with yCollab extension
     const view = new EditorView({
@@ -68,7 +88,9 @@ export default function CodeMirror({ytext, awareness}: CodeMirrorProps) {
         // Re-indent lines when typing specific input
         indentOnInput(),
         // Highlight syntax with a default style
-        syntaxHighlighting(defaultHighlightStyle),
+        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        // Dyanmic configuration for language mode
+        languageCompartment.of(initialLanguageExtension),
         // Highlight matching brackets near cursor
         bracketMatching(),
         // Automatically close brackets
@@ -88,6 +110,17 @@ export default function CodeMirror({ytext, awareness}: CodeMirrorProps) {
         // Yjs collaboration extension for CodeMirror 6
         yCollab(ytext, awareness),
         keymap.of([
+          {
+            key: "Tab",
+            preventDefault: true,
+            run: indentMore,
+          },
+          {
+            key: "Shift-Tab",
+            preventDefault: true,
+            run: indentLess,
+          },
+
           // Closed-brackets aware backspace
           ...closeBracketsKeymap,
           // A large set of basic bindings
@@ -116,6 +149,20 @@ export default function CodeMirror({ytext, awareness}: CodeMirrorProps) {
       }
     };
   }, [ytext, awareness]);
+
+  // Effect to handle language changes
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    const newLazyLangFn = languageMap[languageConfig.toLowerCase()] || languageMap.default;
+    const newExtension = newLazyLangFn();
+
+    // Reconfigures compartment with the new language extension
+    view.dispatch({
+      effects: languageCompartment.reconfigure(newExtension),
+    });
+  }, [languageConfig]);
 
   return (
     <div

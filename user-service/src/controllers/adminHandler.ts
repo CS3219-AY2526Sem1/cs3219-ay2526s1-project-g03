@@ -1,7 +1,7 @@
-import {HTTP_OK} from '../constants/httpStatus.ts';
-import {changeUserRole, createAdminAccount} from '../services/adminService.ts';
-import catchErrors from '../utils/catchErrors.ts';
-import {changeRoleSchema, usernameAndEmail} from './userSchema.ts';
+import {HTTP_OK} from '../constants/httpStatus';
+import {changeUserRole, createAdminAccount} from '../services/adminService';
+import catchErrors from '../utils/catchErrors';
+import {changeRoleSchema, usernameAndEmail} from './userSchema';
 
 /**
  * Changes the role of an existing user.

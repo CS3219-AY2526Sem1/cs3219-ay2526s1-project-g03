@@ -1,15 +1,15 @@
 /**
  * Script should be run externally.
- * Threaded variants are commented out (see `index.ts`).
+ * Threaded variants are commented out (see `index`).
  */
 
 import mongoose from 'mongoose';
-import {MONGO_URI} from '../constants/env.ts';
-import {ACCOUNT_DELETION_DAYS} from '../constants/expirables.ts';
-import Session from '../models/session.ts';
-import User from '../models/user.ts';
-import VerificationCode from '../models/verificationCode.ts';
-import {daysAgo} from '../utils/date.ts';
+import {MONGO_URI} from '../constants/env';
+import {ACCOUNT_DELETION_DAYS} from '../constants/expirables';
+import Session from '../models/session';
+import User from '../models/user';
+import VerificationCode from '../models/verificationCode';
+import {daysAgo} from '../utils/date';
 
 /**
  * Removes account from database that are scheduled for deletion,

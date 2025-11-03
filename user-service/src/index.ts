@@ -5,14 +5,14 @@ import passport from 'passport';
 import connectToDatabase from './config/database';
 import {APP_ORIGIN, NODE_ENV, USER_SERVICE_PORT} from './constants/env';
 import {HTTP_OK} from './constants/httpStatus';
-import adminAuthenticate from './middleware/adminAuthenticate.ts';
+import adminAuthenticate from './middleware/adminAuthenticate';
 import authenticate from './middleware/authenticate';
 import errorHandler from './middleware/errorHandler';
-import adminRoutes from './routes/adminRoute.ts';
+import adminRoutes from './routes/adminRoute';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoute';
 import './services/passport';
-// import { startCleanupScheduler } from './scripts/cleanupAccounts.ts';
+// import { startCleanupScheduler } from './scripts/cleanupAccounts';
 
 const app = express();
 

@@ -1,4 +1,4 @@
-const enum VerificationType {
+enum VerificationType {
   VerifyEmail = 'verify_email',
   ResetPassword = 'reset_password',
 }

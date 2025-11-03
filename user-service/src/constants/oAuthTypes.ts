@@ -1,4 +1,4 @@
-const enum OAuthType {
+enum OAuthType {
   Google = 'google',
   GitHub = 'github',
 }

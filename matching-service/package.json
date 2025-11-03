@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node ./src/index.js",
+    "dev": "tsx watch ./src/index.ts",
     "lint": "cd .. && npm run lint:service matching-service --ext .ts",
     "lint:fix": "cd .. && npm run lint:service matching-service --ext .ts --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -15,10 +15,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "express": "^5.1.0"
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "tsx": "^4.20.6",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "@types/node": "^24.3.1"
+    "@types/node": "^24.3.1",
+    "@types/ws": "^8.18.1"
   }
 }
