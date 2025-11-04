@@ -1,0 +1,50 @@
+.chip {
+    padding: 8px 24px;
+    border-radius: 20px;
+    border: 1px solid #ccc;
+    background-color: #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s, color 0.2s;
+    box-shadow: 0 4px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chip.easy,
+.chip.medium,
+.chip.hard {
+    flex-grow: 1;
+}
+
+.chip:hover {
+    background-color: #e0e0e0;
+}
+
+.chip.selected {
+    background-color: #4181F5;
+    color: white;
+    border-color: #4181F5;
+}
+
+.chip.easy.selected {
+    background-color: #58BB88;
+    color: white;
+    border-color: #58BB88;
+}
+
+.chip.medium.selected {
+    background-color: #F79F74;
+    color: white;
+    border-color: #F79F74;
+}
+
+.chip.hard.selected {
+    background-color: #F23B3B;
+    color: white;
+    border-color: #F23B3B;
+}
+
+.chip .remove-icon {
+    margin-left: 8px;
+    font-size: 16px;
+    font-weight: bold; cursor: pointer;
+}

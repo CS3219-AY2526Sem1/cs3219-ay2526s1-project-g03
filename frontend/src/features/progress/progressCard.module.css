@@ -1,0 +1,254 @@
+.progressCard {
+    border-radius: 12px;
+    border: 1px solid #627287;
+    width: 75%;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+}
+
+.headerTitle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.headerIcon {
+    font-size: 1.8rem;
+}
+
+.toggleIcon {
+    width: 18px;
+    height: 18px;
+    opacity: 0.6;
+}
+
+.content {
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.topRow {
+    display: flex;
+    gap: 3rem;
+    flex-wrap: wrap;
+}
+
+/* Stats Grid */
+.statsGrid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem 3rem;
+    flex: 1;
+    min-width: 250px;
+}
+
+.statBox {
+    background-color: #F9F9F9;
+    padding: 1rem;
+    border: 1px solid #627287;
+    border-radius: 15px;
+    text-align: center;
+    align-content: center;
+}
+
+.statValue {
+    display: block;
+    font-size: 3rem;
+    font-weight: 1000;
+    color: #333;
+    margin-bottom: 0.25rem;
+}
+
+.statLabel {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+/* Recent Sessions */
+.recentSessions {
+    padding: 1rem;
+    flex: 1; /* Take slightly more space */
+    min-width: 300px;
+    background-color: #F9F9F9;
+    border: 1px solid #627287;
+    border-radius: 15px;
+}
+
+.recentHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.recentHeader h4 {
+    margin: 0;
+    font-size: 1rem;
+    color: #333;
+}
+
+.recentHeader img {
+    width: 30px;
+    height: auto;
+    opacity: 0.7;
+}
+
+.sessionList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.sessionBox {
+    border: 1px solid #B3B3B3;
+    border-radius: 6px;
+    padding: 1.2rem 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 1rem;
+    font-size: 0.9rem;
+}
+
+.sessionBoxSecondRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%
+}
+
+.difficultyBadge {
+    padding: 5px 15px;
+    border-radius: 15px;
+    font-size: 1rem;
+    font-weight: 800;
+    min-width: 50px;
+    text-align: center;
+}
+
+.easy { background-color: rgba(88, 187, 136, 0.2); color: #58BB88 }
+.medium { background-color: rgba(237, 159, 116, 0.2); color: #F79F74} /* Adjust text color for yellow */
+.hard { background-color: rgba(232, 59, 59, 0.2); color: #F23B3B }
+
+.userAndDuration {
+    display: inline-flex;
+    gap: 1rem;
+    font-size: 1rem;
+}
+
+.userAndDuration img {
+    width: 15px;
+    height: auto;
+}
+
+.sessionUser {
+    display: inline-flex;
+    flex-grow: 1;
+    color: #555;
+    gap: 5px;
+    align-items: center;
+}
+
+.sessionDuration {
+    color: #888;
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.statusBadge {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 3px 15px;
+    color: white;
+    border-radius: 10px;
+}
+
+.passed {
+    background-color: rgba(37 ,191, 88, 0.7);
+}
+
+.noSessions {
+    color: #888;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem 0;
+}
+
+
+/* Topic Progress */
+.topicProgressContainer {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* 3 equal columns */
+    gap: 0.5rem 1.5rem;
+    align-items: start;
+    background-color: #F9F9F9;
+    padding: 1rem;
+    border: 1px solid #627287;
+    border-radius: 15px;
+}
+
+.topicCategory:first-child {
+    grid-row: span 2;
+}
+
+.topicCategory h5 {
+    font-size: 1.2rem;
+    font-weight: 400;
+    color: #444;
+    margin-bottom: 0.75rem;
+}
+
+.topicItem {
+    display: grid;
+    grid-template-columns: 1fr 150px auto; /* Name | Bar | Count */
+    gap: 5px;
+    align-items: center;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.topicName {
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.topicProgressBarBackground {
+    height: 10px;
+    background-color: #C9C9C9;
+    border-radius: 8px;
+    width: 100%;
+}
+
+.topicProgressBarFill {
+    height: 100%;
+    background-color: #4181F5;
+    border-radius: 8px;
+}
+
+.topicCount {
+    color: #888;
+    font-weight: 500;
+    min-width: 20px;
+    text-align: right;
+}
