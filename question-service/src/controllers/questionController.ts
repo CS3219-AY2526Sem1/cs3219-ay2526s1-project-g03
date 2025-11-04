@@ -7,10 +7,6 @@ const asyncHandler = (fn: AsyncRequestHandler) => (req: Request, res: Response, 
   void Promise.resolve(fn(req, res, next)).catch(next);
 };
 
-export const createQuestion = asyncHandler(async (req: Request, res: Response) => {
-  const newQuestion = await questionService.createQuestion(req.body);
-  return res.status(201).json(newQuestion);
-});
 
 export const getAllQuestions = asyncHandler(async (req: Request, res: Response) => {
   void req;
@@ -60,14 +56,18 @@ export const getAllTopics = asyncHandler(async (req: Request, res: Response) => 
   return res.status(200).json(topics);
 });
 
-export const selectQuestionForSession = asyncHandler(async (req: Request, res: Response) => {
-  const { topic, difficulty, userIds } = req.body;
+export const selectQuestion = asyncHandler(async (req: Request, res: Response) => {
+  const { criteria, excludedIds } = req.body;
   
-  if (!topic || !difficulty || !Array.isArray(userIds) || userIds.length === 0) {
-    return res.status(400).json({ message: 'Missing required fields: topic, difficulty, userIds' });
+  if (!criteria || !criteria.topic || !criteria.difficulty || !Array.isArray(excludedIds)) {
+    return res.status(400).json({ 
+      message: 'Missing required fields: criteria (with topic and difficulty) and excludedIds (as an array).' 
+    });
   }
 
-  const question = await questionService.selectQuestion(topic, difficulty, userIds);
+  // The service layer no longer needs userIds, as history is pre-fetched
+  const question = await questionService.selectQuestion(criteria, excludedIds);
+  
   if (!question) {
     return res.status(404).json({ message: 'No suitable question found for the given criteria.' });
   }
