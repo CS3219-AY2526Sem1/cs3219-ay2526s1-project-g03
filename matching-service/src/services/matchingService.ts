@@ -10,6 +10,25 @@ const activeConnections = new Map<string, WebSocket>();
 const pendingMatches = new Map<string, PendingMatch>(); // session id will be the key
 // to keep track of of a match after it has been found but before both users have clicked "Accept"
 
+const MATCH_ACCEPT_TIMEOUT_MS = 10000; // 10 seconds
+
+const autoDeclineMatch = (sessionId: string) => {
+  const match = pendingMatches.get(sessionId);
+
+  // Check if the match is still pending.
+  // If it was already accepted or declined, this will be false.
+  if (match && (match.user1Status === 'pending' || match.user2Status === 'pending')) {
+
+    console.log(`Match ${sessionId} timed out. Auto-declining.`);
+
+    // Notify both users that the match is off
+    sendWebSocketMessage(match.user1Id, { type: 'match_timed_out' });
+    sendWebSocketMessage(match.user2Id, { type: 'match_timed_out' });
+
+    // Clean up the pending match
+    pendingMatches.delete(sessionId);
+  }
+};
 
 const createCriteriaKey = (criteria: MatchCriteria): string => {
   const sortedDifficulties: string = criteria.difficulties ? [...criteria.difficulties].sort().join(',') : '';
@@ -63,7 +82,7 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 
         // case 2: client accepts the match
         case 'accept_match':
-          if (parsedMessage.sessionId && parsedMessage.partnerId && currentUserId ) {
+          if (parsedMessage.sessionId && currentUserId ) {
 
             const match = pendingMatches.get(parsedMessage.sessionId);
             if (!match) break;
@@ -156,6 +175,9 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
       }
 
       pendingMatches.set(sessionId, newMatch);
+
+      // server side timer (single source of truth)
+      setTimeout(() => autoDeclineMatch(sessionId), MATCH_ACCEPT_TIMEOUT_MS);
 
       const matchDetails = {
         status: 'matched',

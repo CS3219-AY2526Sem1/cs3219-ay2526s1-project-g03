@@ -88,6 +88,16 @@ const PracticeSessionForm = () => {
           handleFindPartner();
           break
 
+        case 'match_timed_out':
+          // the server says the match is off.
+          console.log("Match timed out from server.");
+          setShowMatchModal(false);
+          toast.error("Match timed out. Finding a new partner...");
+
+          // automatically re-queue the user
+          handleFindPartner();
+          break;
+
         default:
           console.warn(`Unknown message type received: ${message.type}`);
       }

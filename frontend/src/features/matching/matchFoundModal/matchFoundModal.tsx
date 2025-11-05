@@ -29,10 +29,10 @@ const MatchFoundModal = ({
   // countdown timer effect
   useEffect(() => {
     if (countdown <= 0) {
-      // automatically decline if timer runs out
-      if (!isWaitingForPartner) {
-        onDecline();
-      }
+      // // automatically decline if timer runs out
+      // if (!isWaitingForPartner) {
+      //   onDecline();
+      // }
       return; // stop the timer
     }
 
