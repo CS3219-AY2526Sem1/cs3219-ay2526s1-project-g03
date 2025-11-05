@@ -31,8 +31,9 @@ services:
     ports:
       - '5433:5432'
     volumes:
-      - question-data:/var/lib/postgresql/data
+      - question-data:/var/lib/postgresql/data 
       - ./question-service/db:/docker-entrypoint-initdb.d
+      - ./history-service/db/init.sql:/docker-entrypoint-initdb.d/2-history-init.sql
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -182,12 +183,13 @@ services:
     ports:
       - '8085:8085'
     environment:
+      - DATABASE_URL=postgresql://postgres:postgres@question-db-pg:5432/question-db
       - PORT=8085
-      - MONGO_URI=${HISTORY_DB_MONGO_URI}
     env_file:
       - ./.env
     depends_on:
-      - user-db-mongodb 
+      question-db-pg:
+        condition: service_healthy # Wait for DB to be ready
     volumes:
       - ./history-service:/app
       - /app/node_modules
