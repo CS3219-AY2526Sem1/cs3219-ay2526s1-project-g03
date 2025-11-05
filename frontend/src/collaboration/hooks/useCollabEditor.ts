@@ -5,14 +5,24 @@ import * as Y from 'yjs';
 import toast from 'react-hot-toast';
 
 const USER_CONFIG = {
-  COLORS: ['#2563EB', '#DC2626', '#059669', '#7C3AED','#EA580C', '#DB2777', '#0891B2', '#CA8A04'],
+  COLORS: ['#2563EB', '#DC2626', '#059669', '#7C3AED', '#EA580C', '#DB2777', '#0891B2', '#CA8A04'],
   ANIMALS: ['Panda', 'Tiger', 'Lion', 'Eagle', 'Shark', 'Wolf', 'Fox', 'Bear', 'Owl', 'Cat'],
-  ADJECTIVES: ['Code Master', 'Cracked', 'Pro Progammer', 'Bug Terminator', 'Wise', 'Debugger', 'Coder', 'Sharp', 'Giga Chad'],
+  ADJECTIVES: [
+    'Code Master',
+    'Cracked',
+    'Pro Progammer',
+    'Bug Terminator',
+    'Wise',
+    'Debugger',
+    'Coder',
+    'Sharp',
+    'Giga Chad',
+  ],
   TOAST_DURATION_MS: 6000,
   DUPLICATE_TOAST_DEBOUNCE_MS: 15000,
 } as const;
 
-const getRandomElement = <T,>(array: readonly T[]): T => {
+const getRandomElement = <T>(array: readonly T[]): T => {
   return array[Math.floor(Math.random() * array.length)];
 };
 
@@ -22,8 +32,6 @@ const getRandomName = (): string => {
   return `${adjective} ${animal}`;
 };
 
-
-
 const handleUsersAdded = (
   added: number[],
   currentUserId: number,
@@ -31,17 +39,17 @@ const handleUsersAdded = (
   userNamesMap: Map<number, string>,
   showToast: boolean = true
 ): void => {
-  added.forEach((clientId) => {
+  added.forEach(clientId => {
     if (clientId === currentUserId) {
       return;
     }
     const user = awareness.getStates().get(clientId)?.user;
     const username = user?.name;
-    
+
     if (username) {
       userNamesMap.set(clientId, username);
       console.log(`! User added: Client ${clientId}: ${username}`);
-      
+
       if (showToast) {
         toast.success(`${username} joined the room`, {
           icon: '👋',
@@ -59,35 +67,35 @@ const handleUsersRemoved = (
   recentlyRemovedSet: Set<number>,
   timeoutRefsMap: Map<number, NodeJS.Timeout>
 ): void => {
-  removed.forEach((clientId) => {
+  removed.forEach(clientId => {
     if (clientId === currentUserId) {
       return;
     }
-    
+
     // Prevents duplicate notifications within debounce period
     if (recentlyRemovedSet.has(clientId)) {
       return;
     }
-    
+
     recentlyRemovedSet.add(clientId);
-    
+
     const username = userNamesMap.get(clientId) || 'Coding buddy';
     console.log('!! User left:', clientId, username);
     toast.error(`${username} left the room`, {
       icon: '👋',
     });
-    
+
     // Clears any existing timeout for this client (prevents duplicates)
     if (timeoutRefsMap.has(clientId)) {
       clearTimeout(timeoutRefsMap.get(clientId));
     }
-    
+
     // Clears debounce flag after timeout to allow future notifications
     const timeoutId = setTimeout(() => {
       recentlyRemovedSet.delete(clientId);
       timeoutRefsMap.delete(clientId);
     }, USER_CONFIG.DUPLICATE_TOAST_DEBOUNCE_MS);
-    
+
     timeoutRefsMap.set(clientId, timeoutId);
   });
 };
@@ -111,7 +119,7 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
   const isFirstChangeRef = useRef<boolean>(true);
   const userNamesRef = useRef<Map<number, string>>(new Map());
   const recentlyRemovedRef = useRef<Set<number>>(new Set());
-  
+
   const setSharedLanguage = useCallback((newLang: string) => {
     if (configMapRef.current) {
       configMapRef.current.set('language', newLang);
@@ -119,28 +127,33 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
   }, []);
 
   const timeoutRefs = useRef(new Map<number, NodeJS.Timeout>());
-  
+
   useEffect(() => {
     console.log('useEffect RUNNING for room:', roomId);
-    
+
     if (providerRef.current) {
       console.warn('Provider already exists!');
       return;
     }
+
     const provider = new YPartyKitProvider(
       import.meta.env.VITE_NGROK_COLLAB_HOST || 'localhost:8082', //host
-      roomId //room
+      roomId, //room
+      new Y.Doc(), //document
+      {
+        party: 'code', //options
+      }
     );
     console.log('Created new provider for room:', roomId);
     console.log('   Client ID:', provider.awareness.clientID);
     providerRef.current = provider;
-    
+
     if (!provider) return;
-    
+
     // Gets the shared text from the provider's document
     const ytext = provider.doc.getText('codemirror');
     ytextRef.current = ytext;
-    
+
     const configMap = provider.doc.getMap<string>('config');
     configMapRef.current = configMap;
 
@@ -162,7 +175,7 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
     const currUserId = provider.awareness.clientID;
     const username = getRandomName();
     const userColor = getRandomElement(USER_CONFIG.COLORS);
-    
+
     console.log('Setting curr user info:', {clientId: currUserId, name: username});
 
     provider.awareness.setLocalStateField('user', {
@@ -175,10 +188,10 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
     isFirstChangeRef.current = true;
 
     // Listens for awareness changes (users joining or leaving)
-    const awarenessChangeHandler = ({added, removed}: {added: number[]; removed: number[];}) => {
+    const awarenessChangeHandler = ({added, removed}: {added: number[]; removed: number[]}) => {
       if (isFirstChangeRef.current) {
         console.log('Initial sync');
-        
+
         const allUsers = Array.from(provider.awareness.getStates().entries()).map(
           ([id, state]) => ({
             clientId: id,
@@ -189,23 +202,33 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
         console.log('All users in awareness:', allUsers);
 
         handleUsersAdded(added, currUserId, provider.awareness, userNamesRef.current, false);
-        
+
         isFirstChangeRef.current = false;
         return;
       }
-      
+
       if (added.length === 0 && removed.length === 0) {
         console.log('Skipping empty awareness event!');
         return;
       }
 
-      console.log('Processing awareness change (not initial sync), added:', added, 'removed:', removed);
+      console.log(
+        'Processing awareness change (not initial sync), added:',
+        added,
+        'removed:',
+        removed
+      );
 
       handleUsersAdded(added, currUserId, provider.awareness, userNamesRef.current);
       console.log(timeoutRefs.current);
-      handleUsersRemoved(removed, currUserId, userNamesRef.current, recentlyRemovedRef.current, timeoutRefs.current);
+      handleUsersRemoved(
+        removed,
+        currUserId,
+        userNamesRef.current,
+        recentlyRemovedRef.current,
+        timeoutRefs.current
+      );
       console.log(timeoutRefs.current);
-
     };
 
     provider.awareness.on('change', awarenessChangeHandler);
@@ -219,7 +242,7 @@ export default function useCollabEditor({roomId}: {roomId: string}): CollabEdito
       userNamesRef.current.clear();
       recentlyRemovedRef.current.clear();
 
-      timeoutRefs.current.forEach((timeoutId) => {
+      timeoutRefs.current.forEach(timeoutId => {
         clearTimeout(timeoutId);
       });
       timeoutRefs.current.clear();
