@@ -13,4 +13,6 @@ export interface MatchPayload {
   partnerId: string;
   sessionId: string;
   criteria: MatchCriteria;
+  expiryTimestamp: number;
+  totalDuration: number;
 }

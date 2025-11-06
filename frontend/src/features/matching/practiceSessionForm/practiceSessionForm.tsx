@@ -64,9 +64,9 @@ const PracticeSessionForm = () => {
         case 'match_found':
           setShowWaitingModal(false);
           setMatchData(message.payload);
-          setPartnerDetails({id: message.payload.userId, name: "Alex"}); //TODO: fetch partner details
+          setPartnerDetails({id: message.payload.partnerId, name: "Alex"}); //TODO: fetch partner details
           setShowMatchModal(true);
-          console.log(`Match found via WebSocket! Partner: ${matchData?.partnerId}, Session: ${matchData?.sessionId}`);
+          console.log(`Match found via WebSocket! Partner: ${message.payload.partnerId}, Session: ${message.payload.sessionId}`);
           break;
 
         case 'partner_accepted':
@@ -194,6 +194,8 @@ const PracticeSessionForm = () => {
     ws.current?.send(JSON.stringify({ type: 'decline_match', sessionId: matchData?.sessionId }));
     setShowMatchModal(false);
     setMatchData(null);
+    setPartnerDetails(null);
+    setPartnerHasAccepted(false);
   }
 
   const handleSelect = (item: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -279,6 +281,8 @@ const PracticeSessionForm = () => {
           partner={partnerDetails}
           onAccept={() => handleAccept()}
           onDecline={() => handleDecline()}
+          expiryTimestamp={matchData.expiryTimestamp}
+          countdownDuration={matchData.totalDuration}
         />
       )}
     </div>

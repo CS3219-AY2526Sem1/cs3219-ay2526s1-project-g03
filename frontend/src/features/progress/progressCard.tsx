@@ -32,7 +32,7 @@ const placeholderTopicProgress = {
 
 
 const ProgressCard = () => {
-  const [isOpen, setIsOpen] = useState(true); // Default to open
+  const [isOpen, setIsOpen] = useState(false); // Default to false
 
   return (
     <div className={styles.progressCard}>

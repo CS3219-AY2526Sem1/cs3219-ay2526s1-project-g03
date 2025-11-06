@@ -49,7 +49,7 @@ const autoDeclineMatch = (sessionId: string) => {
   const match = pendingMatches.get(sessionId);
   if (!match) return; // Match was already handled (e.g., accepted or declined)
 
-  // Iif both users accepted, the match is confirmed. This should have been cleared,
+  // If both users accepted, the match is confirmed. This should have been cleared,
   // but we double-check here.
   if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
     pendingMatches.delete(sessionId);
@@ -242,6 +242,8 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
 
       pendingMatches.set(sessionId, newMatch);
 
+      const expiryTimestamp = Date.now() + MATCH_ACCEPT_TIMEOUT_MS;
+
       // server side timer (single source of truth)
       setTimeout(() => autoDeclineMatch(sessionId), MATCH_ACCEPT_TIMEOUT_MS);
 
@@ -249,13 +251,22 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         status: 'matched',
         partnerId: userId,
         sessionId: sessionId,
-        criteria,
+        criteria: criteria,
+        expiryTimestamp: expiryTimestamp,
+        totalDuration: MATCH_ACCEPT_TIMEOUT_MS
       };
 
       partnerConnection.send(JSON.stringify({ type: 'match_found', payload: matchDetails }));
       console.log(`Sent match notification to waiting user ${partnerId}`);
 
-      return matchDetails;
+      return {
+        status: 'matched',
+        partnerId: partnerId,
+        sessionId: sessionId,
+        criteria: criteria,
+        expiryTimestamp: expiryTimestamp,
+        totalDuration: MATCH_ACCEPT_TIMEOUT_MS
+      };
 
     } else {
       // partner websocket dead, requeue for the partner
