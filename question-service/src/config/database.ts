@@ -1,7 +1,4 @@
 import { Pool } from 'pg';
-import * as dotenv from 'dotenv';
-
-dotenv.config();
 
 function getEnvOrThrow(key: string): string {
   const value = process.env[key];

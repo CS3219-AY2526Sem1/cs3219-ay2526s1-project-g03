@@ -1,11 +1,9 @@
 import { pool } from '../config/database';
-import axios, { AxiosInstance } from 'axios';
 
 // This URL should be defined in your .env file
 // Fallback URL is used for local development or when HISTORY_SERVICE_URL is not set in the environment
-const HISTORY_SERVICE_URL = process.env['HISTORY_SERVICE_URL'] || 'http://history-service:8004';
+// const HISTORY_SERVICE_URL = process.env['HISTORY_SERVICE_URL'] || 'http://history-service:8004'; // No longer needed
 
-// Define a type for the Question object for type safety
 export type Difficulty = 'Easy' | 'Medium' | 'Hard';
 
 export interface Question {
@@ -21,25 +19,6 @@ export interface Question {
   updated_at: string;
 }
 
-/**
- * Creates a new question in the database.
- * @param questionData - The data for the new question.
- * @returns The newly created question.
- */
-export const createQuestion = async (questionData: Partial<Question>) => {
-  const { title, description, difficulty, created_by, examples, constraints, testcases } = questionData;
-  if (!title || !description || !difficulty || !created_by) {
-    throw new Error('Missing required fields: title, description, difficulty, created_by');
-  }
-  if (!['Easy', 'Medium', 'Hard'].includes(difficulty)) {
-    throw new Error('Invalid difficulty. Must be one of: Easy, Medium, Hard');
-  }
-  const res = await pool.query(
-    'INSERT INTO questions (title, description, difficulty, created_by, examples, constraints, testcases) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
-    [title, description, difficulty, created_by, examples ?? null, constraints ?? null, testcases ?? null]
-  );
-  return res.rows[0];
-};
 
 /**
  * Retrieves all questions from the database.
@@ -99,27 +78,18 @@ export const getAllTopics = async (): Promise<string[]> => {
 
 /**
  * Selects a suitable question for a new session based on criteria and user history.
- * @param topic - The desired topic.
- * @param difficulty - The desired difficulty.
- * @param userIds - An array of user IDs for the session.
+ * @param criteria - The desired topic and difficulty.
+ * @param excludedIds - An array of question IDs to exclude.
  * @returns A suitable question object or null if none are found.
  */
-export const selectQuestion = async (topic: string, difficulty: Difficulty, userIds: string[]): Promise<Question | null> => {
-  // 1. Get excluded question IDs from the History Service
-  let excludedQuestionIds: string[] = [];
-  const http: AxiosInstance = axios.create({ baseURL: HISTORY_SERVICE_URL, timeout: 3000 });
-  try {
-    const historyResponse = await http.post('/api/history/get-attempted', { userIds });
-    const rawIds: unknown = historyResponse.data.questionIds || [];
-    const asStrings = Array.isArray(rawIds) ? rawIds.map(String) : [];
-    const uuidRegex = /^(\b[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-\b[0-9a-fA-F]{12}\b)$/;
-    excludedQuestionIds = asStrings.filter(id => uuidRegex.test(id));
-  } catch (error) {
-    console.error('Error fetching question history from History Service. Proceeding without exclusion.');
-    // Proceed without history check if the service is down to maintain availability
-  }
-
-  // 2. Build and execute the query to find a suitable question
+export const selectQuestion = async (
+  criteria: { topic: string, difficulty: Difficulty },
+  excludedIds: string[]
+): Promise<Question | null> => {
+  
+  const { topic, difficulty } = criteria;
+  
+  
   // This query finds all questions matching the criteria, joins with topics,
   // excludes the ones already attempted, and picks one at random.
   let query = `
@@ -131,10 +101,11 @@ export const selectQuestion = async (topic: string, difficulty: Difficulty, user
   
   const queryParams: any[] = [topic, difficulty];
   
-  if (excludedQuestionIds.length > 0) {
+  if (excludedIds.length > 0) {
     // Dynamically add placeholders for the NOT IN clause
-    query += ` AND q.question_id NOT IN (${excludedQuestionIds.map((_, i) => `$${i + 3}`).join(',')})`;
-    queryParams.push(...excludedQuestionIds);
+    // Start placeholders from $3 (since $1 and $2 are topic/difficulty)
+    query += ` AND q.question_id NOT IN (${excludedIds.map((_, i) => `$${i + 3}`).join(',')})`;
+    queryParams.push(...excludedIds);
   }
   
   query += ' ORDER BY RANDOM() LIMIT 1';

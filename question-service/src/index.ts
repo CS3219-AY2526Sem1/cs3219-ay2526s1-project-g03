@@ -1,15 +1,14 @@
 import express = require('express');
 import { Request, Response, NextFunction } from 'express';
-import * as cors from 'cors';
+import cors = require('cors');
 import helmet from 'helmet';
-import * as dotenv from 'dotenv';
 import questionRoutes from './routes/questionRoutes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { testConnection, closePool } from './config/database';
 
 
 // Load environment variables
-dotenv.config();
+
 
 // Create Express app
 const app: express.Application = express();

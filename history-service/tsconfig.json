@@ -5,14 +5,10 @@
     "module": "commonjs",
     "target": "esnext",
     "lib": ["esnext"],
-    "types": ["node", "jest"],
+    "types": ["node"],
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
@@ -24,9 +20,10 @@
     "strict": true,
     "isolatedModules": true,
     "moduleDetection": "force",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "esModuleInterop": true, // Added for better interop between CommonJS and ES Modules
+    "allowSyntheticDefaultImports": true // Often needed with esModuleInterop
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }
-
