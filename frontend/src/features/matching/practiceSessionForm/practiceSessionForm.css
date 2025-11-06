@@ -1,0 +1,95 @@
+.practice-form-container {
+    background-color: #ffffff;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 80%;
+}
+
+.practice-form-container h2 {
+    margin-top: 0;
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: #333;
+}
+
+.code-icon {
+    width: 30px;
+    height: auto;
+    margin-right: 0.5rem;
+}
+
+.default-note {
+    display: inline-flex;
+    align-items: center;
+    margin-top: -0.5rem;
+}
+
+.default-note .lightBulb {
+    font-size: 2rem;
+    margin-right: 10px;
+}
+
+.default-note p {
+    color: #F16F64;
+    font-weight: 600;
+}
+
+.field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.field-group-header {
+    display: flex;
+    flex-direction: row;
+    align-items: baseline;
+}
+
+.field-group-header h2 {
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: #303030;
+    margin-right: 10px;
+}
+
+.field-group-header span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #C8B6B4;
+}
+
+.chip-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+
+.find-partner-button {
+    background-color: #4181F5;
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    margin-top: 1rem;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.find-partner-button:hover {
+    background-color: #0056b3;
+}
+
+.find-partner-button .user-icon {
+    width: 20px;
+    height: auto;
+    margin-right: 0.5rem;
+}

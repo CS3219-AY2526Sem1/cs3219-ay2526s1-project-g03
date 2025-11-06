@@ -7,9 +7,9 @@
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc",
-    "test": "dotenv -e .env.test -- jest --runInBand --verbose",
+    "test": "jest --runInBand --verbose",
     "test:watch": "jest --watch",
-    "test:coverage": "dotenv jest --coverage"
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@types/axios": "^0.14.4",

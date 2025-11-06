@@ -7,6 +7,7 @@
   "transform": {
     "^.+\\.(ts)$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.json" }]
   },
-  "setupFiles": ["<rootDir>/src/test/setup.ts"]
+  "globalSetup": "<rootDir>/src/test/globalSetup.ts", 
+  "setupFilesAfterEnv": ["<rootDir>/src/test/setup.ts"] 
 }
 

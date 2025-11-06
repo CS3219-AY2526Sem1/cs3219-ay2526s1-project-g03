@@ -5,15 +5,15 @@ import {navigate} from '../lib/navigation';
 const HTTP_UNAUTHORIZED = 401;
 const INVALID_ACCESS_TOKEN = 'Invalid access token!';
 
-const options = {
+const userApiOptions = {
   baseURL: import.meta.env.VITE_USER_SERVICE_URL,
   withCredentials: true,
 };
 
-const BackupAPI = axios.create(options);
-const API = axios.create(options);
+const BackupApi = axios.create(userApiOptions);
+export const userApi = axios.create(userApiOptions);
 
-API.interceptors.response.use(
+userApi.interceptors.response.use(
   response => response,
   async error => {
     const {config, response} = error;
@@ -21,8 +21,8 @@ API.interceptors.response.use(
     const data = response?.data;
     if (status === HTTP_UNAUTHORIZED && data?.message === INVALID_ACCESS_TOKEN) {
       try {
-        await BackupAPI.get('/auth/refresh');
-        return BackupAPI(config);
+        await BackupApi.get('/auth/refresh');
+        return BackupApi(config);
       } catch (error) {
         queryClient.clear();
         navigate('/home', {
@@ -36,4 +36,8 @@ API.interceptors.response.use(
   }
 );
 
-export default API;
+
+export const matchingApi = axios.create({
+  baseURL: import.meta.env.VITE_MATCHING_SERVICE_URL,
+  withCredentials: true,
+});
