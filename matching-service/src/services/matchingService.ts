@@ -13,7 +13,7 @@ const pendingMatches = new Map<string, PendingMatch>(); // session id will be th
 const MATCH_ACCEPT_TIMEOUT_MS = 10000; // 10 seconds
 const BASE_PENALTY_SECONDS = 60; // 1 minute base
 const MAX_PENALTY_LEVEL = 5; // max 5 levels (e.g., 5 * 60s = 5 min penalty)
-const PENALTY_LEVEL_EXPIRATION_SECONDS = 3600; // 1 hour "memory" for penalty level
+const PENALTY_LEVEL_EXPIRATION_SECONDS = 3600 * 24; // 1 day "memory" for penalty level
 const COOLDOWN_KEY_PREFIX = 'penalty:cooldown:';
 const LEVEL_KEY_PREFIX = 'penalty:level:';
 
