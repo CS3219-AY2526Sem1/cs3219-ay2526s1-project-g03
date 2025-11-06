@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { findOrQueueUser, cancelMatch } from '../services/matchingService';
 import type { MatchRequest } from '../models/matchModel';
-import { HTTP_OK, HTTP_ACCEPTED, HTTP_BAD_REQUEST} from '../constants/httpStatus';
+import { HTTP_OK, HTTP_ACCEPTED, HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUEST, HTTP_INTERNAL_SERVER_ERROR } from '../constants/httpStatus';
 
 export const handleMatchRequest = async (req: Request, res: Response) => {
   try {
@@ -20,12 +20,18 @@ export const handleMatchRequest = async (req: Request, res: Response) => {
     // send the appropriate HTTP response based on the service's result
     if (result.status === 'matched') {
       return res.status(HTTP_OK).json(result);
-    } else {
+    } else if (result.status === 'waiting') {
       return res.status(HTTP_ACCEPTED).json(result); // in the queue waiting for a match
+    } else if (result.status === 'penalized') {
+    // Use 429 Too Many Requests for cooldowns
+      return res.status(HTTP_TOO_MANY_REQUEST).json(result);
+    } else {
+      console.error("Unknown result status in handleMatchRequest:", result);
+      return res.status(HTTP_INTERNAL_SERVER_ERROR).json({ message: "Internal server error" });
     }
   } catch (error) {
     console.error("Error in handleMatchRequest:", error);
-    return res.status(500).json({ message: "Internal server error" });
+    return res.status(HTTP_INTERNAL_SERVER_ERROR).json({ message: "Internal server error" });
   }
 };
 

@@ -42,6 +42,8 @@ const PracticeSessionForm = () => {
   const connectWebSocket = () => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected.');
+      // Re-register just in case
+      ws.current?.send(JSON.stringify({type: 'register', userId: _id}));
       return;
     }
 
@@ -84,18 +86,36 @@ const PracticeSessionForm = () => {
           toast.error('Match Declined. Returning you to the queue...');
           // reset the state
           setPartnerDetails(null);
+          setPartnerHasAccepted(false);
           // requeue them
           handleFindPartner();
-          break
+          break;
+
+        case 'match_penalty':
+          toast.error(message.payload.message || 'You received a matchmaking penalty.');
+          break;
+
+        case 'partner_timed_out':
+          // This is new: sent to the user who *did* accept
+          console.log("Partner timed out. Returning to search...");
+          setShowMatchModal(false);
+          toast.error('Your partner timed out. Finding a new partner...');
+          // reset the state
+          setPartnerDetails(null);
+          setPartnerHasAccepted(false);
+          // requeue them
+          handleFindPartner();
+          break;
 
         case 'match_timed_out':
           // the server says the match is off.
           console.log("Match timed out from server.");
           setShowMatchModal(false);
-          toast.error("Match timed out. Finding a new partner...");
-
-          // automatically re-queue the user
-          handleFindPartner();
+          // The 'match_penalty' message will also be sent, so this toast is a fallback
+          toast.error("You did not accept the match in time.");
+          // reset the state
+          setPartnerDetails(null);
+          setPartnerHasAccepted(false);
           break;
 
         default:
@@ -126,8 +146,15 @@ const PracticeSessionForm = () => {
         connectWebSocket(); // Connect now to handle accept/decline
       }
     },
-      onError: (data) => {
-      console.log('Error:', data);
+    onError: (error: any) => {
+      console.log('Error:', error);
+      if (error.response && error.response.status === 429) {
+        // Handle penalty cooldown
+        const { cooldown } = error.response.data;
+        toast.error(`You are on a cooldown. Please try again in ${cooldown} seconds.`);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to find a match. Please try again.');
+      }
     }
   });
 

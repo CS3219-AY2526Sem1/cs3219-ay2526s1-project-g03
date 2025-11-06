@@ -11,23 +11,74 @@ const pendingMatches = new Map<string, PendingMatch>(); // session id will be th
 // to keep track of of a match after it has been found but before both users have clicked "Accept"
 
 const MATCH_ACCEPT_TIMEOUT_MS = 10000; // 10 seconds
+const BASE_PENALTY_SECONDS = 60; // 1 minute base
+const MAX_PENALTY_LEVEL = 5; // max 5 levels (e.g., 5 * 60s = 5 min penalty)
+const PENALTY_LEVEL_EXPIRATION_SECONDS = 3600; // 1 hour "memory" for penalty level
+const COOLDOWN_KEY_PREFIX = 'penalty:cooldown:';
+const LEVEL_KEY_PREFIX = 'penalty:level:';
+
+const applyPenalty = async (userId: string) => {
+  const levelKey = `${LEVEL_KEY_PREFIX}${userId}`;
+  const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
+
+  // increment the user's penalty level
+  const newLevelRaw = await redisClient.incr(levelKey);
+  const newLevel = Math.min(newLevelRaw, MAX_PENALTY_LEVEL); // cap at max level
+
+  // set the penalty level to expire after 1 hour
+  await redisClient.expire(levelKey, PENALTY_LEVEL_EXPIRATION_SECONDS);
+
+  // calculate the cooldown duration based on their level
+  const cooldownDuration = newLevel * BASE_PENALTY_SECONDS;
+
+  // set the actual cooldown key with the calculated duration
+  await redisClient.setex(cooldownKey, cooldownDuration, '1'); // setex: set with expiration (time to live)
+  console.log(`Applied ${cooldownDuration}s penalty to user ${userId} (Level ${newLevel})`);
+
+  // notify user they got a penalty
+  sendWebSocketMessage(userId, {
+    type: 'match_penalty',
+    payload: {
+      message: `You have received a ${cooldownDuration}-second matchmaking cooldown for not accepting the match.`,
+      cooldown: cooldownDuration
+    }
+  });
+};
 
 const autoDeclineMatch = (sessionId: string) => {
   const match = pendingMatches.get(sessionId);
+  if (!match) return; // Match was already handled (e.g., accepted or declined)
 
-  // Check if the match is still pending.
-  // If it was already accepted or declined, this will be false.
-  if (match && (match.user1Status === 'pending' || match.user2Status === 'pending')) {
-
-    console.log(`Match ${sessionId} timed out. Auto-declining.`);
-
-    // Notify both users that the match is off
-    sendWebSocketMessage(match.user1Id, { type: 'match_timed_out' });
-    sendWebSocketMessage(match.user2Id, { type: 'match_timed_out' });
-
-    // Clean up the pending match
+  // Iif both users accepted, the match is confirmed. This should have been cleared,
+  // but we double-check here.
+  if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
     pendingMatches.delete(sessionId);
+    return;
   }
+
+  console.log(`Match ${sessionId} timed out. Auto-declining.`);
+
+  // Determine who to penalize and who to notify
+  if (match.user1Status === 'pending') {
+    // User 1 did not respond
+    applyPenalty(match.user1Id);
+    sendWebSocketMessage(match.user1Id, { type: 'match_timed_out' });
+  } else {
+    // User 1 accepted, so notify them the partner timed out
+    sendWebSocketMessage(match.user1Id, { type: 'partner_timed_out' });
+  }
+
+  if (match.user2Status === 'pending') {
+    // User 2 did not respond
+    applyPenalty(match.user2Id);
+    sendWebSocketMessage(match.user2Id, { type: 'match_timed_out' });
+  } else {
+    // User 2 accepted, so notify them the partner timed out
+    sendWebSocketMessage(match.user2Id, { type: 'partner_timed_out' });
+  }
+
+  // Clean up the pending match
+  pendingMatches.delete(sessionId);
 };
 
 const createCriteriaKey = (criteria: MatchCriteria): string => {
@@ -120,6 +171,8 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 
           console.log(`User ${currentUserId} declined match ${parsedMessage.sessionId}`);
 
+          applyPenalty(currentUserId);
+
           // notify the partner
           sendWebSocketMessage(partnerId, { type: 'partner_declined' });
           // frontend will then handle the requeueing for the partner
@@ -154,6 +207,19 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 };
 
 export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) => {
+
+  // First check for penalty
+  const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`; // Use new key
+  const penaltyTtl = await redisClient.ttl(cooldownKey); // Check new key
+
+  if (penaltyTtl > 0) {
+    console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
+    return {
+      status: 'penalized',
+      cooldown: penaltyTtl
+    };
+  }
+
   const criteriaKey: string = createCriteriaKey(criteria);
   const partnerId = await redisClient.lpop(criteriaKey); // atomic pop
 
