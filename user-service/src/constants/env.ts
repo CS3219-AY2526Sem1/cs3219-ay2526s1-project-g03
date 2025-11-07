@@ -24,8 +24,6 @@ const findProjectRoot = (targetDirName = TARGET_DIR): string => {
 };
 dotenv.config({path: path.join(findProjectRoot(), '.env')});
 
-dotenv.config({path: path.join(findProjectRoot(), '.env')});
-
 // Solution adapted from:
 // https://stackoverflow.com/questions/64383909/dirname-is-not-defined-error-in-node-js-14-version
 // const filename = fileURLToPath(import.meta.url);
