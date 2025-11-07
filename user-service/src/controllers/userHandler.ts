@@ -10,6 +10,7 @@ import {
   updateProfilePicture,
   updateUsernameOrEmail,
 } from '../services/userService';
+import { getOtherUser } from '../services/userService.ts';
 import appAssert from '../utils/appAssert';
 import AppError from '../utils/appError';
 import catchErrors from '../utils/catchErrors';
@@ -28,6 +29,12 @@ import {
 export const getUserController = catchErrors(async (req, res) => {
   const user = await findUserById(req.userId);
   return res.status(HTTP_OK).json(user.toJSON());
+});
+
+export const getOtherUserController = catchErrors(async (req, res) => {
+  const {userId} = req.params;
+  const result = await getOtherUser(userId);
+  return res.status(HTTP_OK).json(result);
 });
 
 /**
