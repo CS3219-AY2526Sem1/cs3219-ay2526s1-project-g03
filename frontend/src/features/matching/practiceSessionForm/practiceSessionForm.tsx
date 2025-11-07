@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from "react-router";
 import Chip from '../../../components/chip/chip';
 import TopicSelector from '../topicSelector/topicSelector';
 import MatchingStatusModal from '../matchingStatusModal/matchingStatusModal';
 import MatchFoundModal from '../matchFoundModal/matchFoundModal';
+import TimeoutModal from '../timeoutModal/timeoutModal';
 import CodeIcon from '../../../assets/code-icon.svg';
 import UserIcon from '../../../assets/user-icon-white.svg';
 import { findMatch, cancelMatch } from '../../../lib/api';
@@ -16,18 +18,68 @@ const difficulties: string[] = ['Easy', 'Medium', 'Hard'];
 const languages: string[] = ['C++', 'Java', 'JavaScript', 'Python'];
 
 const PracticeSessionForm = () => {
+  let navigate = useNavigate();
   const {user} = useAuth();
   const {_id} = user;
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+
+  // Modal States
   const [showWaitingModal, setShowWaitingModal] = useState(false);
-  const [currentCriteria, setCurrentCriteria] = useState<MatchCriteria | null>(null);
-  const ws = useRef<WebSocket | null>(null);
-  const [matchData, setMatchData] = useState<MatchPayload | null>(null); // From WebSocket
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showTimeoutModal, setShowTimeoutModal] = useState(false);
+
+  const [currentCriteria, setCurrentCriteria] = useState<MatchCriteria | null>(null);
+
+  // Timer logics for matchingStatusModal
+  const [searchCountdown, setSearchCountdown] = useState(5); // The *total* duration
+  const [timer, setTimer] = useState(5); // The *current* time left
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Consolidate match state
+  const [matchData, setMatchData] = useState<MatchPayload | null>(null); // From WebSocket
   const [partnerDetails, setPartnerDetails] = useState<any | null>(null); // TODO: change the any type to a predefined interface
   const [partnerHasAccepted, setPartnerHasAccepted] = useState<boolean>(false);
+
+  const ws = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    if (timer <= 0) {
+      // Don't do anything if we're not in a "waiting" state
+      if (!showWaitingModal || showTimeoutModal) {
+        return;
+      }
+      // We are waiting, and the timer hit 0. Fire the timeout.
+      handleSearchTimeout();
+    }
+  }, [timer, showWaitingModal, showTimeoutModal]); // Dependency on `timer`
+
+  useEffect(() => {
+
+    // dD not start the interval if timeout modal is showing
+    if (showWaitingModal && !showTimeoutModal) {
+      // Start the interval
+      intervalRef.current = setInterval(() => {
+        setTimer(prev => prev - 1); // Just tick down
+      }, 1000);
+    } else {
+      // Otherwise, clear any interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    }
+
+    // Cleanup function:
+    // This runs when the component unmounts or when the dependencies change.
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [showWaitingModal, showTimeoutModal]); // Dependencies for starting/stopping
+
+  // --- END FIX ---
 
   useEffect(() => {
     // cleanup function: close WebSocket if component unmounts while waiting
@@ -134,7 +186,6 @@ const PracticeSessionForm = () => {
     onSuccess: (data) => {
       console.log('Success:', data);
       if (data.data.status == 'waiting') {
-        setCurrentCriteria({difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics});
         setShowWaitingModal(true);
         connectWebSocket();
       } else if (data.data.status === 'matched') {
@@ -174,14 +225,55 @@ const PracticeSessionForm = () => {
   }
   })
 
-  const handleFindPartner = () => {
+  const handleFindPartner = (isRequeue: boolean = false) => {
+    if (!isRequeue && (showWaitingModal || showMatchModal)) {
+      return;
+    }
+
     const criteria: MatchCriteria = {difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics};
+    setCurrentCriteria(criteria);
+
+    // Set initial state for modals and timer
+    setSearchCountdown(5); // 30-second initial timer
+    setShowTimeoutModal(false); // Ensure timeout modal is hidden
+
     const payload:  MatchRequestPayload= {userId: _id, criteria: criteria};
     findMatchMutate(payload);
   }
 
   const handleCancelSearch = () => {
+    // Reset the countdown
+    setTimer(searchCountdown);
     cancelMatchMutate({userId: _id});
+  }
+
+
+  const handleSearchTimeout = () => {
+    console.log("Search timed out. Removing from the queue and showing options.");
+    setShowTimeoutModal(true);
+    handleCancelSearch();
+  };
+
+  // Called by TimeoutModal "Keep Waiting"
+  const handleKeepWaiting = () => {
+    console.log("Keeping waiting...");
+    const newCountdown = 5;
+    setSearchCountdown(newCountdown); // Set new total
+    setTimer(newCountdown); // Set new current time
+    setShowTimeoutModal(false);
+    handleFindPartner(true);
+  };
+
+  // Called by TimeoutModal "Change Criteria"
+  const handleChangeCriteria = () => {
+    console.log("Stopping search and closing modals.");
+    resetState();
+    handleCancelSearch();
+  };
+
+  // Called by TimeoutModal "Stop Searching"
+  const handleStopSearching = () => {
+    navigate("/")
   }
 
   const handleAccept = () => {
@@ -192,10 +284,7 @@ const PracticeSessionForm = () => {
   const handleDecline = () => {
     console.log("Declining match...");
     ws.current?.send(JSON.stringify({ type: 'decline_match', sessionId: matchData?.sessionId }));
-    setShowMatchModal(false);
-    setMatchData(null);
-    setPartnerDetails(null);
-    setPartnerHasAccepted(false);
+    resetState();
   }
 
   const handleSelect = (item: string, list: string[], setList: React.Dispatch<React.SetStateAction<string[]>>) => {
@@ -208,6 +297,16 @@ const PracticeSessionForm = () => {
     }
   }
 
+  // helper function
+  const resetState = () => {
+    setTimer(searchCountdown); // reset timer
+    setShowMatchModal(false);
+    setShowTimeoutModal(false);
+    setShowWaitingModal(false);
+    setMatchData(null);
+    setPartnerDetails(null);
+    setPartnerHasAccepted(false);
+  }
 
   return (
     <div className="practice-form-container">
@@ -271,11 +370,23 @@ const PracticeSessionForm = () => {
           criteria = {currentCriteria}
           onCancel = {handleCancelSearch}
           disabled = {isCancelling}
-          initialCountdown = {30}
+          countdown = {searchCountdown}
+          timer={timer}
           usersOnline={116} // TODO: hardcorded
           avgWaitTime={45} // TODO: hardcoded
         />
       )}
+
+      {showTimeoutModal && currentCriteria && (
+        <TimeoutModal
+          criteria={currentCriteria}
+          waitedDuration={searchCountdown}
+          onKeepWaiting={handleKeepWaiting}
+          onChangeCriteria={handleChangeCriteria}
+          onStopSearching={handleStopSearching}
+        />
+      )}
+
       {showMatchModal && partnerDetails && matchData && (
         <MatchFoundModal
           partner={partnerDetails}
