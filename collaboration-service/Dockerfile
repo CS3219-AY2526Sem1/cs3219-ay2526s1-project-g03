@@ -1,5 +1,5 @@
 # Dockerfile for backend services (user-service, question-service, matching-service, collaboration-service)
-FROM --platform=linux/amd64 node:20-slim
+FROM node:20-slim
 
 RUN apt-get update && \
     apt-get install -y ca-certificates && \
@@ -17,8 +17,8 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Expose the port (will be overridden by docker-compose for each service)
+# Expose the ports
 EXPOSE 8082
 
 # Start the application
-CMD sh -c 'echo "SUPABASE_URL=$SUPABASE_URL" > .env && echo "SUPABASE_KEY=$SUPABASE_KEY" >> .env && npm run dev'
+CMD sh -c 'echo "SUPABASE_URL=$SUPABASE_URL" > .env && echo "SUPABASE_KEY=$SUPABASE_KEY" >> .env && echo "JWT_SECRET=$JWT_SECRET" >> .env && npm run dev'

@@ -1,10 +1,11 @@
 import useAuth from '../hooks/useAuth';
 import '../../styles/authContainer.css';
 import UserMenu from './userMenu';
-import {Navigate, Outlet} from 'react-router-dom';
+import {Navigate, Outlet, useLocation, matchPath} from 'react-router-dom';
 
 const AuthContainer: React.FC = () => {
   const {user, isLoading} = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -25,9 +26,13 @@ const AuthContainer: React.FC = () => {
       return <Navigate to="/" replace />;
     }
 
+    // Hide header for collaboration page
+    const hideHeaderRoutes = ['/room/:roomId'];
+    const shouldHideHeader = hideHeaderRoutes.some(route => matchPath(route, location.pathname));
+
     return (
       <div className="container">
-        <UserMenu />
+        {!shouldHideHeader && <UserMenu />}
         <Outlet />
       </div>
     );
