@@ -8,11 +8,11 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error('Missing required environment variables: SUPABASE_URL, SUPABASE_KEY');
 }
 
-export const JWT_SECRET = new TextEncoder().encode(process.env['JWT_SECRET'] || '');
-
-if (!JWT_SECRET) {
+if (!process.env['JWT_SECRET']) {
   console.error('FATAL ERROR: Missing required environment variables');
   console.error('Required: JWT_SECRET');
   console.error('Please check your .env file');
   throw new Error('Missing required environment variables: JWT_SECRET');
 }
+export const JWT_SECRET = new TextEncoder().encode(process.env['JWT_SECRET']);
+
