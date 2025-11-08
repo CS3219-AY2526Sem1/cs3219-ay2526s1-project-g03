@@ -37,7 +37,7 @@ export default class YjsServer implements Party.Server {
 
       if (!roomId) {
         console.error('Room Id is undefined:');
-        return new Response('Room Id is undefined');
+        return new Response('Room Id is undefined', {status: 400});
       }
       const roomExists = await checkRoomExists(roomId);
 
