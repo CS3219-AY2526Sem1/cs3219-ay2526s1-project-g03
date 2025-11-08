@@ -4,10 +4,11 @@ import PartnerIcon from '../../../assets/match/match-found.svg';
 import DefaultAvatar from '../../../assets/default-profile-icon.svg';
 
 interface PartnerDetails {
-  id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  areaOfStudy: string;
   occupation?: string; // e.g., "Computer Science Student"
-  avatarUrl?: string;
+  profilePicture?: string;
 }
 
 interface MatchFoundModalProps {
@@ -68,6 +69,14 @@ const MatchFoundModal = ({
     onAccept();
   };
 
+  // Format partner's headline
+  const formatHeadline = (text: string): string => {
+    return text
+      .replace('-', ' ') // Replace hypen if there is any
+      .replace(/\b\w/g, char => char.toUpperCase()); // Find every word start and capitalize it
+  }
+
+
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
@@ -84,13 +93,13 @@ const MatchFoundModal = ({
 
         <div className={styles.partnerInfo}>
           <img
-            src={partner.avatarUrl || DefaultAvatar}
-            alt={partner.name}
+            src={partner.profilePicture || DefaultAvatar}
+            alt={partner.lastName}
             className={styles.avatar}
           />
           <div className={styles.partnerText}>
-            <span className={styles.partnerName}>{partner.name}</span>
-            <span className={styles.partnerOccupation}>{partner.occupation || 'PeerPrep User'}</span>
+            <span className={styles.partnerName}>{partner.firstName} {partner.lastName}</span>
+            <span className={styles.partnerOccupation}>{formatHeadline(partner.areaOfStudy + ' ' + partner.occupation) || 'PeerPrep User'}</span>
           </div>
         </div>
 
