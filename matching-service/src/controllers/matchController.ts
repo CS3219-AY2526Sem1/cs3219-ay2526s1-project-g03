@@ -6,13 +6,6 @@ import { HTTP_OK, HTTP_ACCEPTED, HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUEST, HTTP_I
 export const handleMatchRequest = async (req: Request, res: Response) => {
   try {
     const { userId, criteria }: MatchRequest = req.body;
-    const atLeastOneDifficulty: boolean = criteria.difficulties && criteria.difficulties.length > 0;
-    const atLeastOneTopic: boolean = criteria.topics && criteria.topics.length > 0;
-
-    // validate input
-    if (!atLeastOneDifficulty && !atLeastOneTopic) {
-      return res.status(HTTP_BAD_REQUEST).json({ message: "Difficulty and at least one topic are required." });
-    }
 
     // call the service to perform the matching logic
     const result = await findOrQueueUser(userId, criteria);
