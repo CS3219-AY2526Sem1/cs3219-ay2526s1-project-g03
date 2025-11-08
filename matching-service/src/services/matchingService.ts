@@ -29,37 +29,37 @@ const PENALTY_LEVEL_EXPIRATION_SECONDS = 3600 * 24; // 1 day "memory" for penalt
 const COOLDOWN_KEY_PREFIX = 'penalty:cooldown:';
 const LEVEL_KEY_PREFIX = 'penalty:level:';
 
-// --- Bitmask Constants ---
-const DIFFICULTY_MASK = DIFFICULTY_ANY;
-const LANGUAGE_MASK = LANGUAGE_ANY;
-const TOPIC_MASK = TOPIC_ANY;
-
-// --- Placeholder for external API calls ---
-// TODO: Replace these with real fetch/axios calls to your other services
-const getAttemptedQuestions = async (uid: string): Promise<string[]> => {
-  console.log(`Fetching history for user ${uid}...`);
-  // Simulating an API call
-  await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
-  // Return a mock list
-  return uid.endsWith('a') ? ['q1', 'q3'] : ['q2', 'q4'];
-};
-
-const getValidQuestion = async (
-  criteria: MatchCriteria,
-  excludedIds: string[]
-): Promise<string | null> => {
-  console.log(`Fetching question for criteria with ${excludedIds.length} excluded IDs...`);
-  // Simulating an API call
-  await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
-
-  // Mock logic: if "q5" is not excluded, return it.
-  if (!excludedIds.includes('q5')) {
-    return 'q5';
-  }
-  // Otherwise, no questions are available
-  return null;
-};
-// --- End Placeholder ---
+// // --- Bitmask Constants ---
+// const DIFFICULTY_MASK = DIFFICULTY_ANY;
+// const LANGUAGE_MASK = LANGUAGE_ANY;
+// const TOPIC_MASK = TOPIC_ANY;
+//
+// // --- Placeholder for external API calls ---
+// // TODO: Replace these with real fetch/axios calls to your other services
+// const getAttemptedQuestions = async (uid: string): Promise<string[]> => {
+//   console.log(`Fetching history for user ${uid}...`);
+//   // Simulating an API call
+//   await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
+//   // Return a mock list
+//   return uid.endsWith('a') ? ['q1', 'q3'] : ['q2', 'q4'];
+// };
+//
+// const getValidQuestion = async (
+//   criteria: MatchCriteria,
+//   excludedIds: string[]
+// ): Promise<string | null> => {
+//   console.log(`Fetching question for criteria with ${excludedIds.length} excluded IDs...`);
+//   // Simulating an API call
+//   await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
+//
+//   // Mock logic: if "q5" is not excluded, return it.
+//   if (!excludedIds.includes('q5')) {
+//     return 'q5';
+//   }
+//   // Otherwise, no questions are available
+//   return null;
+// };
+// // --- End Placeholder ---
 
 
 // =========================================
@@ -237,7 +237,6 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
  * Handles all incoming WebSocket messages from a client.
  */
 export const handleWebSocketConnection = (ws: WebSocket) => {
-// ... (this function is identical to the file you provided) ...
   let currentUserId: string | null = null; // userId for this connection
 
   ws.on('message', (message) => {
@@ -339,7 +338,6 @@ export const cancelMatch = async (userId: string) => {
  * This mask represents what the user *is willing to accept*.
  */
 const encodeCriteria = (criteria: MatchCriteria): bigint => {
-// ... (this function is identical to the file you provided) ...
   let mask = 0n;
 
   if (criteria.difficulties?.length > 0) {
@@ -372,15 +370,16 @@ const removeFromWaitingRoom = async (userId: string) => {
 };
 
 /**
- * Applies a penalty to a user who declines or times out of a match.
+ * Increments a user's penalty level by a specified amount and applies a cooldown.
+ * Returns the duration of the cooldown.
+ * This is called by other services (like Collab) OR internal logic.
  */
-const applyPenalty = async (userId: string) => {
-// ... (this function is identical to the file you provided) ...
+export const incurPenalty = async (userId: string, increment: number = 1): Promise<number> => {
   const levelKey = `${LEVEL_KEY_PREFIX}${userId}`;
   const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
 
   // increment the user's penalty level
-  const newLevelRaw = await redisClient.incr(levelKey);
+  const newLevelRaw = await redisClient.incrby(levelKey, increment);
   const newLevel = Math.min(newLevelRaw, MAX_PENALTY_LEVEL); // cap at max level
 
   // set the penalty level to expire
@@ -392,8 +391,28 @@ const applyPenalty = async (userId: string) => {
   // set the actual cooldown key
   await redisClient.setex(cooldownKey, cooldownDuration, '1');
   console.log(`Applied ${cooldownDuration}s penalty to user ${userId} (Level ${newLevel})`);
+  return cooldownDuration;
+};
 
-  // notify user they got a penalty
+/**
+ * Resets a user's penalty level to 0.
+ * This is called by other services (like Collab) on a valid session completion.
+ */
+export const resetPenaltyLevel = async (userId: string): Promise<void> => {
+  const levelKey = `${LEVEL_KEY_PREFIX}${userId}`;
+  await redisClient.del(levelKey);
+  console.log(`Reset penalty level for user ${userId}.`);
+};
+
+/**
+ * Applies a penalty AND sends a WebSocket notification.
+ * This is for *internal* use (match-dodging) only.
+ */
+const applyPenalty = async (userId: string) => {
+  // Call the shared logic to apply the penalty
+  const cooldownDuration = await incurPenalty(userId, 1);
+
+  // Send the WebSocket message *only* for match-dodging
   sendWebSocketMessage(userId, {
     type: 'match_penalty',
     payload: {
@@ -407,7 +426,6 @@ const applyPenalty = async (userId: string) => {
  * Handles the 10-second timeout for an unconfirmed match.
  */
 const autoDeclineMatch = (sessionId: string) => {
-// ... (this function is identical to the file you provided) ...
   const match = pendingMatches.get(sessionId);
   if (!match) return; // Match was already handled
 
@@ -440,7 +458,6 @@ const autoDeclineMatch = (sessionId: string) => {
  * Helper to send a JSON message to a specific user via WebSocket.
  */
 const sendWebSocketMessage = (userId: string, message: object) => {
-// ... (this function is identical to the file you provided) ...
   const connection = activeConnections.get(userId);
   if (connection && connection.readyState === WebSocket.OPEN) {
     connection.send(JSON.stringify(message));
@@ -449,4 +466,5 @@ const sendWebSocketMessage = (userId: string, message: object) => {
     console.warn(`Could not find or send message to user ${userId}, connection not open.`);
   }
 };
+
 
