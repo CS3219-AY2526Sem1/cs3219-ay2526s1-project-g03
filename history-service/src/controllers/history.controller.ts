@@ -101,5 +101,18 @@ export class HistoryController {
       return res.status(500).json({ error: 'Internal server error' });
     }
   };
+
+  public getAllSummaries = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const userId = req.params['userId'];
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+      const summaries = await this.historyService.getAllSummaries(userId);
+      return res.status(200).json(summaries);
+    } catch (error) {
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  };
 }
 

@@ -17,6 +17,7 @@ export interface CompleteSessionInput {
   code: string;
   isSolvedSuccessfully: boolean;
   hasPenalty: boolean;
+  timeTakenMs?: number;
 }
 
 export interface UserProgress {
@@ -38,5 +39,20 @@ export interface ParticipantAttempt {
   has_penalty: boolean;
   is_active_in_history: boolean;
   started_at: string;
+  time_taken_ms: number | null;
+  question_title?: string;
+}
+
+export interface SessionSummary {
+  session_id: string;
+  question_id: string;
+  question_title: string;
+  question_difficulty: string;
+  question_topics: string[];
+  started_at: string;
+  partner_id: string;
+  is_solved_successfully: boolean | null;
+  has_penalty: boolean;
+  time_taken_ms: number | null;
 }
 

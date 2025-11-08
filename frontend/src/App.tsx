@@ -17,6 +17,9 @@ import CompleteProfile from './pages/completeProfile';
 import AdminManagement from './pages/adminManagement';
 import AdminContainer from './components/adminContainer';
 import Dashboard from './pages/dashboard/dashboard'
+import HistoryDashboardPage from './pages/HistoryDashboardPage';
+import QuestionDetailPage from './pages/QuestionDetailPage';
+import ResetQuestionsPage from './pages/ResetQuestionsPage';
 
 function App() {
   const navigate = useNavigate();
@@ -41,6 +44,9 @@ function App() {
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="room" element={<Input />} />
           <Route path="room/:roomId" element={<CollabPage />} />
+          <Route path="history" element={<HistoryDashboardPage />} />
+          <Route path="history/attempts/:questionId" element={<QuestionDetailPage />} />
+          <Route path="history/reset" element={<ResetQuestionsPage />} />
           <Route
             path="admin/manage"
             element={

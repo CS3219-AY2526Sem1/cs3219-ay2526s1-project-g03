@@ -10,7 +10,20 @@ import { Pool } from 'pg'; // Import Pool type for casting
 const app = express();
 const port = process.env['PORT'] || 8085;
 
-app.use(cors());
+// --- THIS IS THE FIX ---
+// The CORS configuration MUST come before all other middleware.
+// We must configure CORS to explicitly allow your frontend's origin
+// and to allow it to send credentials (which axios does with `withCredentials: true`).
+const corsOptions = {
+  origin: 'http://localhost:3000', // Your frontend's URL
+  credentials: true, // This is required for `withCredentials`
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
+};
+
+app.use(cors(corsOptions));
+// --- END OF FIX ---
+
+// We have DELETED the extra app.use(cors()) from here.
 app.use(express.json());
 
 // --- This is the new dependency injection pattern ---
@@ -35,6 +48,7 @@ const router = Router();
 router.post('/start-session', controller.startSession);
 router.patch('/complete-session', controller.completeSession);
 router.get('/progress/:userId', controller.getUserProgress);
+router.get('/all-summaries/:userId', controller.getAllSummaries); // Make sure this route is added
 router.get('/active-attempts/:userId', controller.getActiveAttemptedQuestions);
 router.post('/reset-questions/:userId', controller.resetQuestions);
 router.get('/question-attempts/:userId/:questionId', controller.getQuestionAttempts);
@@ -55,4 +69,3 @@ app.listen(port, () => {
 
   console.log('[History Service] Scheduled automatic 30-day reset job (daily at 2:00 AM)');
 });
-
