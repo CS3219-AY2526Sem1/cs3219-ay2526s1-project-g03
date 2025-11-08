@@ -6,7 +6,7 @@ import styles from './timeoutModal.module.css'
 
 interface TimeoutModalProps {
   criteria: MatchCriteria;
-  waitedDuartion: number;
+  waitedDuration: number;
   onKeepWaiting: () => void;
   onChangeCriteria: () => void;
   onStopSearching: () => void;

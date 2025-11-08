@@ -14,6 +14,9 @@ import useAuth from '../../../hooks/useAuth';
 import type { MatchCriteria, MatchRequestPayload, MatchPayload} from '../../../models/match.model';
 import './practiceSessionForm.css'
 
+const INITIAL_SEARCH_COUNTDOWN = 30;
+const EXTEND_SEARCH_COUNTDOWN = 60;
+
 const difficulties: string[] = ['Easy', 'Medium', 'Hard'];
 const languages: string[] = ['C++', 'Java', 'JavaScript', 'Python'];
 
@@ -33,8 +36,8 @@ const PracticeSessionForm = () => {
   const [currentCriteria, setCurrentCriteria] = useState<MatchCriteria | null>(null);
 
   // Timer logics for matchingStatusModal
-  const [searchCountdown, setSearchCountdown] = useState(5); // The *total* duration
-  const [timer, setTimer] = useState(5); // The *current* time left
+  const [searchCountdown, setSearchCountdown] = useState(INITIAL_SEARCH_COUNTDOWN); // The *total* duration
+  const [timer, setTimer] = useState(INITIAL_SEARCH_COUNTDOWN); // The *current* time left
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Consolidate match state
@@ -233,17 +236,16 @@ const PracticeSessionForm = () => {
     const criteria: MatchCriteria = {difficulties: selectedDifficulties, languages: selectedLanguages, topics: selectedTopics};
     setCurrentCriteria(criteria);
 
-    // Set initial state for modals and timer
-    setSearchCountdown(5); // 30-second initial timer
-    setShowTimeoutModal(false); // Ensure timeout modal is hidden
+    if (!isRequeue) {
+      setSearchCountdown(INITIAL_SEARCH_COUNTDOWN);
+      setTimer(INITIAL_SEARCH_COUNTDOWN);
+    }
 
     const payload:  MatchRequestPayload= {userId: _id, criteria: criteria};
     findMatchMutate(payload);
   }
 
   const handleCancelSearch = () => {
-    // Reset the countdown
-    setTimer(searchCountdown);
     cancelMatchMutate({userId: _id});
   }
 
@@ -251,15 +253,14 @@ const PracticeSessionForm = () => {
   const handleSearchTimeout = () => {
     console.log("Search timed out. Removing from the queue and showing options.");
     setShowTimeoutModal(true);
-    handleCancelSearch();
+    handleCancelSearch(false);
   };
 
   // Called by TimeoutModal "Keep Waiting"
   const handleKeepWaiting = () => {
     console.log("Keeping waiting...");
-    const newCountdown = 5;
-    setSearchCountdown(newCountdown); // Set new total
-    setTimer(newCountdown); // Set new current time
+    setSearchCountdown(EXTEND_SEARCH_COUNTDOWN); // Set new total
+    setTimer(EXTEND_SEARCH_COUNTDOWN); // Set new current time
     setShowTimeoutModal(false);
     handleFindPartner(true);
   };
@@ -297,9 +298,9 @@ const PracticeSessionForm = () => {
     }
   }
 
-  // helper function
+  // Helper function
   const resetState = () => {
-    setTimer(searchCountdown); // reset timer
+    setTimer(INITIAL_SEARCH_COUNTDOWN); // reset timer
     setShowMatchModal(false);
     setShowTimeoutModal(false);
     setShowWaitingModal(false);
