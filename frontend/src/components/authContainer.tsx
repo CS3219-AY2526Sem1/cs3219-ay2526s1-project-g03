@@ -16,9 +16,6 @@ const AuthContainer: React.FC = () => {
   }
   if (user) {
     if (!user.profileComplete && window.location.pathname !== '/complete-profile') {
-      console.log('do i make it here bro');
-      console.log(user);
-      console.log('profile complete is ', user.profileComplete);
       return <Navigate to="/complete-profile" replace />;
     }
     const isVerified = user.verified || user.googleOAuthVerified || user.githubOAuthVerified;
