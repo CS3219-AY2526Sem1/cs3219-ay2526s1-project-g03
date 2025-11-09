@@ -1,13 +1,17 @@
-import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
+import {Send, Eye, LogOut, Mic, Video, ChevronLeft, ChevronRight} from 'lucide-react';
 import {useState} from 'react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
 export default function SubmissionPanel({
   isPenaltyOver,
   handleLeaveRoom,
+  isCollapsed,
+  onToggle,
 }: {
   isPenaltyOver: boolean;
   handleLeaveRoom: () => void;
+  isCollapsed: boolean;
+  onToggle: () => void;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
@@ -25,8 +29,32 @@ export default function SubmissionPanel({
     }
     handleLeaveRoom();
   }
+
+  if (isCollapsed) {
+    return (
+      <div className="w-10 px-1 py-2 bg-white border-l border-gray-200">
+        <button
+          onClick={onToggle}
+          className="w-full h-full flex rounded items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"
+          aria-label="Expand submission panel"
+        >
+          <ChevronLeft size={20} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+      <div className="flex justify-end p-2 border-b border-gray-200 flex-shrink-0">
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors"
+          aria-label="Collapse submission panel"
+        >
+          <ChevronRight size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+      </div>
       {/* User Avatars */}
       <div className="p-4 border-b border-gray-200 flex space-x-3">
         <div className="flex-1 bg-blue-500 rounded-lg p-4 text-white flex flex-col items-center justify-center">
