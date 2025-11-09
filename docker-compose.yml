@@ -1,29 +1,30 @@
 services:
   # --- DATABASES ---
-  user-db-mongodb:
-    image: mongo
-    container_name: user-db-mongodb
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - ./user-service/db:/data/db
-    networks:
-      - app-network
+  # For local volume dockerized testing
+  # user-db-mongodb:
+  #   image: mongo
+  #   container_name: user-db-mongodb
+  #   restart: unless-stopped
+  #   env_file:
+  #     - .env
+  #   volumes:
+  #     - ./user-service/db:/data/db
+  #   networks:
+  #     - app-network
 
-  # For development purposes
-  user-db-mongo-express:
-    image: mongo-express
-    container_name: user-db-mongo-express
-    restart: unless-stopped  
-    ports:
-      - 8084:8081
-    env_file:
-      - .env
-    networks:
-      - app-network
-    depends_on:
-      - user-db-mongodb
+  # For local volume dokcerized development purposes
+  # user-db-mongo-express:
+  #   image: mongo-express
+  #   container_name: user-db-mongo-express
+  #   restart: unless-stopped  
+  #   ports:
+  #     - 8084:8081
+  #   env_file:
+  #     - .env
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - user-db-mongodb
 
   question-db-pg:
     image: postgres:14-alpine
@@ -92,8 +93,8 @@ services:
       - /app/node_modules
     networks:
       - app-network
-    depends_on:
-      - user-db-mongodb
+    # depends_on: # Uncomment if local volume
+    #   - user-db-mongodb
     command: sh -c "npm run seed:admin || true && npm run dev" # for production change to npm start
 
   # Question service
@@ -194,8 +195,8 @@ services:
       - MONGO_URI=${HISTORY_DB_MONGO_URI}
     env_file:
       - ./.env
-    depends_on:
-      - user-db-mongodb
+    # depends_on: # Uncomment if local volume
+    #   - user-db-mongodb
     volumes:
       - ./history-service:/app
       - /app/node_modules
