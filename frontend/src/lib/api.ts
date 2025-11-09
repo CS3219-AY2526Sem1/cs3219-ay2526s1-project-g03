@@ -44,3 +44,5 @@ export const createAdminAccount = async data => userApi.post('/admin/users', dat
 
 // matching-service
 export const findMatch = async data => matchingApi.post('/matches/', data);
+
+export const cancelMatch = async data => matchingApi.delete(`/matches/${data.userId}`, data);

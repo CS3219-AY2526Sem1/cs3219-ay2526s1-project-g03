@@ -11,7 +11,8 @@ export function CollabPage() {
   const {roomId} = useParams<{roomId: string}>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('code');
-  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, isLoading, error} = useSession(roomId);
+  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, questionId, isLoading, error} =
+    useSession(roomId);
 
   if (!roomId) {
     navigate('/room');
@@ -39,8 +40,7 @@ export function CollabPage() {
       <SessionHeader sessionStartTime={sessionStartTime} handlePenaltyOver={handlePenaltyOver} />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* hard code questionId for now */}
-        <QuestionPanel questionId="0a2c15e1-d520-476a-a417-21df70553ab9" />
+        <QuestionPanel questionId={questionId} />
 
         <div className="flex-1 flex flex-col bg-white">
           {/* Editor Header */}
