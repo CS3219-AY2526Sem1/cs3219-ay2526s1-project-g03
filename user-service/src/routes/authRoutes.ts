@@ -13,6 +13,7 @@ import {
   resetPasswordController,
   verifyEmailController,
 } from '../controllers/authHandler';
+import {loginLimiter, emailSendLimiter, registerLimiter} from '../middleware/rateLimiter.ts';
 
 const authRoutes = Router();
 
@@ -24,13 +25,13 @@ authRoutes.get('/refresh', refreshController);
 authRoutes.get('/logout', logoutController);
 
 // Registers a new user account.
-authRoutes.post('/register', registerController);
+authRoutes.post('/register', registerLimiter, registerController);
 // Logs a user into the application.
-authRoutes.post('/login', loginController);
+authRoutes.post('/login', loginLimiter, loginController);
 // Resends a verifcation email.
-authRoutes.post('/email/resend', resendEmailController);
+authRoutes.post('/email/resend', emailSendLimiter, resendEmailController);
 // Sends a forgot password email.
-authRoutes.post('/password/forgot', forgotPasswordController);
+authRoutes.post('/password/forgot', emailSendLimiter, forgotPasswordController);
 // Resets the password of a user.
 authRoutes.post('/password/reset', resetPasswordController);
 

@@ -219,7 +219,7 @@ const config: Config = {
               allowSyntheticDefaultImports: true,
               module: 'commonjs',
             },
-            diagnostics: false,  // Disables TypeScript errors
+            diagnostics: false, // Disables TypeScript errors
             babelConfig: true,
             useESM: true,
           },
