@@ -121,18 +121,18 @@ services:
     networks:
       - app-network
 
-# --- UI for Postgres Database ---
+  # --- UI for Postgres Database ---
   adminer:
     image: adminer
-    container_name: adminer-ui        
-    restart: unless-stopped          
+    container_name: adminer-ui
+    restart: unless-stopped
     ports:
-      - "8087:8080" 
+      - '8087:8080'
     networks:
       - app-network
     depends_on:
       - question-db-pg
-  
+
   # Matching service
   matching-service:
     # ... (No changes needed)
@@ -187,15 +187,32 @@ services:
     env_file:
       - ./.env
     depends_on:
-      - user-db-mongodb 
+      - user-db-mongodb
     volumes:
       - ./history-service:/app
       - /app/node_modules
     networks:
-      - app-network 
+      - app-network
     command: npm run dev
-    
 
+  code-execution-service:
+    build:
+      context: ./code-execution-service
+      dockerfile: Dockerfile
+    ports:
+      - '8086:8086'
+    environment:
+      - PORT=8086
+    env_file:
+      - ./.env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp/code-execution:/tmp/code-execution
+      - ./code-execution-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    command: npm run dev
 
 networks:
   app-network:
