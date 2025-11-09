@@ -13,7 +13,7 @@ import {
   resetPasswordController,
   verifyEmailController,
 } from '../controllers/authHandler';
-import {loginLimiter, emailSendLimiter, registerLimiter} from '../middleware/rateLimiter.ts';
+import {loginLimiter, emailSendLimiter, registerLimiter} from '../middleware/rateLimiter';
 
 const authRoutes = Router();
 

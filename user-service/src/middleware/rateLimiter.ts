@@ -5,8 +5,8 @@ import {
   REGISTER_LIMIT,
   PW_RESET_LIMIT,
   RATE_LIMIT_ERROR_MESSAGE,
-} from '../constants/rateLimits.ts';
-import {HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus.ts';
+} from '../constants/rateLimits';
+import {HTTP_TOO_MANY_REQUESTS} from '../constants/httpStatus';
 
 // Adapted from https://express-rate-limit.mintlify.app/quickstart/usage
 

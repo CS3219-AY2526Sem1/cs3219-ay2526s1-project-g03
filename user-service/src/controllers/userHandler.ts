@@ -10,7 +10,7 @@ import {
   updateProfilePicture,
   updateUsernameOrEmail,
 } from '../services/userService';
-import {getOtherUser} from '../services/userService.ts';
+import {getOtherUser} from '../services/userService';
 import appAssert from '../utils/appAssert';
 import AppError from '../utils/appError';
 import catchErrors from '../utils/catchErrors';
