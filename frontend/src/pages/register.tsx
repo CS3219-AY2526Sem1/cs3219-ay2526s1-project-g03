@@ -14,6 +14,17 @@ const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  const [oAuthError, setOAuthError] = useState(null);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const error = params.get('error');
+    if (error) {
+      setOAuthError(decodeURIComponent(error));
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  });
+
   const {
     mutate: registration,
     isPending,
@@ -22,7 +33,7 @@ const Register: React.FC = () => {
   } = useMutation({
     mutationFn: register,
     onSuccess: () => {
-      navigate('/', {
+      navigate('/complete-profile', {
         replace: true, // User cannot go back to page
       });
     },
@@ -31,7 +42,7 @@ const Register: React.FC = () => {
   return (
     <div className="registration-wrapper">
       <div className="registration-container">
-        <Link to="/" className="back-link">
+        <Link to="/Home" className="back-link">
           <span className="back-arrow" />
           <span>Back to Home</span>
         </Link>
@@ -45,15 +56,28 @@ const Register: React.FC = () => {
           <p>Join thousands of developers improving together</p>
         </div>
 
+        {oAuthError && (
+          <div className="error">{oAuthError || 'An error occurred, please try again.'}</div>
+        )}
         <div className="oauth-buttons">
-          <button className="oauth-button">
+          <button
+            className="oauth-button"
+            onClick={() =>
+              (window.location.href = `${import.meta.env.VITE_USER_SERVICE_URL}/auth/github`)
+            }
+          >
             <div className="icon-github">
               <img src={GithubIcon} alt="GitHub" className="icon-github" />
             </div>
             <span>Continue with GitHub</span>
           </button>
 
-          <button className="oauth-button">
+          <button
+            className="oauth-button"
+            onClick={() =>
+              (window.location.href = `${import.meta.env.VITE_USER_SERVICE_URL}/auth/google`)
+            }
+          >
             <div className="icon-google">
               <img src={GoogleIcon} alt="Google" className="icon-google" />
             </div>
@@ -64,7 +88,13 @@ const Register: React.FC = () => {
         <div className="divider">or</div>
 
         <form className="form-section">
-          {isError && <div className="error"> {error?.message || 'Invalid credentials'} </div>}
+          {isError && (
+            <div className="error">
+              {error?.message
+                ? error.message.split('\n').map((msg, idx) => <div key={idx}>{msg}</div>)
+                : 'Invalid credentials'}
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
@@ -112,7 +142,13 @@ const Register: React.FC = () => {
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               onKeyDown={e =>
-                e.key === 'Enter' && registration({username, email, password, confirmPassword})
+                e.key === 'Enter' &&
+                registration({
+                  username: username.trim(),
+                  email: email.trim(),
+                  password: password.trim(),
+                  confirmPassword: confirmPassword.trim(),
+                })
               }
             />
           </div>
@@ -121,7 +157,14 @@ const Register: React.FC = () => {
             type="button"
             className="submit-button"
             disabled={isPending}
-            onClick={() => registration({username, email, password, confirmPassword})}
+            onClick={() =>
+              registration({
+                username: username.trim(),
+                email: email.trim(),
+                password: password.trim(),
+                confirmPassword: confirmPassword.trim(),
+              })
+            }
           >
             {isPending ? 'Creating Account...' : 'Create Account'}
           </button>

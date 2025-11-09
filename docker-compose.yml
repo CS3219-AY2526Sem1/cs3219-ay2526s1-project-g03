@@ -1,17 +1,55 @@
 services:
   # --- DATABASES ---
+  user-db-mongodb:
+    image: mongo
+    container_name: user-db-mongodb
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./user-service/db:/data/db
+    networks:
+      - app-network
+
+  # For development purposes
+  user-db-mongo-express:
+    image: mongo-express
+    container_name: user-db-mongo-express
+    restart: unless-stopped  
+    ports:
+      - 8084:8081
+    env_file:
+      - .env
+    networks:
+      - app-network
+    depends_on:
+      - user-db-mongodb
+
   question-db-pg:
     image: postgres:14-alpine
     container_name: question-db-pg
     ports:
-      - '5433:5432' 
+      - '5433:5432'
     volumes:
-      - question-data:/var/lib/postgresql/data 
+      - question-data:/var/lib/postgresql/data
       - ./question-service/db:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: question-db
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - '6379:6379'
     networks:
       - app-network
 
@@ -24,6 +62,7 @@ services:
       - '3000:5173'
     environment:
       - NODE_ENV=development
+      - VITE_NGROK_COLLAB_HOST=${VITE_NGROK_COLLAB_HOST}
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -53,6 +92,9 @@ services:
       - /app/node_modules
     networks:
       - app-network
+    depends_on:
+      - user-db-mongodb
+    command: sh -c "npm run seed:admin || true && npm run dev" # for production change to npm start
 
   # Question service
   question-service:
@@ -62,11 +104,11 @@ services:
     ports:
       - '8083:8083'
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=8083
     env_file:
       - ./.env
-    depends_on: 
+    depends_on:
       - question-db-pg
     volumes:
       - ./question-service:/app
@@ -74,6 +116,30 @@ services:
     networks:
       - app-network
 
+  question-test:
+    build:
+      context: ./question-service
+      dockerfile: Dockerfile
+    command: ['npm', 'test']
+    env_file:
+      - ./question-service/.env.test
+    depends_on:
+      question-db-pg:
+        condition: service_healthy
+    networks:
+      - app-network
+
+# --- UI for Postgres Database ---
+  adminer:
+    image: adminer
+    container_name: adminer-ui
+    restart: unless-stopped
+    ports:
+      - "8087:8080"
+    networks:
+      - app-network
+    depends_on:
+      - question-db-pg
   
   # Matching service
   matching-service:
@@ -96,7 +162,6 @@ services:
 
   # Collaboration service
   collaboration-service:
-    platform: linux/amd64
     build:
       context: ./collaboration-service
       dockerfile: Dockerfile
@@ -107,13 +172,38 @@ services:
       - PORT=8082
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     env_file:
       - ./.env
     volumes:
       - ./collaboration-service:/app
       - /app/node_modules
+      - /app/.partykit
     networks:
       - app-network
+
+  # History service
+  history-service:
+    build:
+      context: ./history-service
+      dockerfile: Dockerfile
+    ports:
+      - '8085:8085'
+    environment:
+      - PORT=8085
+      - MONGO_URI=${HISTORY_DB_MONGO_URI}
+    env_file:
+      - ./.env
+    depends_on:
+      - user-db-mongodb
+    volumes:
+      - ./history-service:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    command: npm run dev
+
+
 
 networks:
   app-network:
