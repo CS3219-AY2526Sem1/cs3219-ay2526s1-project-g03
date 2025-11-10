@@ -15,13 +15,16 @@ export default function CollabEditor({
   roomId,
   testcases,
   onRun,
+  isExecuting,
 }: {
   roomId: string;
   testcases: string[] | null;
   onRun: (code: string, language: string, testcases: string[]) => void;
+  isExecuting?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState('code');
   const {ytext, awareness, isReady, languageConfig, setSharedLanguage} = useCollabEditor({roomId});
+
   if (!isReady || !ytext) {
     return <div>Loading...</div>;
   }
@@ -95,7 +98,7 @@ export default function CollabEditor({
         <span className="text-sm text-gray-500">Python 3.9 Line 20, Column 14</span>
         <button
           onClick={handleRun}
-          disabled={!testcases || testcases.length === 0}
+          disabled={!testcases || testcases.length === 0 || isExecuting}
           className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-5 py-1.5 rounded-lg flex items-center space-x-2"
         >
           {/* <Play size={16} /> */}

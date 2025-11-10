@@ -72,7 +72,7 @@ export function CollabPage() {
               isCodeExecutionPanelCollapsed ? '' : 'border-b border-gray-200'
             }`}
           >
-            <CollabEditor roomId={roomId} testcases={testcases} onRun={handleRun} />
+            <CollabEditor roomId={roomId} testcases={testcases} onRun={handleRun} isExecuting={isExecuting} />
           </div>
 
           {/* Test Results */}

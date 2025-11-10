@@ -44,6 +44,12 @@ export default function CodeExecutionPanel({
   const [selectedCase, setSelectedCase] = useState(0);
   const [activeTab, setActiveTab] = useState<'testcase' | 'result'>('testcase');
 
+  useEffect(() => {
+    if (isExecuting) {
+      setActiveTab('result');
+    }
+  }, [isExecuting]);
+
   // Update selectedCase if it's out of bounds
   useEffect(() => {
     const maxCaseIndex =
