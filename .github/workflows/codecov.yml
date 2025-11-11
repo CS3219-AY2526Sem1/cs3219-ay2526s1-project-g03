@@ -18,15 +18,19 @@ jobs:
 
       - name: Install root dependencies
         run: npm install
+        working-directory: ./cs3219-ay2526s1-project-g03
 
       - name: Install workspace dependencies
         run: npm install --workspaces
+        working-directory: ./cs3219-ay2526s1-project-g03
 
       - name: Run tests
         run: npx jest --coverage
+        working-directory: ./cs3219-ay2526s1-project-g03
 
       - name: Upload results to Codecov
         if: always()
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          directory: ./cs3219-ay2526s1-project-g03/coverage/
