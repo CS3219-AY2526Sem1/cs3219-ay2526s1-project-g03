@@ -57,7 +57,6 @@ export class HistoryService {
         ]
       );
 
-      // --- REFACTORED PROGRESS UPDATE (THE FIX) ---
       
       // Determine the increments based on the outcome
       const completedIncrement = input.hasPenalty ? 0 : 1;
@@ -67,41 +66,41 @@ export class HistoryService {
       // Query 2: This query is now robust and calculates all stats correctly.
       await client.query(
         `INSERT INTO user_progress (
-           user_id, 
-           total_sessions, 
-           total_sessions_completed, 
-           total_successes, 
-           success_rate, 
-           current_streak, 
-           last_practice_day,
-           total_time_ms
+            user_id, 
+            total_sessions, 
+            total_sessions_completed, 
+            total_successes, 
+            success_rate, 
+            current_streak, 
+            last_practice_day,
+            total_time_ms
          )
          VALUES ($1, 1, $2, $3, $4, 1, CURRENT_DATE, $5)
          ON CONFLICT (user_id) DO UPDATE SET
-           total_sessions = user_progress.total_sessions + 1,
-           
-           total_sessions_completed = user_progress.total_sessions_completed + $2,
-           
-           total_successes = user_progress.total_successes + $3,
-           
-           success_rate = 
-             -- Calculate new rate based on TOTAL sessions, not just completed ones
-             (user_progress.total_successes + $3)::float / 
-             GREATEST(user_progress.total_sessions + 1, 1),
-           
-           current_streak = 
-             CASE
-               -- If last practice was yesterday, increment streak
-               WHEN user_progress.last_practice_day = (CURRENT_DATE - INTERVAL '1 day') THEN user_progress.current_streak + 1
-               -- If last practice was today, streak is unchanged
-               WHEN user_progress.last_practice_day = CURRENT_DATE THEN user_progress.current_streak
-               -- Otherwise, reset streak to 1
-               ELSE 1
-             END,
-             
-           last_practice_day = CURRENT_DATE,
+            total_sessions = user_progress.total_sessions + 1,
+            
+            total_sessions_completed = user_progress.total_sessions_completed + $2,
+            
+            total_successes = user_progress.total_successes + $3,
+            
+            success_rate = 
+              -- Calculate new rate based on TOTAL sessions, not just completed ones
+              (user_progress.total_successes + $3)::float / 
+              GREATEST(user_progress.total_sessions + 1, 1),
+            
+            current_streak = 
+              CASE
+                -- If last practice was yesterday, increment streak
+                WHEN user_progress.last_practice_day = (CURRENT_DATE - INTERVAL '1 day') THEN user_progress.current_streak + 1
+                -- If last practice was today, streak is unchanged
+                WHEN user_progress.last_practice_day = CURRENT_DATE THEN user_progress.current_streak
+                -- Otherwise, reset streak to 1
+                ELSE 1
+              END,
+               
+            last_practice_day = CURRENT_DATE,
 
-           total_time_ms = user_progress.total_time_ms + $5
+            total_time_ms = user_progress.total_time_ms + $5
         `,
         [
           input.userId,         // $1
@@ -123,7 +122,6 @@ export class HistoryService {
   }
 
   public async getActiveAttemptedQuestionIds(userId: string): Promise<string[]> {
-    // Your correct query
     const res = await this.pool.query(
       `SELECT DISTINCT s.question_id
        FROM participants p
@@ -156,7 +154,6 @@ export class HistoryService {
   }
 
   public async getQuestionAttempts(userId: string, questionId: string): Promise<ParticipantAttempt[] | null> {
-    // Your correct query - now includes question_title for display
     const res = await this.pool.query(
       `SELECT p.*, s.started_at, s.question_title
        FROM participants p 
@@ -194,16 +191,16 @@ export class HistoryService {
   public async getAllSummaries(userId: string): Promise<SessionSummary[]> {
     const res = await this.pool.query(
       `SELECT DISTINCT ON (s.question_id)
-         s.session_id,
-         s.question_id,
-         s.question_title,
-         s.question_difficulty,
-         s.question_topics,
-         s.started_at,
-         p.partner_id,
-         p.is_solved_successfully,
-         p.has_penalty,
-         p.time_taken_ms
+          s.session_id,
+          s.question_id,
+          s.question_title,
+          s.question_difficulty,
+          s.question_topics,
+          s.started_at,
+          p.partner_id,
+          p.is_solved_successfully,
+          p.has_penalty,
+          p.time_taken_ms
        FROM participants p
        JOIN sessions s ON p.session_id = s.session_id
        WHERE p.user_id = $1

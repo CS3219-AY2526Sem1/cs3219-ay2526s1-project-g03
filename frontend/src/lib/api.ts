@@ -94,3 +94,4 @@ export const resetQuestions = async (userId: string, questionIds: string[]) => {
   const response = await historyApi.post(`/api/history/reset-questions/${userId}`, { questionIds });
   return response.data;
 };
+export const cancelMatch = async data => matchingApi.delete(`/matches/${data.userId}`, data);

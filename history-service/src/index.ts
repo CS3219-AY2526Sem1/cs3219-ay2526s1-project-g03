@@ -10,7 +10,6 @@ import { Pool } from 'pg'; // Import Pool type for casting
 const app = express();
 const port = process.env['PORT'] || 8085;
 
-// --- THIS IS THE FIX ---
 // The CORS configuration MUST come before all other middleware.
 // We must configure CORS to explicitly allow your frontend's origin
 // and to allow it to send credentials (which axios does with `withCredentials: true`).
@@ -21,9 +20,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// --- END OF FIX ---
-
-// We have DELETED the extra app.use(cors()) from here.
 app.use(express.json());
 
 // --- This is the new dependency injection pattern ---
