@@ -183,6 +183,7 @@ export const googleAuthController = async (req, res, next) => {
     state = JSON.stringify({
       link: true,
       linkId: oAuthLink._id.toString(),
+      userId: payload.userId,
     });
   }
 
@@ -228,6 +229,7 @@ export const githubAuthController = async (req, res, next) => {
     state = JSON.stringify({
       link: true,
       linkId: oAuthLink._id.toString(),
+      userId: payload.userId,
     });
   }
 
