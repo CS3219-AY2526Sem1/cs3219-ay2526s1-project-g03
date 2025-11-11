@@ -41,6 +41,7 @@ export const changeUserRole = async (username, role) =>
 
 export const createAdminAccount = async data => userApi.post('/admin/users', data);
 
+export const getOtherUser = async data => userApi.get(`/user/${data}`)
 
 // matching-service
 export const findMatch = async data => matchingApi.post('/matches/', data);

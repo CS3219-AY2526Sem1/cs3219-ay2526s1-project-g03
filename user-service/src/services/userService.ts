@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import {ACCOUNT_DELETION_DAYS} from '../constants/expirables';
 import {HTTP_CONFLICT, HTTP_NOT_FOUND, HTTP_UNAUTHORIZED} from '../constants/httpStatus';
 import User from '../models/user';
@@ -16,6 +17,21 @@ export const findUserById = async (userId: string) => {
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
   return user;
 };
+
+/**
+ * Retrieves public profile information for a specific user.
+ * 
+ * @param userId MondoDB ObjectId of the user to retrieve
+ * @returns Public user profile information
+ */
+export const getOtherUser = async (userId: string) => {
+  const user = await User.findById(userId)
+    .select('username firstName lastName occupation areaOfStudy profilePicture')
+    .lean();
+
+  appAssert(user, HTTP_NOT_FOUND, 'User not found!');
+  return user;
+}
 
 /**
  * Helper method. Checks if username or email to be changed is provided
