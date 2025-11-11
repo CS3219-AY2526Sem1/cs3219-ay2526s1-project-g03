@@ -132,7 +132,14 @@ const PracticeSessionForm = () => {
 
         case 'match_confirmed':
           console.log("Match confirmed by server! Navigating...");
-          // navigate(`/room/${message.payload.sessionId}`);
+          navigate(`/room/${message.payload.sessionId}`);
+          break;
+
+        case 'room_creation_failed':
+          console.log("Server failed to create room.");
+          setShowMatchModal(false);
+          toast.error('Match failed: Could not create the collaboration room. Please try again.');
+          resetState();
           break;
 
         case 'partner_declined':

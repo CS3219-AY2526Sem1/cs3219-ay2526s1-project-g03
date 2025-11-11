@@ -1,7 +1,9 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
+import axios from 'axios';
 import type { MatchCriteria, MatchStatus, PendingMatch } from '../models/matchModel';
 import redisClient from '../config/redis';
+import { COLLAB_SERVICE_URL } from '../constants/env';
 import {
   DIFFICULTY_MAP,
   DIFFICULTY_ANY,
@@ -29,10 +31,11 @@ const PENALTY_LEVEL_EXPIRATION_SECONDS = 3600 * 24; // 1 day "memory" for penalt
 const COOLDOWN_KEY_PREFIX = 'penalty:cooldown:';
 const LEVEL_KEY_PREFIX = 'penalty:level:';
 
-// // --- Bitmask Constants ---
-// const DIFFICULTY_MASK = DIFFICULTY_ANY;
-// const LANGUAGE_MASK = LANGUAGE_ANY;
-// const TOPIC_MASK = TOPIC_ANY;
+// --- Bitmask Constants ---
+const DIFFICULTY_MASK = DIFFICULTY_ANY;
+const LANGUAGE_MASK = LANGUAGE_ANY;
+const TOPIC_MASK = TOPIC_ANY;
+
 //
 // // --- Placeholder for external API calls ---
 // // TODO: Replace these with real fetch/axios calls to your other services
@@ -172,7 +175,7 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
       // }
 
       // --- IT'S A FULLY VALIDATED MATCH ---
-      console.log(`Match ${userId} & ${partnerId} validated with question: ${questionId}`);
+      // console.log(`Match ${userId} & ${partnerId} validated with question: ${questionId}`);
 
       // Now we can safely remove them from the waiting room
       await removeFromWaitingRoom(partnerId);
@@ -199,7 +202,7 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
           partnerId: userId, // Partner needs *our* ID
           sessionId: sessionId,
           criteria: matchedCriteria, // Use the *intersection* criteria
-          questionId: questionId, // --- NEW: Send the question ID
+          // questionId: questionId, // --- NEW: Send the question ID
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -213,7 +216,7 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
           partnerId: partnerId, // We need the *partner's* ID
           sessionId: sessionId,
           criteria: matchedCriteria, // Use the *intersection* criteria
-          questionId: questionId, // --- NEW: Send the question ID
+          // questionId: questionId, // --- NEW: Send the question ID
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -263,9 +266,34 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 
             if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
               console.log(`Match ${parsedMessage.sessionId} confirmed!`);
-              sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
-              sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
-              pendingMatches.delete(parsedMessage.sessionId);
+
+              const payload = {
+                id: parsedMessage.sessionId,
+                user1: match.user1Id,
+                user2: match.user2Id,
+                question_id: 'a3b5c1fa-d08f-4ea7-9908-0eeb5d7669e7' // We have this from the PendingMatch
+              };
+
+              const createRoomUrl = `${COLLAB_SERVICE_URL}/parties/main/${parsedMessage.sessionId}`;
+              console.log("API URL:", createRoomUrl);
+              // Call collab service to create a room for this session using the sessionId
+              axios.post(createRoomUrl, payload)
+                .then(response => {
+                  // SUCCESS: Room is created. Tell users to redirect.
+                  console.log(`Successfully created room ${parsedMessage.sessionId}`);
+                  sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
+                  sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
+                })
+                .catch(error => {
+                  // ERROR: Room creation failed. Tell users.
+                  console.error(`Error creating room ${parsedMessage.sessionId}:`, error.message);
+                  sendWebSocketMessage(match.user1Id, { type: 'room_creation_failed' });
+                  sendWebSocketMessage(match.user2Id, { type: 'room_creation_failed' });
+                })
+                .finally(() => {
+                  // Always clean up the pending match
+                  pendingMatches.delete(parsedMessage.sessionId);
+                });
             } else {
               const partnerId = currentUserId === match.user1Id ? match.user2Id : match.user1Id;
               sendWebSocketMessage(partnerId, { type: 'partner_accepted' });

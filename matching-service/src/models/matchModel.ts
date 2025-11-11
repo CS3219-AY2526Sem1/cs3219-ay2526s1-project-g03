@@ -16,4 +16,5 @@ export interface PendingMatch {
   user1Status: MatchStatus;
   user2Id: string;
   user2Status: MatchStatus;
+  questionId?: string;
 }
