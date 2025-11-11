@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styles from './matchFoundModal.module.css';
 import PartnerIcon from '../../../assets/match/match-found.svg';
 import DefaultAvatar from '../../../assets/default-profile-icon.svg';
+import DeclineConfirmationModal from '../declineConfirmationModal/declineConfirmationModal';
 
 interface PartnerDetails {
   firstName: string;
@@ -28,6 +29,7 @@ const MatchFoundModal = ({
                          }: MatchFoundModalProps) => {
   const [timeLeft, setTimeLeft] = useState(expiryTimestamp - Date.now());
   const [isWaitingForPartner, setIsWaitingForPartner] = useState<boolean>(false);
+  const [showDeclineConfirmationModal, setShowDeclineConfirmationModal] = useState<boolean>(false);
 
   // countdown timer effect
   useEffect(() => {
@@ -68,6 +70,10 @@ const MatchFoundModal = ({
     setIsWaitingForPartner(true);
     onAccept();
   };
+
+  const handleDeclineClick = () => {
+    setShowDeclineConfirmationModal(true);
+  }
 
   // Format partner's headline
   const formatHeadline = (text: string): string => {
@@ -122,7 +128,7 @@ const MatchFoundModal = ({
                 <span className={styles.timerText}>{countdownSeconds}s</span>
               </div>
               <div className={styles.buttonGroup}>
-                <button className={styles.declineButton} onClick={() => onDecline()}>
+                <button className={styles.declineButton} onClick={() => handleDeclineClick()}>
                   &times; Decline
                 </button>
                 <button className={styles.acceptButton} onClick={() => handleAcceptClick()}>
@@ -130,10 +136,14 @@ const MatchFoundModal = ({
                 </button>
               </div>
             </>
-            )}
-            </div>
-          </div>
-          );
-        };
+          )}
+      </div>
+      {showDeclineConfirmationModal && (
+        <DeclineConfirmationModal onConfirm={onDecline} onCancel={() => setShowDeclineConfirmationModal(false)}/>
+      )}
+    </div>
+  );
+    };
 
-        export default MatchFoundModal;
+
+export default MatchFoundModal;
