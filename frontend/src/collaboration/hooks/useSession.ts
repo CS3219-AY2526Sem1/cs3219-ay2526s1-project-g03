@@ -1,10 +1,11 @@
-import {useCallback, useState, useEffect} from 'react';
+import {useCallback, useState, useEffect, useRef} from 'react';
 import axios from 'axios';
 
 interface UseSessionReturn {
   sessionStartTime: number | null;
   isPenaltyOver: boolean;
   handlePenaltyOver: () => void;
+  questionId: string;
   isLoading: boolean;
   error: string | null;
 }
@@ -14,13 +15,17 @@ interface UseSessionReturn {
  * @param roomId - The ID of the collaboration room
  * @returns Promise with roomId and createdAt timestamp
  */
-export async function fetchRoomTimestamp(roomId: string): Promise<{
-  roomId: string;
-  createdAt: string;
+export async function fetchRoomData(roomId: string): Promise<{
+  id: string;
+  user1: string;
+  user2: string;
+  question_id: string;
+  created_at: string;
 }> {
   const collaborationServiceUrl =
     import.meta.env.VITE_COLLABORATION_SERVICE_URL || 'http://localhost:8082';
-  const response = await axios.get(`${collaborationServiceUrl}/party/${roomId}`);
+  const response = await axios.get(`${collaborationServiceUrl}/parties/main/${roomId}`);
+  console.log(`Response received: ${response}`);
   return response.data;
 }
 
@@ -29,6 +34,7 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
   const [isPenaltyOver, setIsPenaltyOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const questionId = useRef<string>('');
 
   const handlePenaltyOver = useCallback(() => {
     setIsPenaltyOver(true);
@@ -43,16 +49,17 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
 
     let isMounted = true;
 
-    const fetchTimestamp = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const {createdAt} = await fetchRoomTimestamp(roomId);
+        const roomData = await fetchRoomData(roomId);
+        questionId.current = roomData.question_id;
 
         if (isMounted) {
           // Convert ISO string to timestamp
-          const timestamp = new Date(createdAt).getTime();
+          const timestamp = new Date(roomData.created_at).getTime();
           setSessionStartTime(timestamp);
         }
       } catch (err) {
@@ -69,12 +76,19 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
       }
     };
 
-    fetchTimestamp();
+    fetchData();
 
     return () => {
       isMounted = false;
     };
   }, [roomId]);
 
-  return {sessionStartTime, isPenaltyOver, handlePenaltyOver, isLoading, error};
+  return {
+    sessionStartTime,
+    isPenaltyOver,
+    handlePenaltyOver,
+    questionId: questionId.current,
+    isLoading,
+    error,
+  };
 }
