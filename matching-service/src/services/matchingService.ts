@@ -178,17 +178,17 @@ const startSession = async (match: PendingMatch): Promise<string | null> => {
  */
 export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) => {
 
-  // // 1. Check for penalty
-  // const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
-  // const penaltyTtl = await redisClient.ttl(cooldownKey);
-  //
-  // if (penaltyTtl > 0) {
-  //   console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
-  //   return {
-  //     status: 'penalized',
-  //     cooldown: penaltyTtl
-  //   };
-  // }
+  // 1. Check for penalty
+  const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
+  const penaltyTtl = await redisClient.ttl(cooldownKey);
+
+  if (penaltyTtl > 0) {
+    console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
+    return {
+      status: 'penalized',
+      cooldown: penaltyTtl
+    };
+  }
 
   // 2. Encode the user's criteria into their "Searcher Mask"
   const searcherMask = encodeCriteria(criteria);
