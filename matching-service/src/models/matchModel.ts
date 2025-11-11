@@ -18,3 +18,9 @@ export interface PendingMatch {
   user2Status: MatchStatus;
   questionId?: string;
 }
+
+export interface ValidQuestion {
+  questionId: string;
+  difficulty: string;
+  topic: string;
+}

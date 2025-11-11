@@ -1,9 +1,9 @@
 import { WebSocket } from 'ws';
 import crypto from 'crypto';
 import axios from 'axios';
-import type { MatchCriteria, MatchStatus, PendingMatch } from '../models/matchModel';
+import type { MatchCriteria, PendingMatch, ValidQuestion } from '../models/matchModel';
 import redisClient from '../config/redis';
-import { COLLAB_SERVICE_URL } from '../constants/env';
+import { QUESTION_SERVICE_URL, COLLAB_SERVICE_URL, HISTORY_SERVICE_URL } from '../constants/env';
 import {
   DIFFICULTY_MAP,
   DIFFICULTY_ANY,
@@ -36,34 +36,105 @@ const DIFFICULTY_MASK = DIFFICULTY_ANY;
 const LANGUAGE_MASK = LANGUAGE_ANY;
 const TOPIC_MASK = TOPIC_ANY;
 
-//
-// // --- Placeholder for external API calls ---
-// // TODO: Replace these with real fetch/axios calls to your other services
-// const getAttemptedQuestions = async (uid: string): Promise<string[]> => {
-//   console.log(`Fetching history for user ${uid}...`);
-//   // Simulating an API call
-//   await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
-//   // Return a mock list
-//   return uid.endsWith('a') ? ['q1', 'q3'] : ['q2', 'q4'];
-// };
-//
-// const getValidQuestion = async (
-//   criteria: MatchCriteria,
-//   excludedIds: string[]
-// ): Promise<string | null> => {
-//   console.log(`Fetching question for criteria with ${excludedIds.length} excluded IDs...`);
-//   // Simulating an API call
-//   await new Promise(resolve => setTimeout(resolve, 50)); // 50ms latency
-//
-//   // Mock logic: if "q5" is not excluded, return it.
-//   if (!excludedIds.includes('q5')) {
-//     return 'q5';
-//   }
-//   // Otherwise, no questions are available
-//   return null;
-// };
-// // --- End Placeholder ---
+// --- External API calls ---
+const getAttemptedQuestions = async (uid: string): Promise<string[] | null> => {
+  console.log(`Fetching history for user ${uid}...`);
+  const api = `${HISTORY_SERVICE_URL}/api/history/${uid}`;
+  try {
+    const response = await axios.get(api)
 
+    if (response.data && response.data.attemptedQuestionIds) {
+      console.log(`Successfully fetch attempted questions for user: ${uid}, attempted question: ${response.data.attemptedQuestionIds}`);
+      return response.data.attemptedQuestionIds;
+    }
+
+  } catch (error) {
+    console.error(`Error fetching attempted questions for user: ${uid}`, error.message);
+    return null;
+  }
+
+  return null;
+};
+
+const getValidQuestion = async (
+  criteria: MatchCriteria,
+  excludedIds: string[]
+): Promise<ValidQuestion | null> => {
+  console.log(`Fetching question for criteria with ${excludedIds.length} excluded IDs...`);
+  const api = `${QUESTION_SERVICE_URL}/api/questions/select`;
+  const payload =
+    {
+      criteria:
+        {
+          difficulty: criteria.difficulties,
+          topic: criteria.topics
+        },
+      excludedIds: excludedIds
+    }
+  try {
+    const response = await axios.post(api, payload);
+
+    if (response.data && response.data.question_id) {
+      console.log("Successfully found question:", response.data.question_id);
+      return {
+        questionId: response.data.question_id,
+        difficulty: response.data.difficulty,
+        topic: response.data.topic
+      };
+    }
+
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      // The expected "No match found" scenario
+      console.log("No suitable question found.");
+      return null;
+    } else {
+      console.error("Error fetching valid question:", error.message);
+      return null;
+    }
+  }
+  return null;
+}
+
+const createRoom = async (match: PendingMatch, payload: any): Promise<void> => {
+  const createRoomUrl = `${COLLAB_SERVICE_URL}/parties/main/${payload.sessionId}`;
+
+  try {
+    // 1. Await the API call
+    await axios.post(createRoomUrl, payload);
+
+    // 2. If it succeeds, run the success logic
+    console.log(`Successfully created room ${payload.sessionId}`);
+    sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: payload.sessionId } });
+    sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: payload.sessionId } });
+
+  } catch (error) {
+    // 3. If it fails, run the error logic
+    console.error(`Error creating room ${payload.sessionId}:`, error.message);
+    sendWebSocketMessage(match.user1Id, { type: 'room_creation_failed' });
+    sendWebSocketMessage(match.user2Id, { type: 'room_creation_failed' });
+
+  } finally {
+    pendingMatches.delete(match.sessionId);
+  }
+}
+
+const logUserQuestionHistory = async (uid: string, questionId: string): Promise<void> => {
+  const payload = {
+    userId: uid,
+    questionId: questionId
+  };
+
+  const api = `${HISTORY_SERVICE_URL}/history`;
+  try {
+    await axios.post(api, payload);
+    // Succeed
+    console.log(`Successfully logged user ${uid} attempt on question ${questionId}`);
+  } catch (error) {
+    console.error(`Error logging user ${uid} attempt on question ${questionId}`);
+  }
+
+}
 
 // =========================================
 // === PRIMARY API FUNCTIONS ===
@@ -143,42 +214,42 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
       const matchedCriteria = decodeMask(intersectionMask);
       console.log("Match criteria created from intersection:", matchedCriteria);
 
-      // TODO: Integrate question service and history service
-      // let questionId: string | null = null;
-      // try {
-      //   // 1. Get history for both users
-      //   const searcherHistory = await getAttemptedQuestions(userId);
-      //   const partnerHistory = await getAttemptedQuestions(partnerId);
-      //
-      //   // 2. Combine and de-duplicate the lists
-      //   const excludedIds = [...new Set([...searcherHistory, ...partnerHistory])];
-      //
-      //   // 3. Check Question Service for a valid question
-      //   questionId = await getValidQuestion(matchedCriteria, excludedIds);
-      //
-      // } catch (err) {
-      //   console.error("Error during history/question check:", err);
-      //   questionId = null; // Treat API errors as a failed match
-      // }
-      //
-      // // 4. Check if a valid question was found
-      // if (!questionId) {
-      //   console.log(`No valid question found for match ${userId} & ${partnerId}. Releasing lock.`);
-      //
-      //   // No valid question. This is not a match.
-      //   // We MUST release the lock so another searcher can try.
-      //   await redisClient.del(lockKey);
-      //
-      //   // We also DO NOT remove the partner from the waiting room.
-      //   // We just continue to the next potential match.
-      //   continue;
-      // }
+      let validQuestion: ValidQuestion | null = null;
+      try {
+        // 1. Get history for both users
+        const searcherHistory = await getAttemptedQuestions(userId);
+        const partnerHistory = await getAttemptedQuestions(partnerId);
+
+        // 2. Combine and de-duplicate the lists
+        const excludedIds = [...new Set([...searcherHistory, ...partnerHistory])];
+
+        // 3. Check Question Service for a valid question
+        validQuestion = await getValidQuestion(matchedCriteria, excludedIds);
+
+      } catch (err) {
+        console.error("Error during history/question check:", err);
+        validQuestion = null; // Treat API errors as a failed match
+      }
+
+      // 4. Check if a valid question was found
+      if (!validQuestion) {
+        console.log(`No valid question found for match ${userId} & ${partnerId}. Releasing lock.`);
+
+        // No valid question. This is not a match.
+        // We MUST release the lock so another searcher can try.
+        await redisClient.del(lockKey);
+
+        // We also DO NOT remove the partner from the waiting room.
+        // We just continue to the next potential match.
+        continue;
+      }
 
       // --- IT'S A FULLY VALIDATED MATCH ---
-      // console.log(`Match ${userId} & ${partnerId} validated with question: ${questionId}`);
+      console.log(`Match ${userId} & ${partnerId} validated with question: ${validQuestion.questionId}`);
 
       // Now we can safely remove them from the waiting room
       await removeFromWaitingRoom(partnerId);
+      // await redisClient.del(lockKey);
       // The lock will just expire on its own, which is fine.
 
       // Check if partner is still connected
@@ -193,6 +264,13 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         };
         pendingMatches.set(sessionId, newMatch);
 
+        // This is the criteria of the question they get and languages selected (if any)
+        const criteriaToShow = {
+          difficulty: validQuestion.difficulty, // only 1
+          topic: validQuestion.topic, // only 1
+          languages: matchedCriteria.languages // this can be more than 1
+        }
+
         // Timer to accept/decline a match
         const expiryTimestamp = Date.now() + MATCH_ACCEPT_TIMEOUT_MS;
         setTimeout(() => autoDeclineMatch(sessionId), MATCH_ACCEPT_TIMEOUT_MS);
@@ -201,8 +279,8 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
           status: 'matched',
           partnerId: userId, // Partner needs *our* ID
           sessionId: sessionId,
-          criteria: matchedCriteria, // Use the *intersection* criteria
-          // questionId: questionId, // --- NEW: Send the question ID
+          criteria: criteriaToShow,
+          questionId: validQuestion.questionId, // Send the question ID
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -215,8 +293,8 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
           status: 'matched',
           partnerId: partnerId, // We need the *partner's* ID
           sessionId: sessionId,
-          criteria: matchedCriteria, // Use the *intersection* criteria
-          // questionId: questionId, // --- NEW: Send the question ID
+          criteria: criteriaToShow,
+          questionId: validQuestion.questionId,
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -267,33 +345,18 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
             if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
               console.log(`Match ${parsedMessage.sessionId} confirmed!`);
 
+              // Log this attempt for both user
+              logUserQuestionHistory(match.user1Id, parsedMessage.questionId);
+              logUserQuestionHistory(match.user2Id, parsedMessage.questionId);
+
               const payload = {
                 id: parsedMessage.sessionId,
                 user1: match.user1Id,
                 user2: match.user2Id,
-                question_id: 'a3b5c1fa-d08f-4ea7-9908-0eeb5d7669e7' // We have this from the PendingMatch
+                question_id: parsedMessage.questionId // We have this from the PendingMatch
               };
 
-              const createRoomUrl = `${COLLAB_SERVICE_URL}/parties/main/${parsedMessage.sessionId}`;
-              console.log("API URL:", createRoomUrl);
-              // Call collab service to create a room for this session using the sessionId
-              axios.post(createRoomUrl, payload)
-                .then(response => {
-                  // SUCCESS: Room is created. Tell users to redirect.
-                  console.log(`Successfully created room ${parsedMessage.sessionId}`);
-                  sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
-                  sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: parsedMessage.sessionId } });
-                })
-                .catch(error => {
-                  // ERROR: Room creation failed. Tell users.
-                  console.error(`Error creating room ${parsedMessage.sessionId}:`, error.message);
-                  sendWebSocketMessage(match.user1Id, { type: 'room_creation_failed' });
-                  sendWebSocketMessage(match.user2Id, { type: 'room_creation_failed' });
-                })
-                .finally(() => {
-                  // Always clean up the pending match
-                  pendingMatches.delete(parsedMessage.sessionId);
-                });
+              createRoom(match, payload);
             } else {
               const partnerId = currentUserId === match.user1Id ? match.user2Id : match.user1Id;
               sendWebSocketMessage(partnerId, { type: 'partner_accepted' });
