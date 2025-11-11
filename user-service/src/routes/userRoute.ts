@@ -9,11 +9,16 @@ import {
   unlinkOAuthController,
 } from '../controllers/userHandler';
 import {upload} from '../middleware/upload';
+import { getOtherUserController } from '../controllers/userHandler.ts';
 
 const userRoutes = Router();
 
 // Gets a particular user.
 userRoutes.get('/', getUserController);
+
+// Gets another user's public profile information
+userRoutes.get('/:userId', getOtherUserController);
+
 // Marks a user account for deletion.
 userRoutes.delete('/delete', markAccountForDeletionController);
 

@@ -15,7 +15,7 @@ services:
   user-db-mongo-express:
     image: mongo-express
     container_name: user-db-mongo-express
-    restart: unless-stopped
+    restart: unless-stopped  
     ports:
       - 8084:8081
     env_file:
@@ -45,6 +45,14 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - '6379:6379'
+    networks:
+      - app-network
 
   # --- FRONTEND ---
   frontend:
@@ -125,10 +133,10 @@ services:
 # --- UI for Postgres Database ---
   adminer:
     image: adminer
-    container_name: adminer-ui        
-    restart: unless-stopped          
+    container_name: adminer-ui
+    restart: unless-stopped
     ports:
-      - "8087:8080" 
+      - "8087:8080"
     networks:
       - app-network
     depends_on:
@@ -155,7 +163,6 @@ services:
 
   # Collaboration service
   collaboration-service:
-    platform: linux/amd64
     build:
       context: ./collaboration-service
       dockerfile: Dockerfile
@@ -166,6 +173,7 @@ services:
       - PORT=8082
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_KEY=${SUPABASE_KEY}
+      - JWT_SECRET=${JWT_SECRET}
     env_file:
       - ./.env
     volumes:
@@ -194,9 +202,9 @@ services:
       - ./history-service:/app
       - /app/node_modules
     networks:
-      - app-network 
+      - app-network
     command: npm run dev
-    
+
 
 
 networks:

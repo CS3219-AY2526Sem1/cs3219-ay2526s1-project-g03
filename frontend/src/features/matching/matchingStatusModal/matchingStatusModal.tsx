@@ -8,6 +8,7 @@ import ClockIcon from '../../../assets/match/clock-blue.svg';   // Example icon
 interface MatchingStatusModalProps {
   criteria: MatchCriteria;
   onCancel: () => void;
+  disabled: boolean;
   initialCountdown: number;
   usersOnline: number;
   avgWaitTime: number;
@@ -108,10 +109,11 @@ const StatsDisplay = ({ usersOnline, avgWaitTime }: StatsDisplayProps) => {
 
 interface CancelButtonProps {
   onClick: () => void;
+  disabled: boolean;
 }
-const CancelButton = ({ onClick }: CancelButtonProps) => {
+const CancelButton = ({ onClick, disabled }: CancelButtonProps) => {
   return (
-    <button className={styles.cancelButton} onClick={onClick}>
+    <button className={styles.cancelButton} onClick={onClick} disabled={disabled}>
       <div className={styles.closeSymbol}>
         &times;
       </div>
@@ -124,6 +126,7 @@ const CancelButton = ({ onClick }: CancelButtonProps) => {
 const MatchingStatusModal = ({
                                criteria,
                                onCancel,
+                               disabled,
                                initialCountdown,
                                usersOnline,
                                avgWaitTime,
@@ -158,7 +161,7 @@ const MatchingStatusModal = ({
 
         <StatsDisplay usersOnline={usersOnline} avgWaitTime={avgWaitTime} />
 
-        <CancelButton onClick={onCancel} />
+        <CancelButton onClick={onCancel} disabled={disabled} />
       </div>
     </div>
   );
