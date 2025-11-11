@@ -42,11 +42,11 @@ export class HistoryController {
       const result = await this.historyService.getActiveAttemptedQuestionIds(userId);
       return res.status(200).json(result);
     } catch (error) {
-      console.error('Error in getActiveAttemptedQuestions controller:', error);
+      console.error('Error in getActiveAttemptedQuestions controller:', error);   
       return res.status(500).json({ error: 'Internal server error' });
     }
   };
-
+  
   public getUserProgress = async (req: Request, res: Response): Promise<Response> => {
     try {
       const userId = req.params['userId'];
@@ -66,6 +66,8 @@ export class HistoryController {
       return res.status(500).json({ error: 'Internal server error' });
     }
   };
+
+
 
   public resetQuestions = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -98,6 +100,19 @@ export class HistoryController {
       return res.status(200).json(result || []);
     } catch (error) {
       console.error('Error in getQuestionAttempts controller:', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+  };
+
+  public getAllSummaries = async (req: Request, res: Response): Promise<Response> => {
+    try {
+      const userId = req.params['userId'];
+      if (!userId) {
+        return res.status(400).json({ error: 'userId is required' });
+      }
+      const summaries = await this.historyService.getAllSummaries(userId);
+      return res.status(200).json(summaries);
+    } catch (error) {
       return res.status(500).json({ error: 'Internal server error' });
     }
   };

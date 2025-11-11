@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS participants (
     code TEXT,
     is_solved_successfully BOOLEAN,
     has_penalty BOOLEAN NOT NULL DEFAULT FALSE,
+    time_taken_ms INTEGER,
     is_active_in_history BOOLEAN NOT NULL DEFAULT TRUE,
     
     -- Ensures a user cannot be in the same session twice
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS user_progress (
     user_id TEXT PRIMARY KEY,
     total_sessions INTEGER NOT NULL DEFAULT 0,
     total_sessions_completed INTEGER NOT NULL DEFAULT 0,
+    total_time_ms BIGINT NOT NULL DEFAULT 0,
     total_successes INTEGER NOT NULL DEFAULT 0,
     success_rate REAL NOT NULL DEFAULT 0,
     current_streak INTEGER NOT NULL DEFAULT 0,
