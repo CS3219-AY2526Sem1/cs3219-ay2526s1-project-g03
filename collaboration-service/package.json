@@ -16,12 +16,15 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.39.7",
+    "cookie": "^0.6.0",
     "express": "^5.1.0",
+    "jose": "^6.1.0",
     "partykit": "^0.0.115",
     "y-partykit": "^0.0.23",
     "yjs": "^13.6.10"
   },
   "devDependencies": {
+    "@types/cookie": "^0.6.0",
     "@types/express": "^5.0.3",
     "@types/node": "^24.3.1"
   }
