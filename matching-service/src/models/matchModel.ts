@@ -16,11 +16,12 @@ export interface PendingMatch {
   user1Status: MatchStatus;
   user2Id: string;
   user2Status: MatchStatus;
-  questionId?: string;
+  question: ValidQuestion;
 }
 
 export interface ValidQuestion {
-  questionId: string;
+  id: string;
   difficulty: string;
-  topic: string;
+  topics: string[];
+  title: string;
 }

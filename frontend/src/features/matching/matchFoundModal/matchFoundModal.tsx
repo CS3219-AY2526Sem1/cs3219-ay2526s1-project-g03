@@ -15,6 +15,7 @@ interface MatchFoundModalProps {
   partner: PartnerDetails;
   onAccept: () => void;
   onDecline: () => void;
+  criteria: any;
   expiryTimestamp: number;
   countdownDuration?: number;
 }
@@ -23,6 +24,7 @@ const MatchFoundModal = ({
                            partner,
                            onAccept,
                            onDecline,
+                           criteria,
                            expiryTimestamp,
                            countdownDuration = 10,
                          }: MatchFoundModalProps) => {
