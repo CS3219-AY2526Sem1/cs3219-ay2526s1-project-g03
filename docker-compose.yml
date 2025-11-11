@@ -64,6 +64,10 @@ services:
     environment:
       - NODE_ENV=development
       - VITE_NGROK_COLLAB_HOST=${VITE_NGROK_COLLAB_HOST}
+      - VITE_HISTORY_SERVICE_URL=http://localhost:8085
+      - VITE_QUESTION_SERVICE_URL=http://localhost:8083
+      - VITE_USER_SERVICE_URL=http://localhost:8080
+      - VITE_MATCHING_SERVICE_URL=http://localhost:8081
     volumes:
       - ./frontend:/app
       - /app/node_modules
