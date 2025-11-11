@@ -6,8 +6,8 @@ interface UseSessionReturn {
   isPenaltyOver: boolean;
   handlePenaltyOver: () => void;
   questionId: string;
-  isLoading: boolean;
-  error: string | null;
+  sessionIsLoading: boolean;
+  sessionError: string | null;
 }
 
 /**
@@ -88,7 +88,7 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
     isPenaltyOver,
     handlePenaltyOver,
     questionId: questionId.current,
-    isLoading,
-    error,
+    sessionIsLoading: isLoading,
+    sessionError: error,
   };
 }
