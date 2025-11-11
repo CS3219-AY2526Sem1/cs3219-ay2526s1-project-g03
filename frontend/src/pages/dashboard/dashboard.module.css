@@ -1,23 +1,24 @@
-.dashboard-container {
+.dashboardContainer {
     display: flex;
     flex-direction: column;
     gap: 1rem;
     align-items: center;
 }
 
-.dashboard-header {
+.dashboardHeader {
     text-align: center;
     margin-top: -3rem;
     justify-content: space-between;
     margin-bottom: 1rem;
 }
 
-.dashboard-header h1 {
+.dashboardHeader h1 {
     font-weight: bolder;
+    font-size: 35px;
     color: #303030;
 }
 
-.dashboard-header p {
+.dashboardHeader p {
     margin-top: 1rem;
     color: #627287;
 }
