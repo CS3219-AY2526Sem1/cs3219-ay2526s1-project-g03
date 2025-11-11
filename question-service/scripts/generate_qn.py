@@ -8,7 +8,7 @@ from typing import List, Tuple, Dict, Set
 # --- Configuration ---
 CSV_FILE_PATH = 'leetcode_dataset - lc.csv'
 SQL_OUTPUT_FILE = 'seed.sql'
-MAX_QUESTIONS = 20  # None = process all, or set a number for testing
+MAX_QUESTIONS = None  # None = process all, or set a number for testing
 CREATED_BY = '00000000-0000-0000-0000-000000000000'  # Default creator for seeded questions
 
 # --- Helper functions (Unchanged) ---

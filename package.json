@@ -48,6 +48,7 @@
     "@types/passport": "^1.0.17",
     "@types/passport-github2": "^1.2.9",
     "@types/passport-google-oauth20": "^2.0.16",
+    "@types/react-syntax-highlighter": "^15.5.13",
     "@types/sharp": "^0.31.1",
     "@types/testing-library__react": "^10.0.1",
     "@typescript-eslint/eslint-plugin": "^8.42.0",
@@ -94,6 +95,7 @@
     "passport-github2": "^0.1.12",
     "passport-google-oauth20": "^2.0.0",
     "pg": "^8.16.3",
+    "react-syntax-highlighter": "^16.1.0",
     "resend": "^6.1.2",
     "sharp": "^0.34.4",
     "zod": "^4.1.11"

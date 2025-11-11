@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import * as questionService from '../services/questionService';
+import { Difficulty } from '../services/questionService'; 
 
 // Typed async handler to preserve Express types
 type AsyncRequestHandler = (req: Request, res: Response, next: NextFunction) => Promise<unknown>;
@@ -9,8 +10,10 @@ const asyncHandler = (fn: AsyncRequestHandler) => (req: Request, res: Response, 
 
 
 export const getAllQuestions = asyncHandler(async (req: Request, res: Response) => {
-  void req;
-  const questions = await questionService.getAllQuestions();
+  const topic = req.query['topic'] as string | undefined;
+  const difficulty = req.query['difficulty'] as Difficulty | undefined;
+  const questions = await questionService.getAllQuestions(topic, difficulty);
+  
   return res.status(200).json(questions);
 });
 
@@ -59,9 +62,17 @@ export const getAllTopics = asyncHandler(async (req: Request, res: Response) => 
 export const selectQuestion = asyncHandler(async (req: Request, res: Response) => {
   const { criteria, excludedIds } = req.body;
   
-  if (!criteria || !criteria.topic || !criteria.difficulty || !Array.isArray(excludedIds)) {
+  // Make validation more robust: check if keys exist and that excludedIds is an array.
+  // The service will handle if topic/difficulty are strings or arrays.
+  if (!criteria || !criteria.topic || !criteria.difficulty) {
     return res.status(400).json({ 
-      message: 'Missing required fields: criteria (with topic and difficulty) and excludedIds (as an array).' 
+      message: 'Missing required fields: criteria (with topic and difficulty).' 
+    });
+  }
+
+  if (!Array.isArray(excludedIds)) {
+     return res.status(400).json({ 
+      message: 'Missing required field: excludedIds (as an array).' 
     });
   }
 

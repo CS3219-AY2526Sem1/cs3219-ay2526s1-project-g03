@@ -121,7 +121,7 @@ const PracticeSessionForm = () => {
           setMatchData(message.payload);
           getPartnerMutate(message.payload.partnerId);
           setShowMatchModal(true);
-          console.log(`Match found via WebSocket! Partner: ${message.payload.partnerId}, Session: ${message.payload.sessionId}`);
+          console.log(`Match found via WebSocket! Partner: ${message.payload.partnerId}`);
           break;
 
         case 'partner_accepted':
@@ -203,7 +203,7 @@ const PracticeSessionForm = () => {
         setMatchData(data.data);
         getPartnerMutate(data.data.partnerId);
         setShowMatchModal(true);
-        console.log(`Match found immediately! Partner: ${data.data.partnerId}, Session: ${data.data.sessionId}`);
+        console.log(`Match found immediately! Partner: ${data.data.partnerId}, Session: ${data.data.matchId}`);
         connectWebSocket(); // Connect now to handle accept/decline
       }
     },
@@ -300,12 +300,12 @@ const PracticeSessionForm = () => {
 
   const handleAccept = () => {
     console.log("Accepting match...");
-    ws.current?.send(JSON.stringify({ type: 'accept_match', sessionId: matchData?.sessionId }));
+    ws.current?.send(JSON.stringify({ type: 'accept_match', matchId: matchData?.matchId }));
   }
 
   const handleDecline = () => {
     console.log("Declining match...");
-    ws.current?.send(JSON.stringify({ type: 'decline_match', sessionId: matchData?.sessionId }));
+    ws.current?.send(JSON.stringify({ type: 'decline_match', matchId: matchData?.matchId }));
     resetState();
   }
 
@@ -414,6 +414,7 @@ const PracticeSessionForm = () => {
           partner={partnerDetails}
           onAccept={() => handleAccept()}
           onDecline={() => handleDecline()}
+          criteria={matchData.criteria}
           expiryTimestamp={matchData.expiryTimestamp}
           countdownDuration={matchData.totalDuration}
         />
