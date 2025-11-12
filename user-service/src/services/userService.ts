@@ -20,7 +20,7 @@ export const findUserById = async (userId: string) => {
 
 /**
  * Retrieves public profile information for a specific user.
- * 
+ *
  * @param userId MondoDB ObjectId of the user to retrieve
  * @returns Public user profile information
  */
@@ -31,7 +31,7 @@ export const getOtherUser = async (userId: string) => {
 
   appAssert(user, HTTP_NOT_FOUND, 'User not found!');
   return user;
-}
+};
 
 /**
  * Helper method. Checks if username or email to be changed is provided

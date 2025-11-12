@@ -23,10 +23,10 @@ interface SessionSummary {
   question_difficulty: "Easy" | "Medium" | "Hard";
   partner_id: string;
   partner_username?: string;
-  is_solved_successfully: boolean;
+  is_solved_successfully: boolean | null;
   has_penalty: boolean; // We need this to determine "Incomplete"
   started_at: string;
-  time_taken_ms: number;
+  time_taken_ms: number | null;
 }
 
 interface RecentSessionsListProps {
@@ -138,11 +138,11 @@ const RecentSessionsList: React.FC<RecentSessionsListProps> = ({ userId, limit, 
               
               {/* API provides booleans, we derive the status */}
               <Badge className={
-                session.is_solved_successfully ? 'bg-green-500 text-white' : // "Passed" (blue)
-                session.has_penalty ? 'bg-orange-500 text-white' : // "Incomplete" (gray)
+                session.is_solved_successfully === true ? 'bg-green-500 text-white' : // "Passed" (green)
+                session.has_penalty ? 'bg-orange-500 text-white' : // "Incomplete" (orange)
                 'bg-red-500 text-white' // "Failed" (red)
               }>
-                {session.is_solved_successfully ? "Passed" : (session.has_penalty ? "Incomplete" : "Failed")}
+                {session.is_solved_successfully === true ? "Passed" : (session.has_penalty ? "Incomplete" : "Failed")}
               </Badge>
             </div>
           </Card>

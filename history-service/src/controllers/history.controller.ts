@@ -24,7 +24,56 @@ export class HistoryController {
 
   public completeSession = async (req: Request, res: Response): Promise<Response> => {
     try {
-      await this.historyService.completeSession(req.body);
+      // Support both query parameters and body for flexibility
+      // Helper function to parse boolean from query string
+      const parseBoolean = (value: any): boolean => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') return value.toLowerCase() === 'true';
+        return false;
+      };
+
+      const timeTakenMsValue = req.body['timeTakenMs'] !== undefined
+        ? Number(req.body['timeTakenMs'])
+        : req.query['timeTakenMs'] !== undefined
+          ? Number(req.query['timeTakenMs'])
+          : undefined;
+
+      const input: {
+        sessionId: string;
+        userId: string;
+        code: string;
+        isSolvedSuccessfully: boolean;
+        hasPenalty: boolean;
+        timeTakenMs?: number;
+      } = {
+        sessionId: (req.body['sessionId'] || req.query['sessionId']) as string,
+        userId: (req.body['userId'] || req.query['userId']) as string,
+        code: (req.body['code'] || req.query['code']) as string,
+        isSolvedSuccessfully: req.body['isSolvedSuccessfully'] !== undefined 
+          ? req.body['isSolvedSuccessfully'] 
+          : parseBoolean(req.query['isSolvedSuccessfully']),
+        hasPenalty: req.body['hasPenalty'] !== undefined
+          ? req.body['hasPenalty']
+          : parseBoolean(req.query['hasPenalty']),
+        ...(timeTakenMsValue !== undefined && { timeTakenMs: timeTakenMsValue }),
+      };
+
+      // Validate required fields
+      if (!input.sessionId || !input.userId) {
+        return res.status(400).json({ error: 'sessionId and userId are required' });
+      }
+
+      // Log the input for debugging
+      console.log('[completeSession] Input received:', {
+        sessionId: input.sessionId,
+        userId: input.userId,
+        isSolvedSuccessfully: input.isSolvedSuccessfully,
+        hasPenalty: input.hasPenalty,
+        timeTakenMs: input.timeTakenMs,
+        codeLength: input.code?.length || 0,
+      });
+
+      await this.historyService.completeSession(input);
       return res.status(200).send();
     } catch (error) {
       console.error('Error in completeSession controller:', error);

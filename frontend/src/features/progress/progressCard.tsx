@@ -5,34 +5,63 @@ import TopicProgress from './topicProgress';
 import styles from './progressCard.module.css';
 import ArrowDownIcon from '../../assets/arrow-down-icon.svg'; // Example icon
 import ArrowUpIcon from '../../assets/arrow-up-icon.svg'; // Example icon
-
-// Placeholder data TODO: replace with data fetched from API
-const placeholderProgress = {
-  total_sessions_completed: 18,
-  total_successes: 15,
-  total_time_ms: 3600000, // 1 hour in milliseconds
-  current_streak: 24,
-};
-
-const placeholderRecentSessions = [
-  { id: 1, user: 'Jane', difficulty: 'Easy', duration: 45, status: 'Completed' },
-  { id: 2, user: 'Thomas', difficulty: 'Medium', duration: 60, status: 'Passed' }, // Assuming 'Passed' is a status
-  { id: 3, user: 'Alex', difficulty: 'Hard', duration: 500, status: 'Incomplete'},
-];
-
-const placeholderTopicProgress = {
-  'Arrays': 4,
-  'Strings': 6,
-  'Binary Search': 18,
-  'Trees & Graphs': 2,
-  'Linked Lists': 3,
-  'Stack & Queue': 1,
-  'Hash Tables': 2,
-};
-
+import useAuth from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { getAllAttemptSummaries, getHistoryProgress } from '@/lib/api';
 
 const ProgressCard = () => {
   const [isOpen, setIsOpen] = useState(false); // Default to false
+  const { user} = useAuth();
+
+  const { data: userProgress, isLoading } = useQuery({
+    queryKey: ['userProgress', user?._id],
+    queryFn: () => getHistoryProgress(user?._id),
+    enabled: !!user?._id,
+  });
+
+  const stats = userProgress ? {
+    totalSessions: userProgress.total_sessions,
+    completed: userProgress.total_sessions_completed,
+    successRate: Math.round(userProgress.success_rate * 100), // Decimal to percentage
+    dayStreak: userProgress.current_streak,
+  } : {
+    totalSessions: 0,
+    completed: 0,
+    successRate: 0,
+    dayStreak: 0,
+  };
+
+  const { data: allSessions, isLoading: isLoadingSessions } = useQuery({
+    queryKey: ['recentSessions', user?._id],
+    queryFn: () => getAllAttemptSummaries(user?._id),
+    enabled: !!user?._id,
+    retry: 1,
+  });
+  
+  const recentSessions = allSessions?.slice(0, 3).map((session, index) => ({
+    id: index + 1,
+    user: session.partner_id,
+    difficulty: session.question_difficulty,
+    duration: session.time_taken_ms ? Math.round(session.time_taken_ms / 60000) : 0, // convert ms to minutes
+    status: session.is_solved_successfully ? 'Passed' : 'Failed', 
+  })) || [];
+
+
+  const topicProgress = allSessions?.reduce((acc, session) => {
+    session.question_topics.forEach(topic => {
+      acc[topic] = (acc[topic] || 0) + 1;
+    });
+    return acc;
+  }, {} as Record<string, number>) || {};
+
+  console.log('🔍 RAW allSessions from API:', allSessions);
+if (allSessions && allSessions.length > 0) {
+  console.log('🔍 First session question_topics:', allSessions[0].question_topics);
+  console.log('🔍 Type of question_topics:', typeof allSessions[0].question_topics);
+  console.log('🔍 Is Array?:', Array.isArray(allSessions[0].question_topics));
+}
+
+  
 
   return (
     <div className={styles.progressCard}>
@@ -51,10 +80,10 @@ const ProgressCard = () => {
       {isOpen && (
         <div className={styles.content}>
           <div className={styles.topRow}>
-            <StatsGrid progress={placeholderProgress} />
-            <RecentSessions sessions={placeholderRecentSessions} />
+            <StatsGrid stats={stats} />
+            <RecentSessions sessions={recentSessions} />
           </div>
-          <TopicProgress progressData={placeholderTopicProgress} />
+          <TopicProgress progressData={topicProgress} />
         </div>
       )}
     </div>

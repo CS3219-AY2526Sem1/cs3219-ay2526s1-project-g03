@@ -44,7 +44,7 @@ export class HistoryService {
       await client.query('BEGIN');
       
       // Query 1: Update the participant's row
-      await client.query(
+      const updateResult = await client.query(
         `UPDATE participants
          SET code = $1, is_solved_successfully = $2, has_penalty = $3, time_taken_ms = $6
          WHERE session_id = $4 AND user_id = $5`,
@@ -57,12 +57,20 @@ export class HistoryService {
           input.timeTakenMs ?? 0 // $6
         ]
       );
+      
+      console.log(`[completeSession] Updated ${updateResult.rowCount} participant row(s) for session ${input.sessionId}, user ${input.userId}`);
+      
+      if (updateResult.rowCount === 0) {
+        console.warn(`[completeSession] WARNING: No rows updated! sessionId=${input.sessionId}, userId=${input.userId}`);
+      }
 
       
       // Determine the increments based on the outcome
       const completedIncrement = input.hasPenalty ? 0 : 1;
       const solvedIncrement = input.isSolvedSuccessfully ? 1 : 0;
       const timeIncrement = input.timeTakenMs || 0;
+      
+      console.log(`[completeSession] Increments: completed=${completedIncrement}, solved=${solvedIncrement}, time=${timeIncrement}ms`);
 
       // Query 2: This query is now robust and calculates all stats correctly.
       await client.query(
@@ -252,7 +260,7 @@ export class HistoryService {
             p.time_taken_ms
          FROM participants p
          JOIN sessions s ON p.session_id = s.session_id
-         WHERE p.user_id = $1
+         WHERE p.user_id = $1 AND p.is_active_in_history = TRUE
          ORDER BY s.question_id, s.started_at DESC`, // The ORDER BY is crucial for DISTINCT ON
         [userId]
       );

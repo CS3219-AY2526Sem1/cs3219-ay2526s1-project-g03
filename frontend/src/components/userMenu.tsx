@@ -53,9 +53,9 @@ const UserMenu: React.FC = () => {
             </>
           ) : (
             <>
-              <button className="icon-button">
+              {/* <button className="icon-button">
                 <img src={NotificationIcon} alt="Notifications" className="notification-icon" />
-              </button>
+              </button> */}
 
               {isVerified ? (
                 <Link to="/profile/" className="icon-link">

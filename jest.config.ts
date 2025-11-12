@@ -219,7 +219,7 @@ const config: Config = {
               allowSyntheticDefaultImports: true,
               module: 'commonjs',
             },
-            diagnostics: false,  // Disables TypeScript errors
+            diagnostics: false, // Disables TypeScript errors
             babelConfig: true,
             useESM: true,
           },
@@ -255,6 +255,7 @@ const config: Config = {
           'ts-jest',
           {
             tsconfig: {
+              target: 'es2020',
               esModuleInterop: true,
               allowSyntheticDefaultImports: true,
               module: 'commonjs',

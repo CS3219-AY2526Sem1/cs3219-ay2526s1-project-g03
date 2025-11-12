@@ -1,3 +1,9 @@
 # Node
 node_modules/
 **/node_modules/
+
+# Database (local volumes)
+**/db
+**/db/**
+**/.mongodb
+**/.mongodb/**

@@ -8,8 +8,8 @@ import {
   markAccountForDeletionController,
   unlinkOAuthController,
   getOtherUserController,
-} from '../controllers/userHandler.js';
-import {upload} from '../middleware/upload.js';
+} from '../controllers/userHandler';
+import {upload} from '../middleware/upload';
 
 const userRoutes = Router();
 

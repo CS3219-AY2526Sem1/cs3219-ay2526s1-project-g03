@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { Link, useNavigate } from 'react-router-dom';
+// --- FIX: Remove unused Link import ---
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+// --- FIX: Remove ChevronLeft ---
 import { Search, RotateCcw, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,10 +45,17 @@ const formatDate = (dateString: string): string => {
 
 const ResetQuestions = () => {
   const navigate = useNavigate();
+  // --- FIX: Add useLocation hook ---
+  const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
+  
+  // --- FIX: Correctly read location.state ---
+  const from = (location.state as { from?: string })?.from || 'history';
+  const backText = from === 'home' ? 'Back to Home' : 'Back to History';
+  const backPath = from === 'home' ? '/' : '/history';
 
   // --- UI State ---
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -54,7 +63,6 @@ const ResetQuestions = () => {
   const [filterTopic, setFilterTopic] = useState<string>("all");
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
 
-  // --- FIX #1: Add state to control the dialog ---
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
   // --- Data Fetching using useQuery (like profile page) ---
@@ -166,14 +174,18 @@ const ResetQuestions = () => {
 
   return (
     <div className="min-h-screen bg-white">
-      <div className="container mx-auto px-6 py-8 max-w-7xl">
+        <div className="container mx-auto px-6 py-8 max-w-7xl">
         
-        <div>
-        <Link to="/history" className="back-link">
-          <span className="back-arrow"/>
-          <span>Back to History</span>
-        </Link>
-        </div>
+        {/* --- FIX: Cleaned up back button --- */}
+        <Button
+          variant="ghost"
+          onClick={() => navigate(backPath)}
+          className="text-gray-600 font-medium px-0 hover:text-gray-900"
+        >
+          <span className="back-arrow mr-1" />
+          {backText}
+        </Button>
+
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Questions</h1>
           <p className="text-gray-600">
@@ -309,7 +321,6 @@ const ResetQuestions = () => {
                     Completed Questions ({filteredQuestions.length})
                   </CardTitle>
                   
-                  {/* --- FIX #4: Control the AlertDialog's open state --- */}
                   <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
                     <AlertDialogTrigger asChild>
                       <Button 
@@ -329,9 +340,7 @@ const ResetQuestions = () => {
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        {/* This button now works because it's wired to `onOpenChange` */}
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        {/* This button now calls the async handler, which will close the dialog when done */}
                         <AlertDialogAction onClick={handleResetQuestions}>
                           Reset Questions
                         </AlertDialogAction>
