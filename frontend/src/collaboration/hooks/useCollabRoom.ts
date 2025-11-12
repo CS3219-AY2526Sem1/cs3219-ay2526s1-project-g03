@@ -98,11 +98,12 @@ const handleUsersRemoved = (
 export function useCollabRoom(roomId: string) {
   const {user, isLoading: isAuthLoading} = useAuth();
   const providerRef = useRef<YPartyKitProvider>(null);
+
+  const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const userColorRef = useRef<string>(getRandomElement(USER_COLORS));
   const awarenessNameRef = useRef<string>('Coding buddy');
 
-  // Refs for managing toast state
   const userNamesRef = useRef<Map<number, string>>(new Map());
   const recentlyRemovedRef = useRef<Set<number>>(new Set());
   const timeoutRefs = useRef(new Map<number, NodeJS.Timeout>());
@@ -115,7 +116,7 @@ export function useCollabRoom(roomId: string) {
   }, [awarenessName]);
 
   useEffect(() => {
-    if (isAuthLoading || !roomId || !hasUser) {
+    if (error || isAuthLoading || !roomId || !hasUser) {
       return;
     }
 
@@ -132,7 +133,21 @@ export function useCollabRoom(roomId: string) {
 
     if (!provider) return;
 
-    providerRef.current = provider;
+    let isTornDown = false;
+
+    const setConnectionError = (message: string) => {
+      setError(prev => {
+        if (prev) {
+          return prev;
+        }
+        toast.error(message, {duration: 5000});
+        return message;
+      });
+    };
+
+    const handleStatusChange = (event: {status: string}) => {
+      console.log('Connection status:', event.status);
+    };
 
     const currUserId = provider.awareness.clientID;
     const userColor = userColorRef.current;
@@ -186,21 +201,91 @@ export function useCollabRoom(roomId: string) {
       console.log(timeoutRefs.current);
     };
 
-    provider.awareness.on('change', awarenessChangeHandler);
-    setIsReady(true);
+    const teardownProvider = ({resetError = false}: {resetError?: boolean} = {}) => {
+      if (isTornDown) {
+        return;
+      }
+      isTornDown = true;
 
-    return () => {
-      // Cleanup all listeners and state
+      provider.off('connection-close', handleConnectionClose);
+      provider.off('connection-error', handleConnectionError);
+      provider.off('status', handleStatusChange);
       provider.awareness.off('change', awarenessChangeHandler);
+
       userNamesRef.current.clear();
       recentlyRemovedRef.current.clear();
       timeoutRefs.current.forEach(clearTimeout);
       timeoutRefs.current.clear();
 
+      provider.shouldConnect = false;
+      provider.disconnect();
       provider.destroy();
-      providerRef.current = null;
+
+      if (providerRef.current === provider) {
+        providerRef.current = null;
+      }
       setIsReady(false);
+      if (resetError) {
+        setError(null);
+      }
       userColorRef.current = getRandomElement(USER_COLORS);
+    };
+
+    const stopWithError = (message: string) => {
+      teardownProvider();
+      setConnectionError(message);
+    };
+
+    const handleConnectionClose = (event: CloseEvent) => {
+      console.log(`Connection closed with code: ${event.code}, Reason: ${event.reason}`);
+
+      if (event.code === 1000) {
+        console.log('Connection closed normally');
+        teardownProvider({resetError: true});
+        return;
+      }
+
+      let errorReason = event.reason || 'Connection Failed.';
+      switch (event.code) {
+        case 4001:
+          errorReason = event.reason || 'Your session has expired. Please log in again.';
+          console.log('Redirecting to login due to invalid or expired token');
+          break;
+
+        case 4003:
+          errorReason = event.reason || 'You are not authorised to access this room.';
+          console.log('Redirecting to home due to insufficient permissions');
+          break;
+
+        case 1006:
+        case 4004:
+        case 400:
+        case 404:
+          errorReason = 'Connection Failed! You may not be authorised or the room may not exist.';
+          break;
+        default:
+          stopWithError('Connection Failed! Please check network or try again.');
+          return;
+      }
+
+      stopWithError(errorReason);
+    };
+
+    const handleConnectionError = (event: Event) => {
+      console.error('WebSocket error:', event);
+      stopWithError('Connection Failed! You may not be authorised or the room may not exist.');
+    };
+
+    provider.on('connection-close', handleConnectionClose);
+    provider.on('connection-error', handleConnectionError);
+    provider.on('status', handleStatusChange);
+    provider.awareness.on('change', awarenessChangeHandler);
+
+    providerRef.current = provider;
+    setIsReady(true);
+
+    return () => {
+      teardownProvider({resetError: true});
     };
   }, [roomId, isAuthLoading, hasUser]);
 
@@ -226,6 +311,7 @@ export function useCollabRoom(roomId: string) {
     provider: providerRef.current,
     doc: providerRef.current?.doc,
     awareness: providerRef.current?.awareness,
-    isReady,
+    isReady: isReady && !error,
+    error: error,
   };
 }
