@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import axios from 'axios';
 import { StartSessionInput, StartSessionOutput, CompleteSessionInput, UserProgress, ParticipantAttempt, SessionSummary } from '../types';
 
 export class HistoryService {
@@ -153,18 +154,6 @@ export class HistoryService {
     );
   }
 
-  public async getQuestionAttempts(userId: string, questionId: string): Promise<ParticipantAttempt[] | null> {
-    const res = await this.pool.query(
-      `SELECT p.*, s.started_at, s.question_title
-       FROM participants p 
-       JOIN sessions s ON p.session_id = s.session_id 
-       WHERE p.user_id = $1 AND s.question_id = $2 
-       ORDER BY s.started_at DESC`,
-      [userId, questionId]
-    );
-    return res.rows.length > 0 ? res.rows : null;
-  }
-
   public async automaticallyResetOldAttempts(): Promise<void> {
     console.log('[History Service] Running automatic 30-day reset job...');
     try {
@@ -184,29 +173,181 @@ export class HistoryService {
   }
 
   /**
+   * Fetches partner usernames from the user-service for a list of partner IDs.
+   * Returns a map of partner_id -> username.
+   * This method is designed to fail gracefully - it will return an empty map
+   * or partial results if the user-service is unavailable.
+   */
+  private async fetchPartnerUsernames(partnerIds: string[]): Promise<Map<string, string>> {
+    const usernameMap = new Map<string, string>();
+    const userServiceUrl = process.env['USER_SERVICE_URL'] || 'http://user-service:8080';
+    
+    // Filter out empty or invalid partner IDs
+    const validPartnerIds = partnerIds.filter(id => id && id.trim() !== '');
+    
+    if (validPartnerIds.length === 0) {
+      return usernameMap;
+    }
+
+    try {
+      // Fetch usernames in parallel for all partner IDs with individual error handling
+      // Use Promise.allSettled instead of Promise.all to ensure all requests complete
+      const usernamePromises = validPartnerIds.map(async (partnerId) => {
+        try {
+          const response = await axios.get(
+            `${userServiceUrl}/api/service/user/${encodeURIComponent(partnerId)}`,
+            {
+              timeout: 3000, // Reduced timeout to 3 seconds
+              validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+            }
+          );
+          if (response.status === 200 && response.data?.username) {
+            return { partnerId, username: response.data.username };
+          }
+          return { partnerId, username: 'Unknown' };
+        } catch (error: any) {
+          // Silently handle errors - don't log every failure to avoid log spam
+          if (error.code !== 'ECONNREFUSED' && error.code !== 'ETIMEDOUT') {
+            console.error(`Failed to fetch username for partner ${partnerId}:`, error.message || error);
+          }
+          return { partnerId, username: 'Unknown' };
+        }
+      });
+
+      // Use Promise.allSettled to ensure we don't fail if some requests fail
+      const results = await Promise.allSettled(usernamePromises);
+      results.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          const { partnerId, username } = result.value;
+          usernameMap.set(partnerId, username);
+        }
+      });
+    } catch (error: any) {
+      // Log only unexpected errors
+      console.error('Unexpected error in fetchPartnerUsernames:', error.message || error);
+    }
+    
+    return usernameMap;
+  }
+
+  /**
    * [CORRECTED] Gets the summary list of all unique questions a user has attempted.
    * This query uses 'DISTINCT ON' to get ONLY the *most recent*
    * attempt for each unique question_id.
+   * Also fetches partner usernames from the user-service.
    */
   public async getAllSummaries(userId: string): Promise<SessionSummary[]> {
-    const res = await this.pool.query(
-      `SELECT DISTINCT ON (s.question_id)
-          s.session_id,
-          s.question_id,
-          s.question_title,
-          s.question_difficulty,
-          s.question_topics,
-          s.started_at,
-          p.partner_id,
-          p.is_solved_successfully,
-          p.has_penalty,
-          p.time_taken_ms
-       FROM participants p
-       JOIN sessions s ON p.session_id = s.session_id
-       WHERE p.user_id = $1
-       ORDER BY s.question_id, s.started_at DESC`, // The ORDER BY is crucial for DISTINCT ON
-      [userId]
-    );
-    return res.rows as SessionSummary[];
+    try {
+      const res = await this.pool.query(
+        `SELECT DISTINCT ON (s.question_id)
+            s.session_id,
+            s.question_id,
+            s.question_title,
+            s.question_difficulty,
+            s.question_topics,
+            s.started_at,
+            p.partner_id,
+            p.is_solved_successfully,
+            p.has_penalty,
+            p.time_taken_ms
+         FROM participants p
+         JOIN sessions s ON p.session_id = s.session_id
+         WHERE p.user_id = $1
+         ORDER BY s.question_id, s.started_at DESC`, // The ORDER BY is crucial for DISTINCT ON
+        [userId]
+      );
+      
+      const summaries = res.rows as SessionSummary[];
+      
+      // If no summaries, return empty array immediately
+      if (!summaries || summaries.length === 0) {
+        return [];
+      }
+      
+      // Extract unique partner IDs
+      const partnerIds = [...new Set(summaries.map(s => s.partner_id).filter(id => id && id.trim() !== ''))];
+      
+      // Fetch partner usernames asynchronously - fail gracefully if user-service is unavailable
+      // We use a short timeout and Promise.race to ensure we don't hang
+      let usernameMap = new Map<string, string>();
+      if (partnerIds.length > 0) {
+        try {
+          // Create a timeout promise that resolves to empty map after 2 seconds
+          const timeoutPromise = new Promise<Map<string, string>>((resolve) => {
+            setTimeout(() => {
+              resolve(new Map());
+            }, 2000);
+          });
+          
+          // Race between username fetch and timeout
+          const usernamePromise = this.fetchPartnerUsernames(partnerIds).catch(() => new Map<string, string>());
+          usernameMap = await Promise.race([usernamePromise, timeoutPromise]);
+        } catch (error: any) {
+          // If anything fails, just use empty map (usernames will be 'Unknown')
+          console.error('Error in username fetch, using empty map:', error.message || error);
+        }
+      }
+      
+      // Map usernames to summaries - always return summaries even if username fetch failed
+      return summaries.map(summary => ({
+        ...summary,
+        partner_username: usernameMap.get(summary.partner_id) || 'Unknown',
+      }));
+    } catch (error: any) {
+      console.error('Error in getAllSummaries:', error.message || error);
+      throw error;
+    }
+  }
+
+  public async getQuestionAttempts(userId: string, questionId: string): Promise<ParticipantAttempt[] | null> {
+    try {
+      const res = await this.pool.query(
+        `SELECT p.*, s.started_at, s.question_title
+         FROM participants p 
+         JOIN sessions s ON p.session_id = s.session_id 
+         WHERE p.user_id = $1 AND s.question_id = $2 
+         ORDER BY s.started_at DESC`,
+        [userId, questionId]
+      );
+      
+      if (res.rows.length === 0) {
+        return null;
+      }
+      
+      const attempts = res.rows as ParticipantAttempt[];
+      
+      // Extract unique partner IDs
+      const partnerIds = [...new Set(attempts.map(a => a.partner_id).filter(id => id && id.trim() !== ''))];
+      
+      // Fetch partner usernames asynchronously - fail gracefully if user-service is unavailable
+      // We use a short timeout and Promise.race to ensure we don't hang
+      let usernameMap = new Map<string, string>();
+      if (partnerIds.length > 0) {
+        try {
+          // Create a timeout promise that resolves to empty map after 2 seconds
+          const timeoutPromise = new Promise<Map<string, string>>((resolve) => {
+            setTimeout(() => {
+              resolve(new Map());
+            }, 2000);
+          });
+          
+          // Race between username fetch and timeout
+          const usernamePromise = this.fetchPartnerUsernames(partnerIds).catch(() => new Map<string, string>());
+          usernameMap = await Promise.race([usernamePromise, timeoutPromise]);
+        } catch (error: any) {
+          // If anything fails, just use empty map (usernames will be 'Unknown')
+          console.error('Error in username fetch, using empty map:', error.message || error);
+        }
+      }
+      
+      // Map usernames to attempts - always return attempts even if username fetch failed
+      return attempts.map(attempt => ({
+        ...attempt,
+        partner_username: usernameMap.get(attempt.partner_id) || 'Unknown',
+      }));
+    } catch (error: any) {
+      console.error('Error in getQuestionAttempts:', error.message || error);
+      throw error;
+    }
   }
 }

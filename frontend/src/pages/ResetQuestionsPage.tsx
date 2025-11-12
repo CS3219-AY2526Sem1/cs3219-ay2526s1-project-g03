@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,21 +10,26 @@ import { Separator } from "@/components/ui/separator";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Search, RotateCcw, CheckCircle, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 // --- API & Auth Imports ---
 import useAuth from '../hooks/useAuth';
 import { getTopics, getActiveAttempts, getAllAttemptSummaries, resetQuestions } from '../lib/api';
 import { formatDuration } from '../lib/timeFormatters';
 
-// --- Types (from API) ---
+// --- Types (from API) - Updated to match SessionSummary from history-service ---
 interface QuestionSummary {
+  session_id: string;
   question_id: string;
   question_title: string;
   question_topics: string[];
   question_difficulty: "Easy" | "Medium" | "Hard";
   started_at: string;
   partner_id: string;
-  time_taken_ms: number;
+  partner_username?: string;
+  is_solved_successfully: boolean | null;
+  has_penalty: boolean;
+  time_taken_ms: number | null;
 }
 
 // Format date to YYYY-MM-DD
@@ -40,13 +45,8 @@ const ResetQuestions = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
-
-  // --- Real Data State ---
-  const [allSummaries, setAllSummaries] = useState<QuestionSummary[]>([]);
-  const [activeIds, setActiveIds] = useState<string[]>([]);
-  const [topics, setTopics] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
 
   // --- UI State ---
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
@@ -57,28 +57,32 @@ const ResetQuestions = () => {
   // --- FIX #1: Add state to control the dialog ---
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
-  // --- Data Fetching ---
-  useEffect(() => {
-    if (!userId) return;
-    setLoading(true);
-    Promise.all([
-      getAllAttemptSummaries(userId).catch(() => []),
-      getActiveAttempts(userId).catch(() => []),
-      getTopics().catch(() => []),
-    ]).then(([summariesData, activeData, topicsData]) => {
-      setAllSummaries(Array.isArray(summariesData) ? summariesData : []);
-      setActiveIds(Array.isArray(activeData) ? activeData : []);
-      setTopics(Array.isArray(topicsData) ? topicsData.sort() : []);
-      setLoading(false);
-    });
-  }, [userId]);
+  // --- Data Fetching using useQuery (like profile page) ---
+  const { data: allSummaries = [], isLoading: summariesLoading, isError: summariesError } = useQuery({
+    queryKey: ['attemptSummaries', userId],
+    queryFn: () => getAllAttemptSummaries(userId),
+    enabled: !!userId,
+  });
+
+  const { data: activeIds = [], isLoading: activeLoading } = useQuery({
+    queryKey: ['activeAttempts', userId],
+    queryFn: () => getActiveAttempts(userId),
+    enabled: !!userId,
+  });
+
+  const { data: topics = [], isLoading: topicsLoading } = useQuery({
+    queryKey: ['topics'],
+    queryFn: () => getTopics(),
+  });
+
+  const loading = summariesLoading || activeLoading || topicsLoading;
 
   // --- Filter Logic ---
-  const activeQuestions = allSummaries.filter(s => activeIds.includes(s.question_id));
+  const activeQuestions = allSummaries.filter((s: QuestionSummary) => activeIds.includes(s.question_id));
 
-  const filteredQuestions = activeQuestions.filter(question => {
+  const filteredQuestions = activeQuestions.filter((question: QuestionSummary) => {
     const matchesSearch = question.question_title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          (question.question_topics || []).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+                          (question.question_topics || []).some((t: string) => t.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesTopic = filterTopic === "all" || (question.question_topics || []).includes(filterTopic);
     const matchesDifficulty = filterDifficulty === "all" || question.question_difficulty === filterDifficulty;
     return matchesSearch && matchesTopic && matchesDifficulty;
@@ -94,7 +98,7 @@ const ResetQuestions = () => {
   };
 
   const handleSelectAll = () => {
-    const allFilteredIds = filteredQuestions.map(q => q.question_id);
+    const allFilteredIds = filteredQuestions.map((q: QuestionSummary) => q.question_id);
     setSelectedQuestions(allFilteredIds);
   };
 
@@ -123,7 +127,11 @@ const ResetQuestions = () => {
       });
       
       setSelectedQuestions([]);
-      setActiveIds(prev => prev.filter(id => !selectedQuestions.includes(id)));
+      
+      // Invalidate and refetch queries to update the UI
+      await queryClient.invalidateQueries({ queryKey: ['attemptSummaries', userId] });
+      await queryClient.invalidateQueries({ queryKey: ['activeAttempts', userId] });
+      await queryClient.invalidateQueries({ queryKey: ['historyProgress', userId] });
       
       // Close the dialog after successful reset
       setIsAlertOpen(false);
@@ -143,11 +151,18 @@ const ResetQuestions = () => {
   // --- Recommendations ---
   const getRecommendations = () => {
     const completedTopics = new Set<string>();
-    allSummaries.forEach(q => q.question_topics.forEach(t => completedTopics.add(t)));
-    const allTopics = topics;
-    const untriedTopics = allTopics.filter(topic => !completedTopics.has(topic));
+    allSummaries.forEach((q: QuestionSummary) => {
+      if (q.question_topics && Array.isArray(q.question_topics)) {
+        q.question_topics.forEach((t: string) => completedTopics.add(t));
+      }
+    });
+    const allTopics = Array.isArray(topics) ? topics : [];
+    const untriedTopics = allTopics.filter((topic: string) => !completedTopics.has(topic));
     return untriedTopics.slice(0, 3);
   };
+
+  // --- Sort topics for display ---
+  const sortedTopics = Array.isArray(topics) ? [...topics].sort() : [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -158,7 +173,7 @@ const ResetQuestions = () => {
           <span className="back-arrow"/>
           <span>Back to History</span>
         </Link>
-      </div>
+        </div>
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Reset Questions</h1>
           <p className="text-gray-600">
@@ -194,7 +209,7 @@ const ResetQuestions = () => {
                     </SelectTrigger>
                     <SelectContent className="bg-white">
                       <SelectItem value="all">All Topics</SelectItem>
-                      {topics.map(topic => (
+                      {sortedTopics.map(topic => (
                         <SelectItem key={topic} value={topic}>{topic}</SelectItem>
                       ))}
                     </SelectContent>
@@ -266,8 +281,8 @@ const ResetQuestions = () => {
                         variant="secondary" 
                         className="w-full justify-center py-2 bg-gray-100 text-gray-700 hover:bg-gray-200"
                       >
-                        {topic}
-                      </Badge>
+                      {topic}
+                    </Badge>
                     ))
                   ) : (
                     <p className="text-sm text-gray-500">No suggestions available</p>
@@ -329,8 +344,13 @@ const ResetQuestions = () => {
                 <div className="space-y-3">
                   {loading ? (
                     <div className="text-center py-8 text-gray-500">Loading questions...</div>
+                  ) : summariesError ? (
+                    <div className="text-center py-8 text-red-500">
+                      <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                      <p>Error loading questions. Please try again.</p>
+                    </div>
                   ) : filteredQuestions.length > 0 ? (
-                    filteredQuestions.map(question => (
+                    filteredQuestions.map((question: QuestionSummary) => (
                       <div 
                         key={question.question_id}
                         className={`p-4 border rounded-lg transition-all ${
@@ -356,7 +376,7 @@ const ResetQuestions = () => {
                               <Badge variant={question.question_difficulty as "Easy" | "Medium" | "Hard"}>
                                 {question.question_difficulty}
                               </Badge>
-                              {(question.question_topics || []).slice(0, 2).map(topic => (
+                              {(question.question_topics || []).slice(0, 2).map((topic: string) => (
                                 <Badge key={topic} variant="secondary" className="bg-gray-100 text-gray-700">
                                   {topic}
                                 </Badge>
@@ -368,9 +388,11 @@ const ResetQuestions = () => {
                                 <CheckCircle className="h-4 w-4 text-green-600" />
                                 <span>Completed {formatDate(question.started_at)}</span>
                               </div>
-                              <div>Time: {formatDuration(question.time_taken_ms)}</div>
-                              {question.partner_id && (
-                                <div>Partner: {question.partner_id}</div>
+                              {question.time_taken_ms && (
+                                <div>Time: {formatDuration(question.time_taken_ms)}</div>
+                              )}
+                              {question.partner_username && (
+                                <div>Partner: {question.partner_username}</div>
                               )}
                             </div>
                           </div>

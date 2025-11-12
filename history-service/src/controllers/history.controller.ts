@@ -55,9 +55,19 @@ export class HistoryController {
       }
       const result = await this.historyService.getUserProgress(userId);
       
-      // Add a 404 check for cleaner frontend handling
+      // Return default progress object if no progress found (instead of 404)
+      // This allows the frontend to show zero stats instead of an error
       if (!result) {
-        return res.status(404).json({ error: 'No progress found for user' });
+        return res.status(200).json({
+          user_id: userId,
+          total_sessions: 0,
+          total_sessions_completed: 0,
+          total_successes: 0,
+          success_rate: 0,
+          current_streak: 0,
+          last_practice_day: null,
+          total_time_ms: 0,
+        });
       }
       return res.status(200).json(result);
 
@@ -113,6 +123,7 @@ export class HistoryController {
       const summaries = await this.historyService.getAllSummaries(userId);
       return res.status(200).json(summaries);
     } catch (error) {
+      console.error('Error in getAllSummaries controller:', error);
       return res.status(500).json({ error: 'Internal server error' });
     }
   };

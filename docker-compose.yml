@@ -76,6 +76,7 @@ services:
       - question-service
       - matching-service
       - collaboration-service
+      - history-service
     networks:
       - app-network
 

@@ -1,22 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 
 // --- UI Imports (from Lovable's file) ---
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  CheckCircle,
-  XCircle,
-  Code2,
-  User,
-  RotateCcw
-} from "lucide-react";
+import { RotateCcw } from "lucide-react";
 
 // --- Logic Imports (from Cursor's file) ---
 import useAuth from '../hooks/useAuth';
 import { getHistoryProgress, getAllAttemptSummaries } from '../lib/api';
-import { formatTimeAgo } from '../lib/timeFormatters';
+import RecentSessionsList from '../features/progress/RecentSessionsList';
 
 // --- Main Component ---
 export default function HistoryDashboardPage() {
@@ -24,34 +18,24 @@ export default function HistoryDashboardPage() {
   const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
   const navigate = useNavigate();
 
-  // --- State (from Cursor's file) ---
-  const [progress, setProgress] = useState<any>(null);
-  const [summaries, setSummaries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  // --- Data Fetching using useQuery ---
+  const {data: progress, isLoading: progressLoading, isError: progressError} = useQuery({
+    queryKey: ['historyProgress', userId],
+    queryFn: () => getHistoryProgress(userId),
+    enabled: !!userId,
+  });
 
-  // --- Data Fetching (from Cursor's file) ---
-  useEffect(() => {
-    if (!userId) return;
-    
-    setLoading(true);
-    Promise.all([
-      getHistoryProgress(userId),
-      getAllAttemptSummaries(userId)
-    ]).then(([progressData, summariesData]) => {
-      setProgress(progressData);
-      setSummaries(Array.isArray(summariesData) ? summariesData : []);
-    }).catch(err => {
-      console.error("Failed to fetch history data", err);
-      setProgress(null);
-      setSummaries([]);
-    }).finally(() => {
-      setLoading(false);
-    });
-  }, [userId]);
+  const {data: summaries, isLoading: summariesLoading, isError: summariesError} = useQuery({
+    queryKey: ['attemptSummaries', userId],
+    queryFn: () => getAllAttemptSummaries(userId),
+    enabled: !!userId,
+  });
+
+  const loading = progressLoading || summariesLoading;
 
   // --- Stat Calculation (from Cursor's file, adapted for Lovable's UI) ---
   const totals = useMemo(() => {
-    const uniqueQuestions = summaries.length; // Renamed to match UI
+    const uniqueQuestions = (summaries?.length ?? 0); // Renamed to match UI
     const passed = progress?.total_successes ?? 0;
     const failed = (progress?.total_sessions_completed ?? 0) - passed;
     const totalSessions = progress?.total_sessions ?? 0;
@@ -61,10 +45,6 @@ export default function HistoryDashboardPage() {
   }, [summaries, progress]);
 
   const passRatePercent = Math.round(totals.passRate * 100);
-
-  const handleQuestionClick = (questionId: string) => {
-    navigate(`/history/attempts/${questionId}`); // Corrected navigation
-  };
 
   // --- Render Function ---
   if (loading) {
@@ -129,7 +109,7 @@ export default function HistoryDashboardPage() {
         {/* Reset Questions Button (from Lovable's file) */}
         <div className="mb-6">
           <Button 
-            onClick={() => navigate("/history/reset")} // Corrected navigation
+            onClick={() => navigate("/history/reset", { state: { from: 'history' } })}
             className="bg-blue-500 text-white hover:bg-blue-600"
           >
             <RotateCcw className="h-4 w-4 mr-2" />
@@ -137,73 +117,21 @@ export default function HistoryDashboardPage() {
           </Button>
         </div>
 
-        {/* --- History List (Lovable's UI + Cursor's Data) --- */}
+        {/* --- History List (using RecentSessionsList component) --- */}
         <Card className="p-6 bg-card border-0 shadow-card">
           <h2 className="text-xl font-semibold mb-6">Your Question Attempts</h2>
-          <div className="space-y-4">
-            {summaries.length > 0 ? (
-              summaries.map((question) => (
-                <div 
-                  key={question.question_id} // Real data
-                  className="p-4 border-2 border-border rounded-lg hover:shadow-card hover:border-primary/50 transition-smooth cursor-pointer"
-                  onClick={() => handleQuestionClick(question.question_id)} // Real data
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="p-3 bg-primary-glow/20 rounded-lg">
-                        <Code2 className="h-6 w-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold text-lg">{question.question_title}</h3>
-                          {/* Real data */}
-                          {question.is_solved_successfully ? (
-                            <CheckCircle className="h-5 w-5 text-green-500" />
-                          ) : (
-                            <XCircle className="h-5 w-5 text-destructive" />
-                          )}
-                        </div>
-                        <div className="flex flex-wrap items-center gap-2 mb-3">
-                          {/* Real data - show first topic */}
-                          <Badge variant="outline" className="border-2">
-                            {question.question_topics[0]}
-                          </Badge>
-                          <Badge 
-                            variant="outline"
-                            // Real data
-                            className={
-                              question.question_difficulty === "Easy" 
-                                ? "border-[hsl(var(--easy))] text-[hsl(var(--easy))]"
-                                : question.question_difficulty === "Medium"
-                                ? "border-[hsl(var(--medium))] text-[hsl(var(--medium))]"
-                                : "border-[hsl(var(--hard))] text-[hsl(var(--hard))]"
-                            }
-                          >
-                            {question.question_difficulty}
-                          </Badge>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            Partner: {question.partner_id}
-                          </span>
-                          <span>
-                            {/* Real data */}
-                            {formatTimeAgo(question.started_at)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center p-10 text-muted-foreground">
-                <p>No activity found.</p>
-                <p className="text-sm">Complete a session to see your history!</p>
-              </div>
-            )}
-          </div>
+          {summariesLoading ? (
+            <div className="p-10 text-center text-muted-foreground">Loading attempts...</div>
+          ) : summariesError ? (
+            <div className="p-10 text-center text-red-500">Error loading attempts</div>
+          ) : userId ? (
+            <RecentSessionsList userId={userId} summaries={summaries} />
+          ) : (
+            <div className="text-center p-10 text-muted-foreground">
+              <p>No activity found.</p>
+              <p className="text-sm">Complete a session to see your history!</p>
+            </div>
+          )}
         </Card>
       </main>
     </div>

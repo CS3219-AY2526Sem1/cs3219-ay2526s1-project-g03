@@ -7,11 +7,11 @@ import ArrowDownIcon from '../../assets/arrow-down-icon.svg'; // Example icon
 import ArrowUpIcon from '../../assets/arrow-up-icon.svg'; // Example icon
 
 // Placeholder data TODO: replace with data fetched from API
-const placeholderStats = {
-  totalSessions: 24,
-  completed: 18,
-  successRate: 75,
-  dayStreak: 24,
+const placeholderProgress = {
+  total_sessions_completed: 18,
+  total_successes: 15,
+  total_time_ms: 3600000, // 1 hour in milliseconds
+  current_streak: 24,
 };
 
 const placeholderRecentSessions = [
@@ -51,7 +51,7 @@ const ProgressCard = () => {
       {isOpen && (
         <div className={styles.content}>
           <div className={styles.topRow}>
-            <StatsGrid stats={placeholderStats} />
+            <StatsGrid progress={placeholderProgress} />
             <RecentSessions sessions={placeholderRecentSessions} />
           </div>
           <TopicProgress progressData={placeholderTopicProgress} />
