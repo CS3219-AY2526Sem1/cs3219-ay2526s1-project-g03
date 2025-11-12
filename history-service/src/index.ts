@@ -8,7 +8,7 @@ import db from './config/database'; // Your database pool
 import { Pool } from 'pg'; // Import Pool type for casting
 
 const app = express();
-const port = process.env['PORT'] || 8085;
+const port = Number(process.env['PORT']) || 8085;
 
 // The CORS configuration MUST come before all other middleware.
 // We must configure CORS to explicitly allow your frontend's origin
@@ -21,6 +21,16 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+
+// Add global error handler for unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit - let Express handle it
+});
 
 // --- This is the new dependency injection pattern ---
 
@@ -51,7 +61,7 @@ router.get('/question-attempts/:userId/:questionId', controller.getQuestionAttem
 
 app.use('/api/history', router);
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
   console.log(`[History Service] Running on port ${port}`);
   
   // Schedule automatic 30-day reset job to run daily at 2 AM

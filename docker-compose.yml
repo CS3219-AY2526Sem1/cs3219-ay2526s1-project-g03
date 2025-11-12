@@ -1,6 +1,7 @@
 services:
   # --- DATABASES ---
   # For local volume dockerized testing
+  # Commented out - using MongoDB Atlas instead
   # user-db-mongodb:
   #   image: mongo
   #   container_name: user-db-mongodb
@@ -77,6 +78,7 @@ services:
       - question-service
       - matching-service
       - collaboration-service
+      - history-service
     networks:
       - app-network
 
@@ -98,7 +100,7 @@ services:
       - /app/node_modules
     networks:
       - app-network
-    # depends_on: # Uncomment if local volume
+    # depends_on: # Commented out - using MongoDB Atlas instead of local container
     #   - user-db-mongodb
     command: sh -c "npm run seed:admin || true && npm run dev" # for production change to npm start
 

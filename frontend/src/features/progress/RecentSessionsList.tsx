@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getAllAttemptSummaries } from '../../lib/api';
 // --- FIX: Import both time formatters ---
@@ -22,36 +22,66 @@ interface SessionSummary {
   question_title: string;
   question_difficulty: "Easy" | "Medium" | "Hard";
   partner_id: string;
-  is_solved_successfully: boolean;
+  partner_username?: string;
+  is_solved_successfully: boolean | null;
   has_penalty: boolean; // We need this to determine "Incomplete"
   started_at: string;
-  time_taken_ms: number;
+  time_taken_ms: number | null;
 }
 
-const RecentSessionsList: React.FC<{ userId: string, limit: number }> = ({ userId, limit }) => {
+interface RecentSessionsListProps {
+  userId: string;
+  limit?: number;
+  summaries?: SessionSummary[];
+}
+
+const RecentSessionsList: React.FC<RecentSessionsListProps> = ({ userId, limit, summaries: providedSummaries }) => {
   const navigate = useNavigate();
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Create a stable reference for providedSummaries to avoid dependency array issues
+  const summariesKey = useMemo(() => {
+    return providedSummaries ? JSON.stringify(providedSummaries.map(s => s.session_id)) : null;
+  }, [providedSummaries]);
+
   useEffect(() => {
-    if (!userId) return;
+    // If summaries are provided, use them directly
+    if (providedSummaries && providedSummaries.length >= 0) {
+      const sortedData = [...providedSummaries].sort((a:SessionSummary, b:SessionSummary) => 
+        new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+      );
+      setSessions(limit ? sortedData.slice(0, limit) : sortedData);
+      setLoading(false);
+      return;
+    }
+
+    // Otherwise, fetch from API
+    if (!userId) {
+      setLoading(false);
+      setSessions([]);
+      return;
+    }
 
     const fetchRecent = async () => {
       try {
         setLoading(true);
         const data = await getAllAttemptSummaries(userId);
         // Sort by date DESC (as getAllAttemptSummaries might not guarantee order)
-        const sortedData = data ? data.sort((a:SessionSummary, b:SessionSummary) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime()) : [];
-        setSessions(sortedData.slice(0, limit));
+        const sortedData = data ? data.sort((a:SessionSummary, b:SessionSummary) => 
+          new Date(b.started_at).getTime() - new Date(a.started_at).getTime()
+        ) : [];
+        setSessions(limit ? sortedData.slice(0, limit) : sortedData);
       } catch (error) {
         console.error("Failed to fetch recent sessions:", error);
+        setSessions([]);
       } finally {
         setLoading(false);
       }
     };
 
     fetchRecent();
-  }, [userId, limit]);
+  }, [userId, limit, summariesKey]);
 
   const handleSessionClick = (questionId: string) => {
     // Navigate to the detail page for that question
@@ -91,7 +121,7 @@ const RecentSessionsList: React.FC<{ userId: string, limit: number }> = ({ userI
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <User className="h-3 w-3" />
-                    {session.partner_id}
+                    {session.partner_username || session.partner_id}
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
@@ -108,11 +138,11 @@ const RecentSessionsList: React.FC<{ userId: string, limit: number }> = ({ userI
               
               {/* API provides booleans, we derive the status */}
               <Badge className={
-                session.is_solved_successfully ? 'bg-green-500 text-white' : // "Passed" (blue)
-                session.has_penalty ? 'bg-orange-500 text-white' : // "Incomplete" (gray)
+                session.is_solved_successfully === true ? 'bg-green-500 text-white' : // "Passed" (green)
+                session.has_penalty ? 'bg-orange-500 text-white' : // "Incomplete" (orange)
                 'bg-red-500 text-white' // "Failed" (red)
               }>
-                {session.is_solved_successfully ? "Passed" : (session.has_penalty ? "Incomplete" : "Failed")}
+                {session.is_solved_successfully === true ? "Passed" : (session.has_penalty ? "Incomplete" : "Failed")}
               </Badge>
             </div>
           </Card>

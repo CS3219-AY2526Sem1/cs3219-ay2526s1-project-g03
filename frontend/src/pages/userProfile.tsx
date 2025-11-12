@@ -1,22 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
-import { getHistoryProgress } from '../lib/api';
-import { formatDuration } from '../lib/timeFormatters';
+import { getHistoryProgress, getAllAttemptSummaries } from '../lib/api';
+import { useQuery } from '@tanstack/react-query';
 import RecentSessionsList from '../features/progress/RecentSessionsList';
+import StatsGrid from '../features/progress/statsGrid';
 
 // --- UI Imports from Lovable's file ---
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-// We won't import Avatar since you don't use it
-// import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import {
-  Trophy,
-  Target,
-  Clock,
-  TrendingUp,
-} from "lucide-react";
 
 // --- Imports from your original file (for profile pic) ---
 import DefaultProfileIcon from '../assets/default-profile-icon.svg';
@@ -33,14 +26,19 @@ const UserProfile: React.FC = () => {
   const navigate = useNavigate();
 
   const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
-  const [progress, setProgress] = useState<any>(null);
 
-  useEffect(() => {
-    if (!userId) return;
-    getHistoryProgress(userId)
-      .then(setProgress)
-      .catch(() => setProgress(null));
-  }, [userId]);
+  // Fetch user progress and session summaries using useQuery
+  const {data: progress, isLoading: progressLoading, isError: progressError} = useQuery({
+    queryKey: ['historyProgress', userId],
+    queryFn: () => getHistoryProgress(userId),
+    enabled: !!userId,
+  });
+
+  const {data: summaries, isLoading: summariesLoading, isError: summariesError} = useQuery({
+    queryKey: ['attemptSummaries', userId],
+    queryFn: () => getAllAttemptSummaries(userId),
+    enabled: !!userId,
+  });
 
   // We get the user data from the useAuth() hook
   const { username, email, occupation, areaOfStudy, googleOAuthEmail, githubOAuthEmail, createdAt, profilePicture } = user;
@@ -48,36 +46,6 @@ const UserProfile: React.FC = () => {
   const occupationLabel = OCCUPATIONS.find(o => o.value === occupation)?.label || '';
   const areaOfStudyLabel = AREAS_OF_STUDY.find(o => o.value === areaOfStudy)?.label || '';
 
-
-  // --- This is the Stats data structure from Lovable's file ---
-  // --- We are populating it with REAL data from the `progress` state ---
-  const stats = [
-    { 
-      label: "Sessions Completed", 
-      value: progress?.total_sessions_completed ?? 0, 
-      icon: Trophy, 
-      color: "text-yellow-500" 
-    },
-    { 
-      label: "Problems Solved", 
-      value: progress?.total_successes ?? 0, 
-      icon: Target, 
-      color: "text-green-500" 
-    },
-    { 
-      label: "Hours Practiced", 
-      // Use the formatter
-      value: formatDuration(progress?.total_time_ms), 
-      icon: Clock, 
-      color: "text-blue-500" 
-    },
-    { 
-      label: "Current Streak", 
-      value: progress?.current_streak ?? 0, 
-      icon: TrendingUp, 
-      color: "text-purple-500" 
-    },
-  ];
 
   // --- This is the new, beautiful UI from Lovable's file ---
   return (
@@ -131,20 +99,16 @@ const UserProfile: React.FC = () => {
           </div>
         </Card>
 
-        {/* Stats Grid (with real data) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {stats.map((stat) => (
-            <Card key={stat.label} className="p-6 bg-card border-0 shadow-card hover:shadow-elegant transition-smooth">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-3xl font-bold">{stat.value}</p>
-                  <p className="text-sm text-muted-foreground mt-1">{stat.label}</p>
-                </div>
-                <stat.icon className={`h-10 w-10 ${stat.color}`} />
-              </div>
-            </Card>
-          ))}
-        </div>
+        {/* Stats Grid (with real data) - using reusable component */}
+        {progressLoading ? (
+          <div className="mb-8 text-center text-muted-foreground">Loading stats...</div>
+        ) : progressError ? (
+          <div className="mb-8 text-center text-red-500">Error loading stats</div>
+        ) : (
+          <div className="mb-8">
+            <StatsGrid progress={progress} />
+          </div>
+        )}
 
         {/* Recent Sessions (using your existing RecentSessionsList component) */}
         {/* This section uses the beautiful layout from your screenshot and the logic from your file */}
@@ -160,7 +124,13 @@ const UserProfile: React.FC = () => {
             </Button>
           </div>
           {/* This renders your child component */}
-          {userId && <RecentSessionsList userId={userId} limit={5} />}
+          {summariesLoading ? (
+            <div className="p-4 text-center text-muted-foreground">Loading recent sessions...</div>
+          ) : summariesError ? (
+            <div className="p-4 text-center text-red-500">Error loading recent sessions</div>
+          ) : userId ? (
+            <RecentSessionsList userId={userId} limit={5} summaries={summaries} />
+          ) : null}
         </div>
       </main>
     </div>

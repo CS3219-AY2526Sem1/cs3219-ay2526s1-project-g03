@@ -7,9 +7,9 @@ import {
   getUserController,
   markAccountForDeletionController,
   unlinkOAuthController,
+  getOtherUserController,
 } from '../controllers/userHandler';
 import {upload} from '../middleware/upload';
-import {getOtherUserController} from '../controllers/userHandler';
 
 const userRoutes = Router();
 

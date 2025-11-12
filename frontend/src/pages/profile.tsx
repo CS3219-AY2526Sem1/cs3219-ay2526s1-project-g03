@@ -10,13 +10,30 @@ import QuestionSettingIcon from '../assets/profile/setting-icon.svg';
 import '../../styles/profile.css';
 import useAuth from '../hooks/useAuth';
 import {Link, useNavigate} from 'react-router-dom';
-import {resendEmail} from '../lib/api';
+import {resendEmail, getHistoryProgress, getAllAttemptSummaries} from '../lib/api';
+import {useQuery} from '@tanstack/react-query';
+import {formatDuration} from '../lib/timeFormatters';
+import RecentSessionsList from '../features/progress/RecentSessionsList';
 
 const Profile: React.FC = () => {
   const {user} = useAuth();
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const {username, email, verified, googleOAuthVerified, githubOAuthVerified} = user;
   const isVerified = verified || googleOAuthVerified || githubOAuthVerified;
+  const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
+
+  // Fetch user progress and session summaries using useQuery
+  const {data: progress, isLoading: progressLoading, isError: progressError} = useQuery({
+    queryKey: ['historyProgress', userId],
+    queryFn: () => getHistoryProgress(userId),
+    enabled: !!userId && isVerified,
+  });
+
+  const {data: summaries, isLoading: summariesLoading, isError: summariesError} = useQuery({
+    queryKey: ['attemptSummaries', userId],
+    queryFn: () => getAllAttemptSummaries(userId),
+    enabled: !!userId && isVerified,
+  });
 
   const handleResendEmail = async () => {
     try {
@@ -26,6 +43,10 @@ const Profile: React.FC = () => {
       console.error('Failed to resend email:', error);
       alert(error?.message || 'Failed to resend email. Please try again.');
     }
+  };
+
+  const handleResetClick = () => {
+    navigate('/history/reset', { state: { from: 'home' } });
   };
 
   if (!isVerified) {
@@ -86,34 +107,50 @@ const Profile: React.FC = () => {
         </section>
 
         <section className="stats-section">
-          <div className="stat-card">
-            <div className="stat-info">
-              <p className="stat-value">0</p>
-              <p className="stat-label">Sessions Completed</p>
+          {progressLoading ? (
+            <div className="stat-card">
+              <div className="stat-info">
+                <p className="stat-value">Loading...</p>
+              </div>
             </div>
-            <img src={FlagIcon} alt="Sessions" className="stat-icon" />
-          </div>
-          <div className="stat-card">
-            <div className="stat-info">
-              <p className="stat-value">0</p>
-              <p className="stat-label">Problems Solved</p>
+          ) : progressError ? (
+            <div className="stat-card">
+              <div className="stat-info">
+                <p className="stat-value">Error loading stats</p>
+              </div>
             </div>
-            <img src={TargetIcon} alt="Problems" className="stat-icon" />
-          </div>
-          <div className="stat-card">
-            <div className="stat-info">
-              <p className="stat-value">0</p>
-              <p className="stat-label">Hours Practiced</p>
-            </div>
-            <img src={TimeIcon} alt="Hours" className="stat-icon" />
-          </div>
-          <div className="stat-card">
-            <div className="stat-info">
-              <p className="stat-value">0</p>
-              <p className="stat-label">Current Streak</p>
-            </div>
-            <img src={TrendUpIcon} alt="Streak" className="stat-icon" />
-          </div>
+          ) : (
+            <>
+              <div className="stat-card">
+                <div className="stat-info">
+                  <p className="stat-value">{progress?.total_sessions_completed ?? 0}</p>
+                  <p className="stat-label">Sessions Completed</p>
+                </div>
+                <img src={FlagIcon} alt="Sessions" className="stat-icon" />
+              </div>
+              <div className="stat-card">
+                <div className="stat-info">
+                  <p className="stat-value">{progress?.total_successes ?? 0}</p>
+                  <p className="stat-label">Problems Solved</p>
+                </div>
+                <img src={TargetIcon} alt="Problems" className="stat-icon" />
+              </div>
+              <div className="stat-card">
+                <div className="stat-info">
+                  <p className="stat-value">{formatDuration(progress?.total_time_ms)}</p>
+                  <p className="stat-label">Hours Practiced</p>
+                </div>
+                <img src={TimeIcon} alt="Hours" className="stat-icon" />
+              </div>
+              <div className="stat-card">
+                <div className="stat-info">
+                  <p className="stat-value">{progress?.current_streak ?? 0}</p>
+                  <p className="stat-label">Current Streak</p>
+                </div>
+                <img src={TrendUpIcon} alt="Streak" className="stat-icon" />
+              </div>
+            </>
+          )}
         </section>
 
         <section className="actions-activity-section">
@@ -138,17 +175,19 @@ const Profile: React.FC = () => {
                 <h3 className="action-title">Question Settings</h3>
                 <p className="action-description">Reset questions</p>
               </div>
-              <button 
-                className="action-button reset-button"
-                onClick={() => navigate('/history/reset', { state: { from: 'home' } })}
-              >
-                Reset
-              </button>
+              <button className="action-button reset-button" onClick={handleResetClick}>Reset</button>
             </div>
           </div>
 
           <div className="recent-activity-container">
             <h2 className="section-title">Recent Activity</h2>
+            {summariesLoading ? (
+              <div className="p-4 text-center text-muted-foreground">Loading recent sessions...</div>
+            ) : summariesError ? (
+              <div className="p-4 text-center text-muted-foreground">Error loading recent sessions</div>
+            ) : userId ? (
+              <RecentSessionsList userId={userId} limit={5} summaries={summaries} />
+            ) : null}
           </div>
         </section>
       </main>
