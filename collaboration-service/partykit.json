@@ -4,6 +4,6 @@
   "compatibilityDate": "2024-02-19",
   "port": 8082,
   "parties": {
-    "code": "src/party/codeServer.ts"
+    "code": "src/party/websocketServer.ts"
   }
 }

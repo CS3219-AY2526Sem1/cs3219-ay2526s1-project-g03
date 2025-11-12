@@ -14,13 +14,13 @@ import {
 } from '../storage/db.js';
 
 const CHAT_HISTORY_LIMIT = 500;
-const EXECUTION_STATE_KEY = 'executionState';
 
 function ensureSharedStructures(doc: Y.Doc) {
   doc.getText('codemirror');
   doc.getMap<string>('config');
   doc.getArray('chat');
-  doc.getMap(EXECUTION_STATE_KEY);
+  doc.getMap('execution');
+  doc.getMap('submission');
 }
 
 function pruneChatHistory(doc: Y.Doc) {

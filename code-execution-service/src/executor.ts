@@ -249,6 +249,7 @@ const prePullDockerImages = async () => {
   for (const image of images) {
     try {
       console.log(`Pulling image: ${image}`);
+      console.log(`Note: this might take awhile`);
       await execShellCommand(`docker pull ${image}`);
       console.log(`Successfully pulled ${image}`);
     } catch (error) {
@@ -262,12 +263,12 @@ const prePullDockerImages = async () => {
 
 // Start your server
 const startServer = async () => {
-  // try {
-  //   await prePullDockerImages();
-  // } catch (error) {
-  //   console.error('Error during image pull:', error);
-  //   // Continue starting server even if image pull fails
-  // }
+  try {
+    await prePullDockerImages();
+  } catch (error) {
+    console.error('Error during image pull:', error);
+    // Continue starting server even if image pull fails
+  }
 
   // Start the express app
   app.listen(8086, () => {
