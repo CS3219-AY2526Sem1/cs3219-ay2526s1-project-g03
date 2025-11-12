@@ -1,36 +1,46 @@
-import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useRef} from 'react';
+import {Eye, LogOut, Mic, Video, ChevronLeft, ChevronRight} from 'lucide-react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import {ChatPanel} from './ChatPanel';
 import YPartyKitProvider from 'y-partykit/provider';
 import type {AwarenessUser} from '../hooks/useCollabRoom';
+import axios from 'axios';
+import type {ExecutionResult} from './CodeExecutionPanel';
+import useAuth from '@/hooks/useAuth';
+import * as Y from 'yjs';
+
+// const HISTORY_SERVICE_URL = import.meta.env.VITE_HISTORY_SERVICE_URL || 'http://localhost:8085';
+const HISTORY_SERVICE_URL = 'http://localhost:8085';
+const MATCHING_SERVICE_URL = 'http://localhost:8081';
+const COLLAB_SERVICE_URL = 'http://localhost:8082';
 
 export default function SubmissionPanel({
   isPenaltyOver,
   handleLeaveRoom,
+  isCollapsed,
+  onToggle,
+  roomId,
+  executionResult,
+  sessionStartTime,
   provider,
 }: {
   isPenaltyOver: boolean;
   handleLeaveRoom: () => void;
+  isCollapsed: boolean;
+  onToggle: () => void;
+  roomId: string;
+  executionResult: ExecutionResult | null;
+  sessionStartTime: number;
   provider: YPartyKitProvider | null;
 }) {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const {user} = useAuth();
   const [users, setUsers] = useState<AwarenessUser[]>([]);
-
-  function handleEndSession() {
-    setIsDialogOpen(true);
-  }
-
-  async function handleEarlySessionEnd() {
-    // TODO: Add service call here for early session end tracking
-  }
-
-  async function handleConfirmEndSession() {
-    if (!isPenaltyOver) {
-      await handleEarlySessionEnd();
-    }
-    handleLeaveRoom();
-  }
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const submissionMapRef = useRef<Y.Map<any> | null>(null);
+  const hasLeftRef = useRef(false); // Prevent multiple leave calls
 
   useEffect(() => {
     if (!provider) {
@@ -55,13 +65,210 @@ export default function SubmissionPanel({
     };
   }, [provider]);
 
+  // Listen for submission events from other users
+  useEffect(() => {
+    if (!provider || hasLeftRef.current) {
+      submissionMapRef.current = null;
+      return;
+    }
+
+    // Get or create the shared Y.Map for submission state
+    const submissionMap = provider.doc.getMap('submission');
+    submissionMapRef.current = submissionMap;
+
+    // Observer function to detect when submission is successful
+    const observer = () => {
+      // Skip if we've already left
+      if (hasLeftRef.current) {
+        return;
+      }
+
+      const submissionComplete = submissionMap.get('submissionComplete') ?? false;
+      const submittedBy = submissionMap.get('submittedBy');
+
+      // If submission was successful, redirect both users
+      if (submissionComplete && submittedBy) {
+        console.log(`Submission completed by ${submittedBy}, redirecting...`);
+        hasLeftRef.current = true;
+        handleLeaveRoom();
+      }
+    };
+
+    // Set up observer and check initial state
+    submissionMap.observe(observer);
+    observer(); // Check initial state
+
+    // Cleanup
+    return () => {
+      submissionMap.set('submissionComplete', false);
+      submissionMap.delete('submittedBy');
+      submissionMap.delete('submittedAt');
+      submissionMap.unobserve(observer);
+      submissionMapRef.current = null;
+    };
+  }, [provider, handleLeaveRoom]);
+
   const localUser = provider?.awareness.getLocalState()?.user as AwarenessUser | undefined;
 
   // Find the first user in the list who is not the local user
   const otherUser = users.find(u => u.name !== localUser?.name);
 
+  function handleEndSession() {
+    setIsDialogOpen(true);
+  }
+
+  function handleRequestSubmit() {
+    // Validate that code has been executed at least once
+    if (!executionResult) {
+      alert('Please run your code at least once before submitting.');
+      return;
+    }
+    setIsSubmitDialogOpen(true);
+  }
+
+  async function handleIncurPenalty() {
+    setIsLeavingRoom(true);
+    try {
+      const request = {
+        userId: user._id,
+        increment: 2,
+      };
+      const response = await axios.post(
+        `${MATCHING_SERVICE_URL}/api/matches/penalty/incur`,
+        request
+      );
+
+      console.log('Penalty incurred successfully:', response.data);
+    } catch (error) {
+      console.error('Error incurring penalty:', error);
+      alert('Failed to leave room. Please try again.');
+    } finally {
+      setIsLeavingRoom(false);
+    }
+  }
+
+  async function handleResetPenalty() {
+    try {
+      const request = {
+        userId: user._id,
+      };
+      const response = await axios.post(
+        `${MATCHING_SERVICE_URL}/api/matches/penalty/reset`,
+        request
+      );
+
+      console.log('Penalty reset successfully:', response.data);
+    } catch (error) {
+      console.error('Error resetting penalty:', error);
+      alert('Failed to leave room. Please try again.');
+    }
+  }
+
+  async function handleConfirmEndSession() {
+    if (!isPenaltyOver) {
+      await handleIncurPenalty();
+    }
+    handleLeaveRoom();
+  }
+
+  async function handleConfirmSubmitSolution() {
+    // Validate that we have the required data
+    if (!user._id) {
+      alert('User information not available. Please try again.');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const request = {
+        sessionId: roomId,
+        userId: user._id,
+        code: provider?.doc.getText('codemirror').toString(),
+        isSolvedSuccessfully: executionResult?.allPassed ?? false,
+        hasPenalty: !isPenaltyOver,
+        timeTakenMs: Date.now() - sessionStartTime,
+      };
+
+      const response = await axios.patch(
+        `${HISTORY_SERVICE_URL}/api/history/complete-session`,
+        request
+      );
+
+      console.log('Submission successful:', response.data);
+      alert('Solution submitted successfully!');
+      await handleResetPenalty();
+
+      // Delete the room from backend
+      try {
+        console.log('Deleting room:', roomId);
+        const deleteResponse = await axios.delete(`${COLLAB_SERVICE_URL}/parties/main/${roomId}`);
+        console.log('Room deleted successfully:', deleteResponse.data);
+      } catch (deleteError) {
+        console.error('Error deleting room:', deleteError);
+        if (axios.isAxiosError(deleteError)) {
+          console.error('Delete error details:', {
+            status: deleteError.response?.status,
+            data: deleteError.response?.data,
+            message: deleteError.message,
+          });
+        }
+        // Continue even if room deletion fails - it will be cleaned up when both users disconnect
+      }
+
+      // Broadcast submission success to all users via Y.Map
+      const submissionMap = submissionMapRef.current;
+      const localUser = provider?.awareness.getLocalState()?.user as AwarenessUser | undefined;
+
+      if (submissionMap && localUser) {
+        submissionMap.set('submissionComplete', true);
+        submissionMap.set('submittedBy', localUser.name);
+        submissionMap.set('submittedAt', Date.now());
+      }
+      // Mark that we're leaving to prevent observer from triggering again
+      hasLeftRef.current = true;
+      handleLeaveRoom();
+    } catch (error) {
+      console.error('Error submitting solution:', error);
+      alert('Failed to submit solution. Please try again.');
+
+      // Clear submission state on error
+      const submissionMap = submissionMapRef.current;
+      if (submissionMap) {
+        submissionMap.set('submissionComplete', false);
+        submissionMap.delete('submittedBy');
+        submissionMap.delete('submittedAt');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  if (isCollapsed) {
+    return (
+      <div className="w-10 px-1 py-2 bg-white border-l border-gray-200">
+        <button
+          onClick={onToggle}
+          className="w-full h-full flex rounded items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"
+          aria-label="Expand submission panel"
+        >
+          <ChevronLeft size={20} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+      <div className="flex justify-end p-2 border-b border-gray-200 flex-shrink-0">
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors"
+          aria-label="Collapse submission panel"
+        >
+          <ChevronRight size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+      </div>
       {/* User Avatars */}
       <div className="p-4 border-b border-gray-200 flex space-x-3">
         {localUser && (
@@ -97,9 +304,13 @@ export default function SubmissionPanel({
       <div className="p-4 border-t border-gray-200">
         {/* Action Buttons */}
         <div className="space-y-2">
-          <button className="w-full bg-green-500 hover:bg-green-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2">
+          <button
+            onClick={handleRequestSubmit}
+            disabled={isSubmitting || !executionResult}
+            className="w-full bg-green-500 hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2"
+          >
             <span>↑</span>
-            <span>Submit Solution</span>
+            <span>{isSubmitting ? 'Submitting...' : 'Submit Solution'}</span>
           </button>
 
           <button className="w-full border border-gray-300 hover:bg-gray-50 py-3 rounded-lg font-semibold flex items-center justify-center space-x-2">
@@ -108,7 +319,8 @@ export default function SubmissionPanel({
           </button>
 
           <button
-            className="w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2"
+            className="w-full bg-red-500 hover:bg-red-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white py-3 rounded-lg font-semibold flex items-center justify-center space-x-2"
+            disabled={isLeavingRoom}
             onClick={handleEndSession}
           >
             <LogOut size={18} />
@@ -116,6 +328,18 @@ export default function SubmissionPanel({
           </button>
         </div>
       </div>
+
+      {/* Submit Solution Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={isSubmitDialogOpen}
+        onClose={() => setIsSubmitDialogOpen(false)}
+        onConfirm={handleConfirmSubmitSolution}
+        title="Confirm Submit?"
+        message="This will end the session, submit your results, and both users will leave the room. Are you sure you want to proceed?"
+        confirmText="Yes, Submit Solution"
+        cancelText="Cancel"
+        variant="normal"
+      />
 
       {/* End Session Confirmation Dialog */}
       <ConfirmDialog

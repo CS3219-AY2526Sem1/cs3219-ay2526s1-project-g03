@@ -42,7 +42,7 @@ import {Awareness} from 'y-protocols/awareness';
 
 const languageCompartment = new Compartment();
 
-const languageMap: { [key: string]: () => Extension } = {
+const languageMap: {[key: string]: () => Extension} = {
   javascript: () => javascript(),
   python: () => python(),
   cpp: () => cpp(),
@@ -88,7 +88,7 @@ export default function CodeMirror({ytext, awareness, languageConfig}: CodeMirro
         // Re-indent lines when typing specific input
         indentOnInput(),
         // Highlight syntax with a default style
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+        syntaxHighlighting(defaultHighlightStyle, {fallback: true}),
         // Dyanmic configuration for language mode
         languageCompartment.of(initialLanguageExtension),
         // Highlight matching brackets near cursor
@@ -111,12 +111,12 @@ export default function CodeMirror({ytext, awareness, languageConfig}: CodeMirro
         yCollab(ytext, awareness),
         keymap.of([
           {
-            key: "Tab",
+            key: 'Tab',
             preventDefault: true,
             run: indentMore,
           },
           {
-            key: "Shift-Tab",
+            key: 'Shift-Tab',
             preventDefault: true,
             run: indentLess,
           },
@@ -168,10 +168,10 @@ export default function CodeMirror({ytext, awareness, languageConfig}: CodeMirro
     <div
       ref={editorRef}
       style={{
-        border: '1px solid #ccc',
+        // border: '1px solid #ccc',
         borderRadius: '4px',
-        height: '400px',
-        overflow: 'auto',
+        height: '100%',
+        minHeight: '300px',
       }}
     />
   );

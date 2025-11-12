@@ -1,7 +1,7 @@
 import axios from 'axios';
 import {useState, useEffect} from 'react';
 
-interface QuestionData {
+export interface QuestionData {
   question_id: string;
   title: string;
   description: string;
@@ -12,6 +12,13 @@ interface QuestionData {
   created_at: string;
   updated_at: string;
   created_by: string;
+}
+
+interface useQuestionReturn {
+  question: QuestionData | null;
+  testcases: string[];
+  questionIsLoading: boolean;
+  questionError: string | null;
 }
 
 /**
@@ -31,8 +38,9 @@ export async function fetchQuestion(questionId: string): Promise<QuestionData> {
  * @param questionId - The ID of the question to fetch
  * @returns Question data with loading and error states
  */
-export function useQuestion(questionId: string | undefined) {
+export function useQuestion(questionId: string | undefined): useQuestionReturn {
   const [question, setQuestion] = useState<QuestionData | null>(null);
+  const [testcases, setTestcases] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +58,7 @@ export function useQuestion(questionId: string | undefined) {
         setError(null);
 
         const question = await fetchQuestion(questionId);
+        setTestcases(question.testcases);
 
         if (isMounted) {
           setQuestion(question);
@@ -73,5 +82,5 @@ export function useQuestion(questionId: string | undefined) {
     };
   }, [questionId]);
 
-  return {question, isLoading, error};
+  return {question, testcases, questionIsLoading: isLoading, questionError: error};
 }
