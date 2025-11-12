@@ -17,6 +17,7 @@ jest.mock('../config/redis', () => {
     setex: jest.fn(),
     incrby: jest.fn(),
     expire: jest.fn(),
+    ttl: jest.fn(),
   };
   return {
     __esModule: true,
@@ -116,6 +117,7 @@ describe('matchingService', () => {
     mockRedis.setex.mockResolvedValue('OK');
     mockRedis.incrby.mockResolvedValue(1);
     mockRedis.expire.mockResolvedValue(1);
+    mockRedis.ttl.mockResolvedValue(-2);
     axiosMock.get.mockReset();
     axiosMock.post.mockReset();
     axiosMock.get.mockResolvedValue({data: []});
