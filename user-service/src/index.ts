@@ -11,7 +11,6 @@ import errorHandler from './middleware/errorHandler';
 import adminRoutes from './routes/adminRoute';
 import authRoutes from './routes/authRoutes';
 import userRoutes from './routes/userRoute';
-import { getOtherUserController } from './controllers/userHandler.js';
 import './services/passport';
 // import { startCleanupScheduler } from './scripts/cleanupAccounts';
 
@@ -36,9 +35,6 @@ app.get('/', (req, res, next) =>
     status: 'healthy',
   })
 );
-
-// Public endpoint for cross-service calls (no authentication required)
-app.get('/api/service/user/:userId', getOtherUserController);
 
 app.use('/auth', authRoutes);
 app.use('/user', authenticate, userRoutes);

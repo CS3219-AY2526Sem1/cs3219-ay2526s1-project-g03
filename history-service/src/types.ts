@@ -24,11 +24,9 @@ export interface UserProgress {
   user_id: string;
   total_sessions: number;
   total_sessions_completed: number;
-  total_successes: number;
   success_rate: number;
   current_streak: number;
   last_practice_day: string | null;
-  total_time_ms?: number;
 }
 
 export interface ParticipantAttempt {
@@ -36,7 +34,6 @@ export interface ParticipantAttempt {
   session_id: string;
   user_id: string;
   partner_id: string;
-  partner_username?: string;
   code: string | null;
   is_solved_successfully: boolean | null;
   has_penalty: boolean;
@@ -54,7 +51,6 @@ export interface SessionSummary {
   question_topics: string[];
   started_at: string;
   partner_id: string;
-  partner_username?: string;
   is_solved_successfully: boolean | null;
   has_penalty: boolean;
   time_taken_ms: number | null;
