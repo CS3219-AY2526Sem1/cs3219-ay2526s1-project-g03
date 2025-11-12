@@ -1,6 +1,5 @@
 import type * as Party from 'partykit/server';
 import {onConnect as y_onConnect} from 'y-partykit';
-
 import {Buffer} from 'node:buffer';
 
 import * as Y from 'yjs';
@@ -9,25 +8,23 @@ import {verifyToken} from '../utils/jwt.js';
 import {getDocument, upsertDocument, checkRoomExists, checkUserVerified} from '../storage/db.js';
 
 const CHAT_HISTORY_LIMIT = 500;
-const CHAT_COLLECTION_KEY = 'chatMessages';
 const EXECUTION_STATE_KEY = 'executionState';
 
 function ensureSharedStructures(doc: Y.Doc) {
   doc.getText('codemirror');
   doc.getMap<string>('config');
-  doc.getArray(CHAT_COLLECTION_KEY);
+  doc.getArray('chat');
   doc.getMap(EXECUTION_STATE_KEY);
 }
 
 function pruneChatHistory(doc: Y.Doc) {
-  const chatArray = doc.getArray(CHAT_COLLECTION_KEY);
+  const chatArray = doc.getArray('chat');
   if (chatArray.length <= CHAT_HISTORY_LIMIT) {
     return;
   }
   const excess = chatArray.length - CHAT_HISTORY_LIMIT;
   chatArray.delete(0, excess);
 }
-// import {roomRouter} from '../api/roomRoutes.js';
 
 export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
@@ -35,29 +32,19 @@ export default class YjsServer implements Party.Server {
   static async onBeforeConnect(request: Party.Request, _lobby: Party.Lobby) {
     try {
       const cookieHeader = request.headers.get('cookie');
-      if (!cookieHeader) {
-        console.error('No cookie header found');
-        return new Response('Unauthorized: No cookies', {status: 401});
-      }
 
-      const cookies = parseCookies(cookieHeader);
+      const cookies = cookieHeader ? parseCookies(cookieHeader) : {};
       const accessToken = cookies['accessToken'];
-
       if (!accessToken) {
         console.error('No accessToken cookie found');
-        return new Response('Unauthorized: No access token', {status: 401});
+        return new Response('Bad Request: No access token', {status: 400});
       }
-      const {valid, payload} = await verifyToken(accessToken);
 
-      if (!valid || !payload) {
-        console.error('Token verification failed:', payload);
-        return new Response('Unauthorized: Invalid token or payload', {status: 401});
-      }
       const roomId = new URL(request.url).pathname.split('/').pop();
 
       if (!roomId) {
-        console.error('Room Id is undefined:');
-        return new Response('Room Id is undefined', {status: 400});
+        console.error('Room ID is undefined');
+        return new Response('Bad Request: Room ID missing', {status: 400});
       }
       const roomExists = await checkRoomExists(roomId);
 
@@ -66,97 +53,97 @@ export default class YjsServer implements Party.Server {
         return new Response('Room not found', {status: 404});
       }
 
-      // const isUserVerified = await checkUserVerified(payload.userId.toString(), roomId);
-
-      // if (!isUserVerified) {
-      //   console.error(`User not authorised to enter this room`);
-      //   return new Response('Unauthorised : User not authorised to enter this room', {status: 401});
-      // }
-
-      request.headers.set('X-User-ID', payload.userId.toString());
-
-      if (payload.sessionId) {
-        try {
-          request.headers.set('X-Session-ID', payload.sessionId.toString());
-        } catch (sessionIdError) {
-          console.warn(
-            'Session ID missing or malformed on token payload',
-            sessionIdError,
-            payload.sessionId
-          );
-        }
-      } else {
-        console.info('Session ID not present on token payload; continuing without it');
-      }
+      request.headers.set('X-Access-Token', accessToken);
 
       return request;
     } catch (e) {
       console.error('Authentication error:', e);
-      return new Response('Unauthorized', {status: 401});
+      return new Response('Internal Server Error', {status: 500});
     }
   }
 
-  async onConnect(connection: Party.Connection) {
-    const room = this.room;
-    await y_onConnect(connection, this.room, {
-      async load() {
-        // This is called once per "room" when the first user connects
+  async onConnect(connection: Party.Connection, ctx: Party.ConnectionContext) {
+    try {
+      const accessToken = ctx.request.headers.get('X-Access-Token');
+      const roomId = this.room.id;
+      if (!accessToken || !roomId) {
+        console.error('Missing auth data in onConnect');
+        connection.close(4000, 'Internal error: Missing authentication data');
+        return;
+      }
+      const {valid, payload} = await verifyToken(accessToken);
 
-        // Creates the backend Yjs document
-        const doc = new Y.Doc();
+      if (!valid || !payload) {
+        console.error('Token verification failed:', payload);
+        connection.close(4001, 'Unauthorised: Invalid or expired token');
+        return;
+      }
 
-        // Load the document from the database
-        try {
-          const {data, error} = await getDocument(room.id);
-          if (error) {
-            throw new Error(error.message);
-          }
+      const isUserVerified = await checkUserVerified(payload.userId.toString(), roomId);
 
-          if (data) {
-            // If the document exists on the database,
-            // apply it to the Yjs document
-            try {
-              const buffer = Buffer.from(data.document, 'base64');
-              Y.applyUpdate(doc, new Uint8Array(buffer));
-              ensureSharedStructures(doc);
-              pruneChatHistory(doc);
-            } catch (parseErr) {
-              console.warn(`[${room.id}] Data corrupted, creating new document`);
-            }
-          } else {
-            console.log(`[${room.id}] No existing document found, creating new document`);
-            ensureSharedStructures(doc);
-          }
+      if (!isUserVerified) {
+        console.error(`User ${payload.userId} not authorised to enter room ${roomId}`);
+        connection.close(4003, 'Forbidden: You are not authorised for this room');
+        return;
+      }
 
-          // Return the Yjs document to y-partykit to manage
-          ensureSharedStructures(doc);
-          pruneChatHistory(doc);
-          return doc;
-        } catch (err) {
-          console.error(`[${room.id}] Load failed:`, err);
-          throw err;
-        }
-      },
-      callback: {
-        handler: async doc => {
-          // This is called every few seconds if the document has changed
+      await y_onConnect(connection, this.room, {
+        async load() {
+          // This is called once per "room" when the first user connects
 
-          // convert the Yjs document to a Uint8Array
+          // Creates the backend Yjs document
+          const doc = new Y.Doc();
+
+          // Load the document from the database
           try {
-            pruneChatHistory(doc);
-            const content = Y.encodeStateAsUpdate(doc);
-
-            // Save the document to the database
-            const {data: _data, error} = await upsertDocument(room.id, content);
+            const {data, error} = await getDocument(roomId);
             if (error) {
-              console.error(`[${room.id}] Failed to save:`, error);
-              throw new Error(`Failed to save into database: ${error.message}`);
+              throw new Error(error.message);
             }
+
+            if (data) {
+              try {
+                const buffer = Buffer.from(data.document, 'base64');
+                Y.applyUpdate(doc, new Uint8Array(buffer));
+                ensureSharedStructures(doc);
+                pruneChatHistory(doc);
+              } catch (parseErr) {
+                console.warn(`[${roomId}] Data corrupted, creating new document`);
+              }
+            } else {
+              console.log(`[${roomId}] No existing document found, creating new document`);
+              ensureSharedStructures(doc);
+            }
+            
+          // Return the Yjs document to y-partykit to manage
+            ensureSharedStructures(doc);
+            pruneChatHistory(doc);
+            return doc;
           } catch (err) {
-            console.error(`[${room.id}] Save error: `, err);
+            console.error(`[${roomId}] Load failed:`, err);
+            throw err;
           }
         },
-      },
-    });
+        callback: {
+          handler: async doc => {
+            try {
+              pruneChatHistory(doc);
+              const content = Y.encodeStateAsUpdate(doc);
+
+              const {data: _data, error} = await upsertDocument(roomId, content);
+              if (error) {
+                console.error(`[${roomId}] Failed to save:`, error);
+                throw new Error(`Failed to save into database: ${error.message}`);
+              }
+            } catch (err) {
+              console.error(`[${roomId}] Save error: `, err);
+            }
+          },
+        },
+      });
+    } catch (e) {
+      console.error('Connection error:', e);
+      connection.close(4000, 'Internal server error');
+    }
   }
 }

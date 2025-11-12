@@ -1,6 +1,6 @@
 import {useParams, useNavigate} from 'react-router-dom';
 import CollabEditor from '../components/CollabEditor';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import {Code, Image, Play} from 'lucide-react';
 import QuestionPanel from '../components/QuestionPanel';
 import SessionHeader from '../components/SessionHeader';
@@ -14,25 +14,35 @@ export function CollabPage() {
   const [activeTab, setActiveTab] = useState('code');
 
   if (!roomId) {
-    navigate('/room');
+    navigate('/');
     return null;
   }
 
-  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, questionId, isLoading, error} =
-    useSession(roomId);
+  const {provider, isReady, error: collabError} = useCollabRoom(roomId);
 
-  const {provider, isReady} = useCollabRoom(roomId);
+  const {
+    sessionStartTime,
+    isPenaltyOver,
+    handlePenaltyOver,
+    questionId,
+    isLoading: isSessionLoading,
+    error: sessionError,
+  } = useSession(roomId);
 
-  if (!isReady || !provider) {
+  useEffect(() => {
+    if (collabError) {
+      navigate('/');
+    }
+  }, [collabError, navigate]);
+
+  const isLoading = isSessionLoading || (!isReady && !collabError);
+
+  if (!provider || collabError) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-gray-600">Connecting to collaboration session...</div>
+        <div className="text-gray-600">Failed to load session. Redirecting...</div>
       </div>
     );
-  }
-
-  function handleLeaveRoom() {
-    navigate('/room');
   }
 
   if (isLoading) {
@@ -43,8 +53,12 @@ export function CollabPage() {
     );
   }
 
-  if (error) {
-    console.warn('Session timestamp error:', error);
+  if (sessionError) {
+    console.warn('Session timestamp error:', sessionError);
+  }
+
+  function handleLeaveRoom() {
+    navigate('/');
   }
 
   return (
@@ -96,7 +110,6 @@ export function CollabPage() {
             </div>
           </div>
 
-          {/* Code Editor Area */}
           <div className="flex-1 overflow-hidden">
             {/* Placeholder for CodeMirror component */}
             <CollabEditor roomId={roomId} provider={provider} />

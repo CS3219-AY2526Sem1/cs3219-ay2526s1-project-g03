@@ -1,4 +1,4 @@
-import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
+import {Eye, LogOut} from 'lucide-react';
 import {useEffect, useState} from 'react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import {ChatPanel} from './ChatPanel';
@@ -69,8 +69,6 @@ export default function SubmissionPanel({
             className="flex-1 rounded-lg p-4 text-white flex flex-col items-center justify-center"
             style={{backgroundColor: localUser.color}}
           >
-            <Mic size={20} className="mb-1" />
-            <Video size={20} className="mb-2" />
             <span className="font-semibold text-lg">{localUser.name} (You)</span>
           </div>
         )}
