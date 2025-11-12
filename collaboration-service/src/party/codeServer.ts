@@ -10,14 +10,14 @@ import {getDocument, upsertDocument, checkRoomExists, checkUserVerified} from '.
 const CHAT_HISTORY_LIMIT = 500;
 const EXECUTION_STATE_KEY = 'executionState';
 
-function ensureSharedStructures(doc: Y.Doc) {
+export function ensureSharedStructures(doc: Y.Doc) {
   doc.getText('codemirror');
   doc.getMap<string>('config');
   doc.getArray('chat');
   doc.getMap(EXECUTION_STATE_KEY);
 }
 
-function pruneChatHistory(doc: Y.Doc) {
+export function pruneChatHistory(doc: Y.Doc) {
   const chatArray = doc.getArray('chat');
   if (chatArray.length <= CHAT_HISTORY_LIMIT) {
     return;
@@ -114,8 +114,8 @@ export default class YjsServer implements Party.Server {
               console.log(`[${roomId}] No existing document found, creating new document`);
               ensureSharedStructures(doc);
             }
-            
-          // Return the Yjs document to y-partykit to manage
+
+            // Return the Yjs document to y-partykit to manage
             ensureSharedStructures(doc);
             pruneChatHistory(doc);
             return doc;
