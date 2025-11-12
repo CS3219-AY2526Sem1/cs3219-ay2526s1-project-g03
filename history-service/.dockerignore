@@ -48,6 +48,9 @@ pids
 # Coverage directory used by tools like istanbul
 coverage
 
+# DB init scripts (mounted at runtime by docker-compose, not built into image)
+db/
+
 # Dependency directories
 jspm_packages/
 

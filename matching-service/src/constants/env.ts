@@ -32,3 +32,6 @@ export const MATCHING_SERVICE_PORT = getEnv('MATCHING_SERVICE_PORT', '8081');
 export const APP_ORIGIN = getEnv('APP_ORIGIN');
 export const REDIS_HOST = getEnv('REDIS_HOST', 'redish');
 export const REDIS_PORT = getEnv('REDIS_PORT', '6379');
+export const COLLAB_SERVICE_URL = getEnv('COLLABORATION_SERVICE_URL', 'http://localhost:8082');
+export const QUESTION_SERVICE_URL = getEnv('QUESTION_SERVICE_URL', 'http://localhost:8083');
+export const HISTORY_SERVICE_URL = getEnv('HISTORY_SERVICE_URL', 'http://localhost:8085');

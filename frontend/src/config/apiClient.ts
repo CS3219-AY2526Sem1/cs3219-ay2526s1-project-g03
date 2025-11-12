@@ -41,3 +41,13 @@ export const matchingApi = axios.create({
   baseURL: import.meta.env.VITE_MATCHING_SERVICE_URL,
   withCredentials: true,
 });
+
+export const historyApi = axios.create({
+  baseURL: import.meta.env.VITE_HISTORY_SERVICE_URL || 'http://localhost:8085',
+  withCredentials: true,
+});
+
+export const questionApi = axios.create({
+  baseURL: import.meta.env.VITE_QUESTION_SERVICE_URL || 'http://localhost:8083',
+  withCredentials: true,
+});
