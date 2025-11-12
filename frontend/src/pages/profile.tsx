@@ -124,7 +124,9 @@ const Profile: React.FC = () => {
                 <h3 className="action-title">Find Match</h3>
                 <p className="action-description">Find a partner instantly</p>
               </div>
-              <button className="action-button start-button">Start</button>
+              <Link to="/dashboard" className="dashboard-link">
+                <button className="action-button start-button">Start</button>
+              </Link>
             </div>
             <div className="action-card">
               <img src={QuestionSettingIcon} alt="Settings" className="action-icon" />
