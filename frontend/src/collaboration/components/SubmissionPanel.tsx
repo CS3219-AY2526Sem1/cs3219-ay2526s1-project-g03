@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useState, useRef} from 'react';
 import {Eye, LogOut, Mic, Video, ChevronLeft, ChevronRight} from 'lucide-react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import {ChatPanel} from './ChatPanel';
@@ -7,10 +7,12 @@ import type {AwarenessUser} from '../hooks/useCollabRoom';
 import axios from 'axios';
 import type {ExecutionResult} from './CodeExecutionPanel';
 import useAuth from '@/hooks/useAuth';
+import * as Y from 'yjs';
 
 // const HISTORY_SERVICE_URL = import.meta.env.VITE_HISTORY_SERVICE_URL || 'http://localhost:8085';
 const HISTORY_SERVICE_URL = 'http://localhost:8085';
 const MATCHING_SERVICE_URL = 'http://localhost:8081';
+const COLLAB_SERVICE_URL = 'http://localhost:8082';
 
 export default function SubmissionPanel({
   isPenaltyOver,
@@ -37,6 +39,8 @@ export default function SubmissionPanel({
   const [isSubmitDialogOpen, setIsSubmitDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLeavingRoom, setIsLeavingRoom] = useState(false);
+  const submissionMapRef = useRef<Y.Map<any> | null>(null);
+  const hasLeftRef = useRef(false); // Prevent multiple leave calls
 
   useEffect(() => {
     if (!provider) {
@@ -60,6 +64,49 @@ export default function SubmissionPanel({
       setUsers([]); // Cleanup state
     };
   }, [provider]);
+
+  // Listen for submission events from other users
+  useEffect(() => {
+    if (!provider || hasLeftRef.current) {
+      submissionMapRef.current = null;
+      return;
+    }
+
+    // Get or create the shared Y.Map for submission state
+    const submissionMap = provider.doc.getMap('submission');
+    submissionMapRef.current = submissionMap;
+
+    // Observer function to detect when submission is successful
+    const observer = () => {
+      // Skip if we've already left
+      if (hasLeftRef.current) {
+        return;
+      }
+
+      const submissionComplete = submissionMap.get('submissionComplete') ?? false;
+      const submittedBy = submissionMap.get('submittedBy');
+
+      // If submission was successful, redirect both users
+      if (submissionComplete && submittedBy) {
+        console.log(`Submission completed by ${submittedBy}, redirecting...`);
+        hasLeftRef.current = true;
+        handleLeaveRoom();
+      }
+    };
+
+    // Set up observer and check initial state
+    submissionMap.observe(observer);
+    observer(); // Check initial state
+
+    // Cleanup
+    return () => {
+      submissionMap.set('submissionComplete', false);
+      submissionMap.delete('submittedBy');
+      submissionMap.delete('submittedAt');
+      submissionMap.unobserve(observer);
+      submissionMapRef.current = null;
+    };
+  }, [provider, handleLeaveRoom]);
 
   const localUser = provider?.awareness.getLocalState()?.user as AwarenessUser | undefined;
 
@@ -152,10 +199,46 @@ export default function SubmissionPanel({
       alert('Solution submitted successfully!');
       await handleResetPenalty();
 
+      // Delete the room from backend
+      try {
+        console.log('Deleting room:', roomId);
+        const deleteResponse = await axios.delete(`${COLLAB_SERVICE_URL}/parties/main/${roomId}`);
+        console.log('Room deleted successfully:', deleteResponse.data);
+      } catch (deleteError) {
+        console.error('Error deleting room:', deleteError);
+        if (axios.isAxiosError(deleteError)) {
+          console.error('Delete error details:', {
+            status: deleteError.response?.status,
+            data: deleteError.response?.data,
+            message: deleteError.message,
+          });
+        }
+        // Continue even if room deletion fails - it will be cleaned up when both users disconnect
+      }
+
+      // Broadcast submission success to all users via Y.Map
+      const submissionMap = submissionMapRef.current;
+      const localUser = provider?.awareness.getLocalState()?.user as AwarenessUser | undefined;
+
+      if (submissionMap && localUser) {
+        submissionMap.set('submissionComplete', true);
+        submissionMap.set('submittedBy', localUser.name);
+        submissionMap.set('submittedAt', Date.now());
+      }
+      // Mark that we're leaving to prevent observer from triggering again
+      hasLeftRef.current = true;
       handleLeaveRoom();
     } catch (error) {
       console.error('Error submitting solution:', error);
       alert('Failed to submit solution. Please try again.');
+
+      // Clear submission state on error
+      const submissionMap = submissionMapRef.current;
+      if (submissionMap) {
+        submissionMap.set('submissionComplete', false);
+        submissionMap.delete('submittedBy');
+        submissionMap.delete('submittedAt');
+      }
     } finally {
       setIsSubmitting(false);
     }
