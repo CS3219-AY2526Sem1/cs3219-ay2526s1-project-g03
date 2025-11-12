@@ -76,7 +76,7 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
       try {
         const state = JSON.parse(req.query.state);
 
-        if (state.link && state.linkId) {
+        if (state.link && state.linkId && state.userId) {
           const oAuthLink = await OAuthLink.findById(state.linkId);
 
           if (!oAuthLink) {
@@ -89,8 +89,13 @@ const handleOAuthLogin = async (req, data: IOAuthProfileData, cb) => {
             return cb(new Error('Linking session expired. Please try again.'), undefined);
           }
 
-          req.authenticatedUserId = oAuthLink.userId;
+          // Check if userId matches current session
+          if (state.userId !== oAuthLink.userId.toString()) {
+            await oAuthLink.deleteOne();
+            return cb(new Error('Linking session invalid. Please try again.'), undefined);
+          }
 
+          req.authenticatedUserId = oAuthLink.userId;
           await oAuthLink.deleteOne();
         }
       } catch (e) {

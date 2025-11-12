@@ -6,17 +6,29 @@ import QuestionPanel from '../components/QuestionPanel';
 import SessionHeader from '../components/SessionHeader';
 import SubmissionPanel from '../components/SubmissionPanel';
 import {useSession} from '../hooks/useSession';
+import {useCollabRoom} from '../hooks/useCollabRoom';
 
 export function CollabPage() {
   const {roomId} = useParams<{roomId: string}>();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('code');
-  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, questionId, isLoading, error} =
-    useSession(roomId);
 
   if (!roomId) {
     navigate('/room');
     return null;
+  }
+
+  const {sessionStartTime, isPenaltyOver, handlePenaltyOver, questionId, isLoading, error} =
+    useSession(roomId);
+
+  const {provider, isReady} = useCollabRoom(roomId);
+
+  if (!isReady || !provider) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="text-gray-600">Connecting to collaboration session...</div>
+      </div>
+    );
   }
 
   function handleLeaveRoom() {
@@ -87,7 +99,7 @@ export function CollabPage() {
           {/* Code Editor Area */}
           <div className="flex-1 overflow-hidden">
             {/* Placeholder for CodeMirror component */}
-            <CollabEditor roomId={roomId} />
+            <CollabEditor roomId={roomId} provider={provider} />
           </div>
 
           {/* Test Results */}
@@ -147,7 +159,11 @@ export function CollabPage() {
         </div>
 
         {/* Right Panel - Chat */}
-        <SubmissionPanel isPenaltyOver={isPenaltyOver} handleLeaveRoom={handleLeaveRoom} />
+        <SubmissionPanel
+          isPenaltyOver={isPenaltyOver}
+          handleLeaveRoom={handleLeaveRoom}
+          provider={provider}
+        />
       </div>
     </div>
   );

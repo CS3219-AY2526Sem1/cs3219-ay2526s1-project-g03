@@ -9,7 +9,7 @@ import {
   unlinkOAuthController,
 } from '../controllers/userHandler';
 import {upload} from '../middleware/upload';
-import { getOtherUserController } from '../controllers/userHandler.ts';
+import {getOtherUserController} from '../controllers/userHandler';
 
 const userRoutes = Router();
 

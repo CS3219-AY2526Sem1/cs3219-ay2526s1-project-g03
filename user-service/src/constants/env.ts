@@ -8,7 +8,7 @@ const findProjectRoot = (targetDirName = TARGET_DIR): string => {
   if (process.cwd().startsWith('/app')) {
     return '/app';
   }
-  
+
   let currentDir = process.cwd();
   while (true) {
     const base = path.basename(currentDir);

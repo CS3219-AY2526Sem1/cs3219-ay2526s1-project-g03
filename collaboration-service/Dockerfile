@@ -21,4 +21,4 @@ COPY . .
 EXPOSE 8082
 
 # Start the application
-CMD sh -c 'echo "SUPABASE_URL=$SUPABASE_URL" > .env && echo "SUPABASE_KEY=$SUPABASE_KEY" >> .env && echo "JWT_SECRET=$JWT_SECRET" >> .env && npm run dev'
+CMD sh -c 'echo "SUPABASE_URL=$SUPABASE_URL" > .env && echo "SUPABASE_KEY=$SUPABASE_KEY" >> .env && echo "JWT_SECRET=$JWT_SECRET" >> .env && echo "USER_SERVICE_URL=$USER_SERVICE_URL" >> .env && npm run dev'

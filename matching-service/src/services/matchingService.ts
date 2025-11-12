@@ -185,16 +185,16 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
   await redisClient.del(cancelKey);
 
   // Check for penalty
-  // const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
-  // const penaltyTtl = await redisClient.ttl(cooldownKey);
+  const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
+  const penaltyTtl = await redisClient.ttl(cooldownKey);
 
-  // if (penaltyTtl > 0) {
-  //   console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
-  //   return {
-  //     status: 'penalized',
-  //     cooldown: penaltyTtl
-  //   };
-  // }
+  if (penaltyTtl > 0) {
+    console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
+    return {
+      status: 'penalized',
+      cooldown: penaltyTtl
+    };
+  }
 
   // Encode the user's criteria into their "Searcher Mask"
   const searcherMask = encodeCriteria(criteria);
@@ -409,6 +409,7 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 
             if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
               console.log(`Match ${parsedMessage.matchId} confirmed!`);
+
               handleMatchConfirmed(match, parsedMessage.matchId);
             } else {
               // match NOT YET confirmed
@@ -628,11 +629,11 @@ const autoDeclineMatch = (sessionId: string) => {
 /**
  * Helper to send a JSON message to a specific user via WebSocket.
  */
-const sendWebSocketMessage = (userId: string, message: object) => {
+const sendWebSocketMessage = (userId: string, message: { type?: string } & Record<string, unknown>) => {
   const connection = activeConnections.get(userId);
   if (connection && connection.readyState === WebSocket.OPEN) {
     connection.send(JSON.stringify(message));
-    console.log(`Sent message to ${userId}: ${message.type}`);
+    console.log(`Sent message to ${userId}: ${message.type ?? 'unknown'}`);
   } else {
     console.warn(`Could not find or send message to user ${userId}, connection not open.`);
   }

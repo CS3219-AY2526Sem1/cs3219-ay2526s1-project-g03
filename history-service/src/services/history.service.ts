@@ -207,6 +207,7 @@ export class HistoryService {
        ORDER BY s.question_id, s.started_at DESC`, // The ORDER BY is crucial for DISTINCT ON
       [userId]
     );
+
     return res.rows as SessionSummary[];
   }
 }

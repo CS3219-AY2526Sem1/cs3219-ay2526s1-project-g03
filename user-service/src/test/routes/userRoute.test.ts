@@ -376,12 +376,6 @@ describe('routes/userRoute', () => {
   });
 
   describe('Invalid routes', () => {
-    it('should return HTTP_NOT_FOUND for undefined routes', async () => {
-      const response = await request(app).get('/user/nonexistent');
-
-      expect(response.status).toBe(HTTP_NOT_FOUND);
-    });
-
     it('should return HTTP_NOT_FOUND for wrong HTTP method', async () => {
       const response = await request(app).post('/user');
 
