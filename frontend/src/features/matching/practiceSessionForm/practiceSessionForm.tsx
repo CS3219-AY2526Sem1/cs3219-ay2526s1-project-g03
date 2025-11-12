@@ -9,7 +9,7 @@ import MatchFoundModal from '../matchFoundModal/matchFoundModal';
 import TimeoutModal from '../timeoutModal/timeoutModal';
 import CodeIcon from '../../../assets/code-icon.svg';
 import UserIcon from '../../../assets/user-icon-white.svg';
-import { findMatch, cancelMatch } from '../../../lib/api';
+import { findMatch, cancelMatch, getOtherUser } from '../../../lib/api';
 import useAuth from '../../../hooks/useAuth';
 import type { MatchCriteria, MatchRequestPayload, MatchPayload} from '../../../models/match.model';
 import './practiceSessionForm.css'
@@ -119,9 +119,9 @@ const PracticeSessionForm = () => {
         case 'match_found':
           setShowWaitingModal(false);
           setMatchData(message.payload);
-          setPartnerDetails({id: message.payload.partnerId, name: "Alex"}); //TODO: fetch partner details
+          getPartnerMutate(message.payload.partnerId);
           setShowMatchModal(true);
-          console.log(`Match found via WebSocket! Partner: ${message.payload.partnerId}, Session: ${message.payload.sessionId}`);
+          console.log(`Match found via WebSocket! Partner: ${message.payload.partnerId}`);
           break;
 
         case 'partner_accepted':
@@ -132,7 +132,14 @@ const PracticeSessionForm = () => {
 
         case 'match_confirmed':
           console.log("Match confirmed by server! Navigating...");
-          // navigate(`/room/${message.payload.sessionId}`);
+          navigate(`/room/${message.payload.sessionId}`);
+          break;
+
+        case 'room_creation_failed':
+          console.log("Server failed to create room.");
+          setShowMatchModal(false);
+          toast.error('Match failed: Could not create the collaboration room. Please try again.');
+          resetState();
           break;
 
         case 'partner_declined':
@@ -194,9 +201,9 @@ const PracticeSessionForm = () => {
       } else if (data.data.status === 'matched') {
         // Matched immediately!
         setMatchData(data.data);
-        setPartnerDetails({id: data.data.partnerId, name: "Alex"});
+        getPartnerMutate(data.data.partnerId);
         setShowMatchModal(true);
-        console.log(`Match found immediately! Partner: ${data.data.partnerId}, Session: ${data.data.sessionId}`);
+        console.log(`Match found immediately! Partner: ${data.data.partnerId}, Session: ${data.data.matchId}`);
         connectWebSocket(); // Connect now to handle accept/decline
       }
     },
@@ -226,6 +233,20 @@ const PracticeSessionForm = () => {
     onError: (data) => {
       console.log('Error:', data);
   }
+  })
+
+  const {
+    mutate: getPartnerMutate,
+    isPending: isGettingPartner,
+  } = useMutation ({
+    mutationFn: getOtherUser,
+    onSuccess: (data) => {
+      setPartnerDetails(data.data);
+      console.log('Successfully get partner details, ', data)
+    },
+    onError: (data) => {
+      console.log('Error getting partner details, ', data)
+    }
   })
 
   const handleFindPartner = (isRequeue: boolean = false) => {
@@ -279,12 +300,12 @@ const PracticeSessionForm = () => {
 
   const handleAccept = () => {
     console.log("Accepting match...");
-    ws.current?.send(JSON.stringify({ type: 'accept_match', sessionId: matchData?.sessionId }));
+    ws.current?.send(JSON.stringify({ type: 'accept_match', matchId: matchData?.matchId }));
   }
 
   const handleDecline = () => {
     console.log("Declining match...");
-    ws.current?.send(JSON.stringify({ type: 'decline_match', sessionId: matchData?.sessionId }));
+    ws.current?.send(JSON.stringify({ type: 'decline_match', matchId: matchData?.matchId }));
     resetState();
   }
 
@@ -393,6 +414,7 @@ const PracticeSessionForm = () => {
           partner={partnerDetails}
           onAccept={() => handleAccept()}
           onDecline={() => handleDecline()}
+          criteria={matchData.criteria}
           expiryTimestamp={matchData.expiryTimestamp}
           countdownDuration={matchData.totalDuration}
         />
