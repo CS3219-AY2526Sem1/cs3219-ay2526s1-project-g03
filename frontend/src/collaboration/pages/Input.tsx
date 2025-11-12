@@ -1,6 +1,5 @@
 import {useState} from 'react';
 import {useNavigate} from 'react-router-dom';
-import CollabEditor from '../components/CollabEditor';
 import PeerPrepIcon from '../../assets/peerprep-icon.svg';
 
 export default function Input() {
@@ -11,7 +10,6 @@ export default function Input() {
     if (roomId.trim()) {
       navigate(`/room/${roomId.trim()}`);
     }
-    return <CollabEditor roomId={roomId} />;
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
