@@ -9,7 +9,6 @@ import {useCollabRoom} from '../hooks/useCollabRoom';
 import {useQuestion} from '../hooks/useQuestion';
 import {useCodeExecution} from '../hooks/useCodeExecution';
 import CodeExecutionPanel from '../components/CodeExecutionPanel';
-import useAuth from '../../hooks/useAuth';
 
 export function CollabPage() {
   const {roomId} = useParams<{roomId: string}>();
@@ -27,14 +26,13 @@ export function CollabPage() {
     sessionError,
   } = useSession(roomId);
   const {question, testcases, questionIsLoading, questionError} = useQuestion(questionId);
-  const {executeCode, isExecuting, executionResult, executionError} = useCodeExecution();
+  const {provider, isReady} = useCollabRoom(roomId || '');
+  const {executeCode, isExecuting, executionResult, executionError} = useCodeExecution(provider);
 
   if (!roomId) {
     navigate('/room');
     return null;
   }
-
-  const {provider, isReady} = useCollabRoom(roomId);
 
   if (!isReady || !provider) {
     return (
@@ -103,7 +101,6 @@ export function CollabPage() {
             executionResult={executionResult}
             isExecuting={isExecuting}
             executionError={executionError}
-            provider={provider}
           />
         </div>
 

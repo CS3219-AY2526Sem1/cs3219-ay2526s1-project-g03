@@ -1,5 +1,7 @@
-import {useState} from 'react';
+import {useState, useEffect, useRef} from 'react';
 import axios from 'axios';
+import * as Y from 'yjs';
+import type YPartyKitProvider from 'y-partykit/provider';
 import type {TestCase, TestResult, ExecutionResult} from '../components/CodeExecutionPanel';
 
 const EXECUTION_SERVICE_URL = 'http://localhost:8086';
@@ -56,11 +58,60 @@ function mapLanguage(editorLanguage: string): string | null {
 
 /**
  * Hook for executing code with test cases
+ * Syncs execution state and results across all users via YPartyKit
  */
-export function useCodeExecution() {
+export function useCodeExecution(provider: YPartyKitProvider | null) {
   const [isExecuting, setIsExecuting] = useState(false);
   const [executionResult, setExecutionResult] = useState<ExecutionResult | null>(null);
   const [executionError, setExecutionError] = useState<string | null>(null);
+  const executionMapRef = useRef<Y.Map<any> | null>(null);
+
+  // Sync execution state with shared Y.Map
+  useEffect(() => {
+    if (!provider) {
+      executionMapRef.current = null;
+      return;
+    }
+
+    // Get or create the shared Y.Map for execution state
+    const executionMap = provider.doc.getMap('execution');
+    executionMapRef.current = executionMap;
+
+    // Observer function to sync changes from shared state to local state
+    const observer = () => {
+      const sharedIsExecuting = executionMap.get('isExecuting') ?? false;
+      const sharedResult = executionMap.get('executionResult');
+      const sharedError = executionMap.get('executionError');
+
+      setIsExecuting(sharedIsExecuting as boolean);
+      setExecutionResult(sharedResult as ExecutionResult | null);
+      setExecutionError(sharedError as string | null);
+    };
+
+    // Set up observer and load initial state
+    executionMap.observe(observer);
+    observer(); // Load initial state
+
+    // Cleanup
+    return () => {
+      executionMap.unobserve(observer);
+      executionMapRef.current = null;
+    };
+  }, [provider]);
+
+  // Helper function to update shared state
+  const updateSharedState = (
+    isExecutingValue: boolean,
+    result: ExecutionResult | null,
+    error: string | null
+  ) => {
+    const executionMap = executionMapRef.current;
+    if (!executionMap) return;
+
+    executionMap.set('isExecuting', isExecutingValue);
+    executionMap.set('executionResult', result);
+    executionMap.set('executionError', error);
+  };
 
   const executeCode = async (
     code: string,
@@ -71,32 +122,38 @@ export function useCodeExecution() {
     const mappedLanguage = mapLanguage(language);
     if (!mappedLanguage) {
       const error = `Language "${language}" is not supported yet. Currently supported: python, javascript`;
-      setExecutionError(error);
-      setExecutionResult({
+      const errorResult: ExecutionResult = {
         success: false,
         error,
-      });
+      };
+      updateSharedState(false, errorResult, error);
+      setExecutionError(error);
+      setExecutionResult(errorResult);
       return null;
     }
 
     // Validate inputs
     if (!code || code.trim().length === 0) {
       const error = 'Code cannot be empty';
-      setExecutionError(error);
-      setExecutionResult({
+      const errorResult: ExecutionResult = {
         success: false,
         error,
-      });
+      };
+      updateSharedState(false, errorResult, error);
+      setExecutionError(error);
+      setExecutionResult(errorResult);
       return null;
     }
 
     if (!testcases || testcases.length === 0) {
       const error = 'No test cases provided';
-      setExecutionError(error);
-      setExecutionResult({
+      const errorResult: ExecutionResult = {
         success: false,
         error,
-      });
+      };
+      updateSharedState(false, errorResult, error);
+      setExecutionError(error);
+      setExecutionResult(errorResult);
       return null;
     }
 
@@ -111,6 +168,8 @@ export function useCodeExecution() {
     };
 
     try {
+      // Update shared state - this will sync to all users
+      updateSharedState(true, null, null);
       setIsExecuting(true);
       setExecutionError(null);
       setExecutionResult(null);
@@ -130,6 +189,8 @@ export function useCodeExecution() {
         error: response.data.error,
       };
 
+      // Update shared state with result - this will sync to all users
+      updateSharedState(false, result, null);
       setExecutionResult(result);
       return result;
     } catch (error) {
@@ -151,15 +212,24 @@ export function useCodeExecution() {
         error: errorMessage,
       };
 
+      // Update shared state with error - this will sync to all users
+      updateSharedState(false, result, errorMessage);
       setExecutionError(errorMessage);
       setExecutionResult(result);
       return result;
     } finally {
+      // Ensure isExecuting is set to false in shared state
+      // Note: The actual result/error is already set in try/catch blocks above
+      const executionMap = executionMapRef.current;
+      if (executionMap) {
+        executionMap.set('isExecuting', false);
+      }
       setIsExecuting(false);
     }
   };
 
   const clearResults = () => {
+    updateSharedState(false, null, null);
     setExecutionResult(null);
     setExecutionError(null);
   };

@@ -234,7 +234,7 @@ export default function CodeExecutionPanel({
                     onClick={() => setSelectedCase(index)}
                     className={`px-3 py-1 rounded text-sm font-medium ${
                       selectedCase === index
-                        ? 'bg-green-100 text-green-700'
+                        ? 'bg-gray-200 text-gray-700'
                         : 'text-gray-700 hover:bg-gray-100'
                     }`}
                   >
