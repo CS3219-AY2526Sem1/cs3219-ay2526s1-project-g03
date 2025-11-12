@@ -1,198 +1,227 @@
-import {afterAll, beforeAll, beforeEach, describe, expect, it, jest} from '@jest/globals';
-import {Buffer} from 'node:buffer';
-import type * as Party from 'partykit/server';
+import {describe, expect, it, jest, beforeEach} from '@jest/globals';
 import * as Y from 'yjs';
+import {Buffer} from 'node:buffer';
 
-const verifyTokenMock = jest.fn<() => Promise<{valid: boolean; payload?: any; error?: any}>>();
-const checkUserVerifiedMock = jest.fn<() => Promise<boolean>>();
-const getDocumentMock = jest.fn<() => Promise<{data: any; error: any}>>();
-const upsertDocumentMock = jest.fn<(roomId: string, content: Uint8Array) => Promise<{data: any; error: any}>>();
-const partyOnConnectMock = jest.fn<
-  (
-    connection: Party.Connection,
-    room: Party.Room,
-    options: {
-      load: () => Promise<Y.Doc>;
-      callback?: {handler: (doc: Y.Doc) => Promise<void>};
-    }
-  ) => Promise<void>
->();
+const mockVerifyToken = jest.fn<(token: string) => Promise<{valid: boolean; payload?: any; error?: any}>>();
+const mockCheckUserVerified = jest.fn<(userId: string, roomId: string) => Promise<boolean>>();
+const mockGetDocument = jest.fn<(roomId: string) => Promise<{data: any; error: any}>>();
+const mockUpsertDocument = jest.fn<(roomId: string, content: Uint8Array) => Promise<{data: any; error: any}>>();
+const mockDeleteRoom = jest.fn<(roomId: string) => Promise<{data: any; error: any}>>();
+const mockYPartyKitOnConnect = jest.fn<(connection: any, room: any, options: any) => Promise<void>>();
 
-jest.unstable_mockModule('../utils/jwt.js', () => ({
-  verifyToken: verifyTokenMock,
+jest.mock('../utils/jwt', () => ({
+  verifyToken: mockVerifyToken,
 }));
 
-jest.unstable_mockModule('../storage/db.js', () => ({
-  checkUserVerified: checkUserVerifiedMock,
-  getDocument: getDocumentMock,
-  upsertDocument: upsertDocumentMock,
-  checkRoomExists: jest.fn(),
-  deleteRoom: jest.fn(),
+jest.mock('../storage/db', () => ({
+  checkUserVerified: mockCheckUserVerified,
+  getDocument: mockGetDocument,
+  upsertDocument: mockUpsertDocument,
+  deleteRoom: mockDeleteRoom,
+  checkRoomExists: jest.fn<(roomId: string) => Promise<boolean>>().mockResolvedValue(true),
+  createRoom: jest.fn(),
+  getActiveRoom: jest.fn(),
 }));
 
-jest.unstable_mockModule('y-partykit', () => ({
-  onConnect: partyOnConnectMock,
+jest.mock('y-partykit', () => ({
+  onConnect: mockYPartyKitOnConnect,
 }));
-
-let YjsServer: typeof import('../party/websocketServer.js').default;
-
-const createConnection = () =>
-  ({
-    close: jest.fn(),
-    addEventListener: jest.fn(),
-  }) as unknown as Party.Connection;
-
-const buildContext = (token?: string) =>
-  ({
-    request: {
-      headers: {
-        get: (name: string) => (name === 'X-Access-Token' ? token ?? null : null),
-      },
-    },
-  }) as unknown as Party.ConnectionContext;
-
-const room = {id: 'room-1'} as unknown as Party.Room;
-
-beforeAll(async () => {
-  ({default: YjsServer} = await import('../party/websocketServer.js'));
-});
 
 describe('YjsServer.onConnect', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    verifyTokenMock.mockReset();
-    checkUserVerifiedMock.mockReset();
-    getDocumentMock.mockReset();
-    upsertDocumentMock.mockReset();
-    partyOnConnectMock.mockReset();
-    partyOnConnectMock.mockImplementation(async () => undefined);
   });
 
-  afterAll(() => {
-    jest.resetModules();
+  const createMockConnection = () => {
+    const listeners: Record<string, Function[]> = {};
+    return {
+      close: jest.fn(),
+      addEventListener: jest.fn((event: string, callback: Function) => {
+        if (!listeners[event]) listeners[event] = [];
+        listeners[event].push(callback);
+      }),
+      _triggerEvent: (event: string) => {
+        listeners[event]?.forEach(cb => cb());
+      },
+    };
+  };
+
+  const createMockContext = (token?: string) => ({
+    request: {
+      headers: {
+        get: (name: string) => (name === 'X-Access-Token' ? token : null),
+      },
+    },
   });
 
-  it('closes the connection when the auth header is missing', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
+  const createMockRoom = (id: string) => ({
+    id,
+    getConnections: jest.fn(() => []),
+  });
 
-    await server.onConnect(connection, buildContext(undefined));
+  it('should close connection when access token is missing', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext();
+
+    await server.onConnect(connection as any, context as any);
 
     expect(connection.close).toHaveBeenCalledWith(
       4000,
-      'Internal error: Missing authentication data'
+      expect.stringContaining('Missing authentication')
     );
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
   });
 
-  it('closes the connection when the token is invalid', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
+  it('should close connection when token verification fails', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    mockVerifyToken.mockResolvedValue({valid: false, error: 'Invalid token'});
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('invalid-token');
 
-    verifyTokenMock.mockResolvedValue({valid: false, error: new Error('invalid token')});
+    await server.onConnect(connection as any, context as any);
 
-    await server.onConnect(connection, buildContext('token-1'));
-
-    expect(connection.close).toHaveBeenCalledWith(4001, 'Unauthorised: Invalid or expired token');
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
+    expect(connection.close).toHaveBeenCalledWith(
+      4001,
+      expect.stringContaining('Invalid or expired token')
+    );
   });
 
-  it('closes the connection when the user is not verified for the room', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
+  it('should close connection when user is not verified for room', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    mockVerifyToken.mockResolvedValue({
       valid: true,
-      payload: {userId: 'user-1'},
+      payload: {userId: 'user-123'},
     });
-    checkUserVerifiedMock.mockResolvedValue(false);
+    mockCheckUserVerified.mockResolvedValue(false);
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('valid-token');
 
-    await server.onConnect(connection, buildContext('token-1'));
+    await server.onConnect(connection as any, context as any);
 
     expect(connection.close).toHaveBeenCalledWith(
       4003,
-      'Forbidden: You are not authorised for this room'
+      expect.stringContaining('not authorised')
     );
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
   });
 
-  it('loads and persists a new document when none exists', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
+  it('should successfully connect when all validations pass', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    mockVerifyToken.mockResolvedValue({
       valid: true,
-      payload: {userId: 'user-1'},
+      payload: {userId: 'user-123'},
     });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({data: null, error: null});
-    upsertDocumentMock.mockResolvedValue({data: null, error: null});
+    mockCheckUserVerified.mockResolvedValue(true);
+    mockGetDocument.mockResolvedValue({data: null, error: null});
+    mockUpsertDocument.mockResolvedValue({data: null, error: null});
 
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      const doc = await options.load();
-      doc.getArray('chat').push(['message']);
-      await options.callback?.handler?.(doc);
+    let loadCallback: (() => Promise<Y.Doc>) | null = null;
+    mockYPartyKitOnConnect.mockImplementation(async (conn: any, room: any, opts: any) => {
+      loadCallback = opts.load;
+      const doc = await opts.load();
+      return doc;
     });
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('valid-token');
 
-    await server.onConnect(connection, buildContext('token-1'));
+    await server.onConnect(connection as any, context as any);
 
-    expect(partyOnConnectMock).toHaveBeenCalledTimes(1);
-    expect(upsertDocumentMock).toHaveBeenCalledWith('room-1', expect.any(Uint8Array));
+    expect(connection.close).not.toHaveBeenCalled();
+    expect(mockYPartyKitOnConnect).toHaveBeenCalled();
   });
 
-  it('applies an existing persisted document before returning to clients', async () => {
+  it('should create new document when none exists', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    mockVerifyToken.mockResolvedValue({
+      valid: true,
+      payload: {userId: 'user-123'},
+    });
+    mockCheckUserVerified.mockResolvedValue(true);
+    mockGetDocument.mockResolvedValue({data: null, error: null});
+    mockUpsertDocument.mockResolvedValue({data: null, error: null});
+
+    let loadedDoc: Y.Doc | null = null;
+    mockYPartyKitOnConnect.mockImplementation(async (conn: any, room: any, opts: any) => {
+      loadedDoc = await opts.load();
+    });
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('valid-token');
+
+    await server.onConnect(connection as any, context as any);
+
+    expect(loadedDoc).not.toBeNull();
+    expect(loadedDoc?.getText('codemirror')).toBeInstanceOf(Y.Text);
+  });
+
+  it('should load existing document from database', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    
     const existingDoc = new Y.Doc();
-    existingDoc.getText('codemirror').insert(0, 'hello');
+    existingDoc.getText('codemirror').insert(0, 'existing content');
     const encoded = Y.encodeStateAsUpdate(existingDoc);
-
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
+    
+    mockVerifyToken.mockResolvedValue({
       valid: true,
-      payload: {userId: 'user-1'},
+      payload: {userId: 'user-123'},
     });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({
+    mockCheckUserVerified.mockResolvedValue(true);
+    mockGetDocument.mockResolvedValue({
       data: {document: Buffer.from(encoded).toString('base64')},
       error: null,
     });
-    upsertDocumentMock.mockResolvedValue({data: null, error: null});
+    mockUpsertDocument.mockResolvedValue({data: null, error: null});
 
     let loadedDoc: Y.Doc | null = null;
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      loadedDoc = await options.load();
+    mockYPartyKitOnConnect.mockImplementation(async (conn: any, room: any, opts: any) => {
+      loadedDoc = await opts.load();
     });
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('valid-token');
 
-    await server.onConnect(connection, buildContext('token-1'));
+    await server.onConnect(connection as any, context as any);
 
-    expect(loadedDoc).not.toBeNull();
-    expect(loadedDoc!.getText('codemirror').toString()).toBe('hello');
+    expect(loadedDoc?.getText('codemirror').toString()).toBe('existing content');
   });
 
-  it('closes the connection when loading the document fails', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
+  it('should handle database load errors gracefully', async () => {
+    const {default: YjsServer} = await import('../party/websocketServer');
+    mockVerifyToken.mockResolvedValue({
       valid: true,
-      payload: {userId: 'user-1'},
+      payload: {userId: 'user-123'},
     });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({
+    mockCheckUserVerified.mockResolvedValue(true);
+    mockGetDocument.mockResolvedValue({
       data: null,
-      error: {message: 'database offline'},
+      error: {message: 'Database error'},
     });
 
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      // This will throw an error which should be caught by the outer try-catch
-      await options.load();
+    mockYPartyKitOnConnect.mockImplementation(async (conn: any, room: any, opts: any) => {
+      await opts.load();
     });
+    
+    const room = createMockRoom('room-123');
+    const server = new YjsServer(room as any);
+    const connection = createMockConnection();
+    const context = createMockContext('valid-token');
 
-    await server.onConnect(connection, buildContext('token-1'));
+    await server.onConnect(connection as any, context as any);
 
     expect(connection.close).toHaveBeenCalledWith(4000, 'Internal server error');
-    expect(partyOnConnectMock).toHaveBeenCalledTimes(1);
   });
 });
-

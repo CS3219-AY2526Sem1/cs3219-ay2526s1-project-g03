@@ -1,6 +1,6 @@
 import * as jose from 'jose';
 
-import {JWT_SECRET} from '../config/config.js';
+import {JWT_SECRET} from '../config/config';
 
 type AccessTokenPayload = {
   userId: string;

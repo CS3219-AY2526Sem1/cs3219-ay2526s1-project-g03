@@ -1,6 +1,6 @@
 import * as Party from 'partykit/server';
-import {createRoom, getActiveRoom, deleteRoom} from '../storage/db.js';
-import type {RoomSchema} from '../schema/roomSchema.js';
+import {createRoom, getActiveRoom, deleteRoom} from '../storage/db';
+import type {RoomSchema} from '../schema/roomSchema';
 
 // POST - Create room
 const createRoomHandler = async (req: Party.Request, room: Party.Room) => {
