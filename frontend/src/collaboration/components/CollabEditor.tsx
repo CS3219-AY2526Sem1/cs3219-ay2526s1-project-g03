@@ -26,7 +26,6 @@ export default function CollabEditor({
   provider: YPartyKitProvider;
 }) {
   // const {ytext, awareness, isReady, languageConfig, setSharedLanguage} = useCollabEditor({roomId});
-  const [activeTab, setActiveTab] = useState('code');
   const {ytext, awareness, isReady, languageConfig, setSharedLanguage} = useCollabEditor({
     roomId,
     provider,
@@ -53,23 +52,9 @@ export default function CollabEditor({
       {/* Header with tabs and language selector */}
       <div className="flex items-center px-4 justify-between w-full border-b border-gray-200 py-2 flex-shrink-0">
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => setActiveTab('code')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded ${
-              activeTab === 'code' ? 'bg-gray-100' : 'hover:bg-gray-50'
-            }`}
-          >
+          <button className={`flex items-center space-x-2 px-3 py-2 rounded 'bg-gray-100'}`}>
             <Code size={16} />
             <span className="text-sm font-medium">Code</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('whiteboard')}
-            className={`flex items-center space-x-2 px-3 py-2 rounded ${
-              activeTab === 'whiteboard' ? 'bg-gray-100' : 'hover:bg-gray-50'
-            }`}
-          >
-            <Image size={16} />
-            <span className="text-sm font-medium">Whiteboard</span>
           </button>
         </div>
 

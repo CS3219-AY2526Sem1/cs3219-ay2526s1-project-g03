@@ -1,6 +1,6 @@
 import * as Y from 'yjs';
 
-import {ensureSharedStructures, pruneChatHistory} from '../party/codeServer.js';
+import {ensureSharedStructures, pruneChatHistory} from '../party/websocketServer.js';
 
 describe('Yjs helper utilities', () => {
   it('initialises the required collaborative structures', () => {
@@ -11,7 +11,8 @@ describe('Yjs helper utilities', () => {
     expect(doc.getText('codemirror')).toBeInstanceOf(Y.Text);
     expect(doc.getMap<string>('config')).toBeInstanceOf(Y.Map);
     expect(doc.getArray('chat')).toBeInstanceOf(Y.Array);
-    expect(doc.getMap('executionState')).toBeInstanceOf(Y.Map);
+    expect(doc.getMap('execution')).toBeInstanceOf(Y.Map);
+    expect(doc.getMap('submission')).toBeInstanceOf(Y.Map);
   });
 
   it('prunes chat history that exceeds the chat limit', () => {
