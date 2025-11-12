@@ -92,6 +92,52 @@
     color: #666;
 }
 
+.criteriaValueGroup {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin: 8px 0;
+}
+
+.criteriaValue {
+    display: flex;
+    justify-content: center;
+    align-content: center;
+    font-weight: 500;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.easy {
+    color: white;
+    background-color: #58BB88;
+}
+.medium {
+    color: white;
+    background-color: #F79F74;
+}
+
+.hard {
+    color: white;
+    background-color: #F23B3B;
+}
+
+.topic {
+    background: transparent;
+    border: 1px solid gray;
+    padding: 5px 13px;
+}
+
+.language {
+    color: white;
+    background: #4181F5;
+}
+
 .timerContainer {
     display: flex;
     align-items: center;

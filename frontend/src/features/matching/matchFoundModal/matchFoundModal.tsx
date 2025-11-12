@@ -88,7 +88,7 @@ const MatchFoundModal = ({
   return (
     <div className={styles.modalOverlay}>
       <div className={styles.modalContent}>
-        <button className={styles.closeButton} onClick={() => onDecline()} disabled={isWaitingForPartner}>&times;</button>
+        {/*<button className={styles.closeButton} onClick={() => onDecline()} disabled={isWaitingForPartner}>&times;</button>*/}
 
         <div className={styles.header}>
           <img src={PartnerIcon} alt="Match Found" className={styles.headerIcon} />
@@ -111,14 +111,32 @@ const MatchFoundModal = ({
           </div>
         </div>
 
-        { isWaitingForPartner
+        <div className={styles.criteriaValueGroup}>
+          <span key={criteria.difficulty}
+                className={`${styles.criteriaValue} ${styles.difficulty} ${styles[criteria.difficulty.toLowerCase()]}`}>
+             {criteria.difficulty}
+          </span>
+          {criteria.topics.map(topic => (
+            <span key={topic} className={`${styles.criteriaValue} ${styles.topic}`}>
+              {topic}
+            </span>
+          ))}
+          {criteria.languages.map(language => (
+            <span key={language} className={`${styles.criteriaValue} ${styles.language}`}>
+             {language}
+            </span>
+          ))}
+        </div>
+
+
+        {isWaitingForPartner
           ? (
             <div className={styles.waitingContainer}>
               <div className={styles.spinner}></div>
               <h2>Waiting for partner...</h2>
               <p className={styles.subtitle}>Your partner has been notified.</p>
             </div>
-          ): (
+          ) : (
             <>
               <div className={styles.timerContainer}>
                 <div className={styles.progressBarBackground}>
