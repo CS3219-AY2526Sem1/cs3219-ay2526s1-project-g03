@@ -17,7 +17,6 @@
 1. Clone the repository
 1. Configure environment variables in the following folders
   - Root directory
-  - question-service
   - matching-service
   - frontend
   - collaboration-service
