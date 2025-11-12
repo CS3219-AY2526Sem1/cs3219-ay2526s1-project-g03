@@ -15,7 +15,7 @@ import {
 
 const CHAT_HISTORY_LIMIT = 500;
 
-function ensureSharedStructures(doc: Y.Doc) {
+export function ensureSharedStructures(doc: Y.Doc) {
   doc.getText('codemirror');
   doc.getMap<string>('config');
   doc.getArray('chat');
@@ -23,7 +23,7 @@ function ensureSharedStructures(doc: Y.Doc) {
   doc.getMap('submission');
 }
 
-function pruneChatHistory(doc: Y.Doc) {
+export function pruneChatHistory(doc: Y.Doc) {
   const chatArray = doc.getArray('chat');
   if (chatArray.length <= CHAT_HISTORY_LIMIT) {
     return;
