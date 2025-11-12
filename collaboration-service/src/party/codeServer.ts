@@ -7,12 +7,32 @@ import * as Y from 'yjs';
 import {parseCookies} from '../utils/cookies.js';
 import {verifyToken} from '../utils/jwt.js';
 import {getDocument, upsertDocument, checkRoomExists, checkUserVerified} from '../storage/db.js';
+
+const CHAT_HISTORY_LIMIT = 500;
+const CHAT_COLLECTION_KEY = 'chatMessages';
+const EXECUTION_STATE_KEY = 'executionState';
+
+function ensureSharedStructures(doc: Y.Doc) {
+  doc.getText('codemirror');
+  doc.getMap<string>('config');
+  doc.getArray(CHAT_COLLECTION_KEY);
+  doc.getMap(EXECUTION_STATE_KEY);
+}
+
+function pruneChatHistory(doc: Y.Doc) {
+  const chatArray = doc.getArray(CHAT_COLLECTION_KEY);
+  if (chatArray.length <= CHAT_HISTORY_LIMIT) {
+    return;
+  }
+  const excess = chatArray.length - CHAT_HISTORY_LIMIT;
+  chatArray.delete(0, excess);
+}
 // import {roomRouter} from '../api/roomRoutes.js';
 
 export default class YjsServer implements Party.Server {
   constructor(public room: Party.Room) {}
 
-  static async onBeforeConnect(request: Party.Request, lobby: Party.Lobby) {
+  static async onBeforeConnect(request: Party.Request, _lobby: Party.Lobby) {
     try {
       const cookieHeader = request.headers.get('cookie');
       if (!cookieHeader) {
@@ -46,15 +66,28 @@ export default class YjsServer implements Party.Server {
         return new Response('Room not found', {status: 404});
       }
 
-      const isUserVerified = await checkUserVerified(payload.userId.toString(), roomId);
+      // const isUserVerified = await checkUserVerified(payload.userId.toString(), roomId);
 
-      if (!isUserVerified) {
-        console.error(`User not authorised to enter this room`);
-        return new Response('Unauthorised : User not authorised to enter this room', {status: 401});
-      }
+      // if (!isUserVerified) {
+      //   console.error(`User not authorised to enter this room`);
+      //   return new Response('Unauthorised : User not authorised to enter this room', {status: 401});
+      // }
 
       request.headers.set('X-User-ID', payload.userId.toString());
-      request.headers.set('X-Session-ID', payload.sessionId.toString());
+
+      if (payload.sessionId) {
+        try {
+          request.headers.set('X-Session-ID', payload.sessionId.toString());
+        } catch (sessionIdError) {
+          console.warn(
+            'Session ID missing or malformed on token payload',
+            sessionIdError,
+            payload.sessionId
+          );
+        }
+      } else {
+        console.info('Session ID not present on token payload; continuing without it');
+      }
 
       return request;
     } catch (e) {
@@ -85,14 +118,19 @@ export default class YjsServer implements Party.Server {
             try {
               const buffer = Buffer.from(data.document, 'base64');
               Y.applyUpdate(doc, new Uint8Array(buffer));
+              ensureSharedStructures(doc);
+              pruneChatHistory(doc);
             } catch (parseErr) {
               console.warn(`[${room.id}] Data corrupted, creating new document`);
             }
           } else {
             console.log(`[${room.id}] No existing document found, creating new document`);
+            ensureSharedStructures(doc);
           }
 
           // Return the Yjs document to y-partykit to manage
+          ensureSharedStructures(doc);
+          pruneChatHistory(doc);
           return doc;
         } catch (err) {
           console.error(`[${room.id}] Load failed:`, err);
@@ -105,6 +143,7 @@ export default class YjsServer implements Party.Server {
 
           // convert the Yjs document to a Uint8Array
           try {
+            pruneChatHistory(doc);
             const content = Y.encodeStateAsUpdate(doc);
 
             // Save the document to the database
