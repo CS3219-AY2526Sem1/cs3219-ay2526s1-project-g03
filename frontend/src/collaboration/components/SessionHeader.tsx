@@ -45,26 +45,37 @@ export default function SessionHeader({
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between">
-      <div className="flex items-center space-x-2">
-        <div className="text-blue-500 font-bold text-xl">
-          <img src={PeerPrepIcon} alt="PeerPrep" className="header-logo" />
-        </div>
-      </div>
+      <img src={PeerPrepIcon} alt="PeerPrep" className="w-48" />
+
       <div className="text-right">
-        <div className="text-sm font-semibold text-gray-700">
-          Session{` `}
-          {/* {`${Math.floor((time / DAY) % 24)}`.padStart(2, '0')}:
-          {`${Math.floor((time / HOUR) % 60)}`.padStart(2, '0')}: */}
-          {`${Math.floor((time / MINUTE) % 60)}`.padStart(2, '0')}:
-          {`${Math.floor((time / SECOND) % 60)}`.padStart(2, '0')}
-        </div>
-        {penaltyTime > 0 && (
-          <div className="text-sm text-red-400">
-            Penaly Timer{` `}
-            {`${Math.floor((penaltyTime / MINUTE) % 60)}`.padStart(2, '0')}:
-            {`${Math.floor((penaltyTime / SECOND) % 60)}`.padStart(2, '0')}
+        <div className="flex items-center space-x-10">
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+              <span className="text-sm font-medium">You</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+              <span className="text-sm font-medium">Alex</span>
+            </div>
           </div>
-        )}
+          <div>
+            <div className="text-sm font-semibold text-gray-700">
+              Session{` `}
+              {/* {`${Math.floor((time / DAY) % 24)}`.padStart(2, '0')}:
+          {`${Math.floor((time / HOUR) % 60)}`.padStart(2, '0')}: */}
+              {`${Math.floor((time / MINUTE) % 60)}`.padStart(2, '0')}:
+              {`${Math.floor((time / SECOND) % 60)}`.padStart(2, '0')}
+            </div>
+            {penaltyTime > 0 && (
+              <div className="text-sm text-red-400">
+                Penaly Timer{` `}
+                {`${Math.floor((penaltyTime / MINUTE) % 60)}`.padStart(2, '0')}:
+                {`${Math.floor((penaltyTime / SECOND) % 60)}`.padStart(2, '0')}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );

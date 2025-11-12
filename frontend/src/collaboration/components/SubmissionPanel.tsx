@@ -1,5 +1,5 @@
-import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
 import {useEffect, useState} from 'react';
+import {Send, Eye, LogOut, Mic, Video, ChevronLeft, ChevronRight} from 'lucide-react';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import {ChatPanel} from './ChatPanel';
 import YPartyKitProvider from 'y-partykit/provider';
@@ -8,10 +8,14 @@ import type {AwarenessUser} from '../hooks/useCollabRoom';
 export default function SubmissionPanel({
   isPenaltyOver,
   handleLeaveRoom,
+  isCollapsed,
+  onToggle,
   provider,
 }: {
   isPenaltyOver: boolean;
   handleLeaveRoom: () => void;
+  isCollapsed: boolean;
+  onToggle: () => void;
   provider: YPartyKitProvider | null;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -60,8 +64,31 @@ export default function SubmissionPanel({
   // Find the first user in the list who is not the local user
   const otherUser = users.find(u => u.name !== localUser?.name);
 
+  if (isCollapsed) {
+    return (
+      <div className="w-10 px-1 py-2 bg-white border-l border-gray-200">
+        <button
+          onClick={onToggle}
+          className="w-full h-full flex rounded items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"
+          aria-label="Expand submission panel"
+        >
+          <ChevronLeft size={20} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+      <div className="flex justify-end p-2 border-b border-gray-200 flex-shrink-0">
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors"
+          aria-label="Collapse submission panel"
+        >
+          <ChevronRight size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+      </div>
       {/* User Avatars */}
       <div className="p-4 border-b border-gray-200 flex space-x-3">
         {localUser && (

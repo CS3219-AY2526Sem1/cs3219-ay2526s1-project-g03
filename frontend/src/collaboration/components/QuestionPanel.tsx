@@ -1,4 +1,5 @@
-import {useQuestion} from '../hooks/useQuestion';
+import {ChevronLeft, ChevronRight} from 'lucide-react';
+import {type QuestionData} from '../hooks/useQuestion';
 
 const getDifficultyColor = (difficulty: string) => {
   switch (difficulty.toLowerCase()) {
@@ -28,27 +29,84 @@ const parseTextWithCode = (text: string) => {
   });
 };
 
-export default function QuestionPanel({questionId}: {questionId: string}) {
-  const {question, isLoading, error} = useQuestion(questionId);
+export default function QuestionPanel({
+  question,
+  isLoading,
+  error,
+  isCollapsed,
+  onToggle,
+}: {
+  question: QuestionData | null;
+  isLoading: boolean;
+  error: string | null;
+  isCollapsed: boolean;
+  onToggle: () => void;
+}) {
+  if (isCollapsed) {
+    return (
+      <div className="w-10 px-1 py-2 bg-white border-r border-gray-200">
+        <button
+          onClick={onToggle}
+          className="w-full h-full rounded flex items-center justify-center hover:bg-blue-500 hover:text-white transition-colors"
+          aria-label="Expand question panel"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
-      <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6 flex items-center justify-center">
-        <div className="text-gray-500">Loading question...</div>
+      <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6 flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Loading...</h1>
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors flex-shrink-0"
+          aria-label="Collapse question panel"
+        >
+          <ChevronLeft size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-gray-500">Loading question...</div>
+        </div>
       </div>
     );
   }
 
   if (error || !question) {
     return (
-      <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6">
+      <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6 flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h1 className="text-2xl font-bold">Error</h1>
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors flex-shrink-0"
+          aria-label="Collapse question panel"
+        >
+          <ChevronLeft size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+        </div>
         <div className="text-red-500">{error || 'Question not found'}</div>
       </div>
     );
   }
 
   return (
-    <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6">
-      <h1 className="text-2xl font-bold mb-4">{question.title}</h1>
+    <div className="w-96 bg-white border-r border-gray-200 overflow-y-auto p-6 flex flex-col">
+      <div className="flex-1">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold flex-1">{question.title}</h1>
+        <button
+          onClick={onToggle}
+          className="group p-2 hover:bg-blue-500 hover:text-white rounded transition-colors flex-shrink-0 ml-2"
+          aria-label="Collapse question panel"
+        >
+          <ChevronLeft size={20} className="text-gray-600 group-hover:text-white" />
+        </button>
+      </div>
 
       {/* Tags */}
       <div className="flex gap-2 mb-6">
@@ -103,6 +161,7 @@ export default function QuestionPanel({questionId}: {questionId: string}) {
           </ul>
         </div>
       )}
+      </div>
     </div>
   );
 }
