@@ -45,3 +45,16 @@ export async function checkUserVerified(userId: string, roomId: string): Promise
 
   return !error && data !== null;
 }
+
+export async function deleteRoom(roomId: string) {
+  const result = await supabase.from('active_rooms').delete().eq('id', roomId);
+
+  // Log deletion result for debugging
+  if (result.error) {
+    console.error(`[deleteRoom] Error deleting room ${roomId}:`, result.error);
+  } else {
+    console.log(`[deleteRoom] Room ${roomId} deleted. Rows affected:`, result);
+  }
+
+  return result;
+}

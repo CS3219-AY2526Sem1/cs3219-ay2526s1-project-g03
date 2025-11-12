@@ -1,7 +1,8 @@
 import * as Party from 'partykit/server';
-import {createRoom, getActiveRoom} from '../storage/db.js';
+import {createRoom, getActiveRoom, deleteRoom} from '../storage/db.js';
 import type {RoomSchema} from '../schema/roomSchema.js';
 
+// POST - Create room
 const createRoomHandler = async (req: Party.Request, room: Party.Room) => {
   try {
     const body = (await req.json()) as RoomSchema;
@@ -62,6 +63,37 @@ const getRoomHandler = async (req: Party.Request, room: Party.Room) => {
   }
 };
 
+// DELETE - Delete room
+const deleteRoomHandler = async (req: Party.Request, room: Party.Room) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'DELETE',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json',
+  };
+  try {
+    const {data, error} = await deleteRoom(room.id);
+    if (error) {
+      console.error(`[${room.id}] DELETE API - Error deleting room:`, error);
+      return new Response(JSON.stringify({error: error.message}), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+
+    console.log(`[${room.id}] DELETE API - Room deleted successfully. Data:`, data);
+    return new Response(JSON.stringify({success: true, message: 'Room deleted', data}), {
+      status: 200,
+      headers: corsHeaders,
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({error: 'Failed to delete room'}), {
+      status: 500,
+      headers: corsHeaders,
+    });
+  }
+};
+
 export default class APIServer implements Party.Server {
   constructor(public room: Party.Room) {}
 
@@ -82,6 +114,18 @@ export default class APIServer implements Party.Server {
       });
     }
 
+    if (req.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Max-Age': '86400', // 24 hours
+        },
+      });
+    }
+
     if (req.method === 'GET') {
       console.log(this.room.id);
       return await getRoomHandler(req, this.room);
@@ -89,6 +133,10 @@ export default class APIServer implements Party.Server {
 
     if (req.method === 'POST') {
       return await createRoomHandler(req, this.room);
+    }
+
+    if (req.method === 'DELETE') {
+      return await deleteRoomHandler(req, this.room);
     }
 
     return new Response('Request method not allowed', {status: 405});
