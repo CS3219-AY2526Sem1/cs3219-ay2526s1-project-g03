@@ -62,9 +62,9 @@
 
 ## Date/Time: 2025-11-12
 
-### Tool: Claude 4.5 Sonnet (Anthropic)
+### Tool: Cursor
 
-#### Prompt/Command: Requested for Claude to look through the code for the collaboration service and generate test cases.
+#### Prompt/Command: Requested for Cursor to look through the code for the collaboration service and generate test cases.
 
 ##### Output Summary: Corresponding \_.test.ts
 
