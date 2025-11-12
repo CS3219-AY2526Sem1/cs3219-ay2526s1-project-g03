@@ -92,13 +92,18 @@
     color: #666;
 }
 
+.criteriaContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
 .criteriaValueGroup {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
     flex-wrap: wrap;
     width: 100%;
-    margin: 8px 0;
 }
 
 .criteriaValue {
@@ -131,6 +136,12 @@
     background: transparent;
     border: 1px solid gray;
     padding: 5px 13px;
+}
+
+.moreIndicator {
+    background-color: #e9ecef;
+    color: #495057;
+    font-style: italic;
 }
 
 .language {

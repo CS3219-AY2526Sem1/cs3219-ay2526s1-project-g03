@@ -110,22 +110,33 @@ const MatchFoundModal = ({
             <span className={styles.partnerOccupation}>{formatHeadline(partner.areaOfStudy + ' ' + partner.occupation) || 'PeerPrep User'}</span>
           </div>
         </div>
+        <div className={styles.criteriaContainer}>
+          <div className={styles.criteriaValueGroup}>
+            <span key={criteria.difficulty}
+                  className={`${styles.criteriaValue} ${styles.difficulty} ${styles[criteria.difficulty.toLowerCase()]}`}>
+               {criteria.difficulty}
+            </span>
+          </div>
+          <div className={styles.criteriaValueGroup}>
+            {criteria.topics.slice(0, 3).map(topic => (
+              <span key={topic} className={`${styles.criteriaValue} ${styles.topic}`}>
+                  {topic}
+                </span>
+            ))}
 
-        <div className={styles.criteriaValueGroup}>
-          <span key={criteria.difficulty}
-                className={`${styles.criteriaValue} ${styles.difficulty} ${styles[criteria.difficulty.toLowerCase()]}`}>
-             {criteria.difficulty}
-          </span>
-          {criteria.topics.map(topic => (
-            <span key={topic} className={`${styles.criteriaValue} ${styles.topic}`}>
-              {topic}
-            </span>
-          ))}
-          {criteria.languages.map(language => (
-            <span key={language} className={`${styles.criteriaValue} ${styles.language}`}>
-             {language}
-            </span>
-          ))}
+            {criteria.topics.length > 3 && (
+              <span className={`${styles.criteriaValue} ${styles.moreIndicator}`}>
+                      +{criteria.topics.length - 3} more
+                    </span>
+            )}
+          </div>
+          <div className={styles.criteriaValueGroup}>
+            {criteria.languages.map(language => (
+              <span key={language} className={`${styles.criteriaValue} ${styles.language}`}>
+               {language}
+              </span>
+            ))}
+          </div>
         </div>
 
 
