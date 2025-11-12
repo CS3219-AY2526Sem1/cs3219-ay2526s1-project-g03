@@ -1,18 +1,11 @@
 import type { Request, Response } from 'express';
-import { findOrQueueUser, cancelMatch } from '../services/matchingService';
+import { findOrQueueUser, cancelMatch, incurPenalty, resetPenaltyLevel } from '../services/matchingService';
 import type { MatchRequest } from '../models/matchModel';
 import { HTTP_OK, HTTP_ACCEPTED, HTTP_BAD_REQUEST, HTTP_TOO_MANY_REQUEST, HTTP_INTERNAL_SERVER_ERROR } from '../constants/httpStatus';
 
 export const handleMatchRequest = async (req: Request, res: Response) => {
   try {
     const { userId, criteria }: MatchRequest = req.body;
-    const atLeastOneDifficulty: boolean = criteria.difficulties && criteria.difficulties.length > 0;
-    const atLeastOneTopic: boolean = criteria.topics && criteria.topics.length > 0;
-
-    // validate input
-    if (!atLeastOneDifficulty && !atLeastOneTopic) {
-      return res.status(HTTP_BAD_REQUEST).json({ message: "Difficulty and at least one topic are required." });
-    }
 
     // call the service to perform the matching logic
     const result = await findOrQueueUser(userId, criteria);
@@ -51,3 +44,46 @@ export const handleCancelMatch = async (req: Request, res: Response) => {
   }
 
 };
+
+// API Endpoint for Collab Service to apply penalty
+export const handleIncurPenalty = async (req: Request, res: Response) => {
+  try {
+    const { userId, increment } = req.body;
+    if (!userId) {
+      return res.status(HTTP_BAD_REQUEST).json({ message: "User ID is required." });
+    }
+
+    // Validate increment or default to 1
+    const amount = (typeof increment === 'number' && increment > 0) ? increment : 1;
+
+    // Call the shared service logic
+    const cooldown = await incurPenalty(userId, amount);
+
+    return res.status(HTTP_OK).json({
+      message: `Penalty applied. User on cooldown for ${cooldown}s.`,
+      cooldown
+    });
+  } catch (error) {
+    console.error("Error in handleIncurPenalty:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// API Endpoint for Collab Service to reset penalty
+export const handleResetPenalty = async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(HTTP_BAD_REQUEST).json({ message: "User ID is required." });
+    }
+
+    // Call the shared service logic
+    await resetPenaltyLevel(userId);
+
+    return res.status(HTTP_OK).json({ message: "Penalty level reset successfully." });
+  } catch (error) {
+    console.error("Error in handleResetPenalty:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+

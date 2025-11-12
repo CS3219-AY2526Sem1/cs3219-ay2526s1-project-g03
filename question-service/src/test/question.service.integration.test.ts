@@ -88,14 +88,26 @@ describe('Question Service API (Integration)', () => {
       });
 
       it('should handle excludedIds correctly', async () => {
-        // First get all questions
+        // --- THIS IS THE FIX ---
+        // We must first get a valid topic, THEN get all questions.
+        
+        // 1. Get all topics
+        const topicsRes = await request(app).get('/api/topics');
+        expect(topicsRes.statusCode).toBe(200);
+        expect(topicsRes.body.length).toBeGreaterThan(0);
+        const validTopic = topicsRes.body[0]; // e.g., "Arrays"
+
+        // 2. Get all questions
         const allQuestionsRes = await request(app).get('/api/questions');
+        expect(allQuestionsRes.statusCode).toBe(200);
+
         if (allQuestionsRes.body.length > 0) {
           const firstQuestion = allQuestionsRes.body[0];
           
+          // 3. Send a VALID payload
           const payload = {
             criteria: { 
-              topic: firstQuestion.topic,
+              topic: validTopic, // Use the valid topic
               difficulty: firstQuestion.difficulty 
             },
             excludedIds: [firstQuestion.question_id]
@@ -105,9 +117,11 @@ describe('Question Service API (Integration)', () => {
             .post('/api/questions/select')
             .send(payload);
 
+          // 4. The test logic is now valid.
           if (res.statusCode === 200) {
             expect(res.body.question_id).not.toBe(firstQuestion.question_id);
           } else {
+            // Your controller logic correctly returns 404 if no question is found
             expect([404]).toContain(res.statusCode);
           }
         }

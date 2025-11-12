@@ -2,17 +2,8 @@ import React, { useState, useEffect } from 'react';
 import type { MatchCriteria } from '../../../models/match.model';
 import styles from './matchingStatusModal.module.css';
 import PartnerIcon from '../../../assets/match/partner-blue-with-circle.svg';
-import UsersIcon from '../../../assets/match/partner-blue.svg'; // Example icon
-import ClockIcon from '../../../assets/match/clock-blue.svg';   // Example icon
-
-interface MatchingStatusModalProps {
-  criteria: MatchCriteria;
-  onCancel: () => void;
-  disabled: boolean;
-  initialCountdown: number;
-  usersOnline: number;
-  avgWaitTime: number;
-}
+import UsersIcon from '../../../assets/match/partner-blue.svg';
+import ClockIcon from '../../../assets/match/clock-blue.svg';
 
 const MAX_TOPICS_TO_SHOW = 5
 
@@ -122,30 +113,27 @@ const CancelButton = ({ onClick, disabled }: CancelButtonProps) => {
   );
 };
 
+interface MatchingStatusModalProps {
+  criteria: MatchCriteria;
+  onCancel: () => void;
+  disabled: boolean;
+  countdown: number;
+  timer: number;
+  usersOnline: number;
+  avgWaitTime: number;
+}
 
 const MatchingStatusModal = ({
                                criteria,
                                onCancel,
                                disabled,
-                               initialCountdown,
+                               countdown,
+                               timer,
                                usersOnline,
                                avgWaitTime,
                              }: MatchingStatusModalProps) => {
-  const [countdown, setCountdown] = useState(initialCountdown);
 
-  useEffect(() => {
-    // Only start countdown if initialCountdown is positive
-    if (countdown <= 0) return;
-
-    const timer = setInterval(() => {
-      setCountdown(prev => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-
-    return () => clearInterval(timer); // Cleanup on unmount
-  }, [countdown]); // Rerun effect if countdown changes (e.g. reset)
-
-  // Calculate progress for the bar
-  const progressPercent = ((initialCountdown - countdown) / initialCountdown) * 100;
+  const progressPercent = ((countdown - (countdown - timer)) / countdown) * 100;
 
   return (
     <div className={styles.modalOverlay}>
@@ -157,7 +145,7 @@ const MatchingStatusModal = ({
         <CriteriaDisplay criteria={criteria} />
 
         <ProgressBar progress={progressPercent} />
-        <p className={styles.timerText}>Searching... {countdown}s remaining</p>
+        <p className={styles.timerText}>Searching... {timer}s remaining</p>
 
         <StatsDisplay usersOnline={usersOnline} avgWaitTime={avgWaitTime} />
 
