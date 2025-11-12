@@ -1,29 +1,11 @@
 import * as Y from 'yjs';
+import { ensureSharedStructures, pruneChatHistory } from '../party/websocketServer';
 
-// Copy the constants and functions we're testing to avoid import issues
-const CHAT_HISTORY_LIMIT = 500;
-
-function ensureSharedStructures(doc: Y.Doc) {
-  doc.getText('codemirror');
-  doc.getMap<string>('config');
-  doc.getArray('chat');
-  doc.getMap('execution');
-  doc.getMap('submission');
-}
-
-function pruneChatHistory(doc: Y.Doc) {
-  const chatArray = doc.getArray('chat');
-  if (chatArray.length <= CHAT_HISTORY_LIMIT) {
-    return;
-  }
-  const excess = chatArray.length - CHAT_HISTORY_LIMIT;
-  chatArray.delete(0, excess);
-}
-
-describe('Yjs Helper Functions', () => {
+describe('Yjs Helper Utilities', () => {
   describe('ensureSharedStructures', () => {
-    it('should initialize all required Y.js structures', () => {
+    it('should initialize all required Yjs collaborative structures', () => {
       const doc = new Y.Doc();
+
       ensureSharedStructures(doc);
 
       expect(doc.getText('codemirror')).toBeInstanceOf(Y.Text);
@@ -33,8 +15,9 @@ describe('Yjs Helper Functions', () => {
       expect(doc.getMap('submission')).toBeInstanceOf(Y.Map);
     });
 
-    it('should not throw when called multiple times', () => {
+    it('should not throw when called multiple times on the same document', () => {
       const doc = new Y.Doc();
+
       expect(() => {
         ensureSharedStructures(doc);
         ensureSharedStructures(doc);
@@ -43,49 +26,61 @@ describe('Yjs Helper Functions', () => {
   });
 
   describe('pruneChatHistory', () => {
-    it('should not modify chat array when under limit', () => {
+    const CHAT_LIMIT = 500;
+
+    it('should not modify chat array when below the limit', () => {
       const doc = new Y.Doc();
       ensureSharedStructures(doc);
       const chatArray = doc.getArray('chat');
 
-      for (let i = 0; i < 100; i++) {
-        chatArray.push([{message: `msg${i}`}]);
+      // Add fewer messages than the limit
+      for (let i = 0; i < 10; i++) {
+        chatArray.push([{id: i, text: `message ${i}`}]);
       }
 
-      expect(chatArray.length).toBe(100);
       pruneChatHistory(doc);
-      expect(chatArray.length).toBe(100);
+
+      expect(chatArray.length).toBe(10);
     });
 
-    it('should prune chat array to limit when exceeded', () => {
+    it('should not modify chat array when exactly at the limit', () => {
       const doc = new Y.Doc();
       ensureSharedStructures(doc);
       const chatArray = doc.getArray('chat');
 
-      for (let i = 0; i < 510; i++) {
-        chatArray.push([{message: `msg${i}`}]);
+      for (let i = 0; i < CHAT_LIMIT; i++) {
+        chatArray.push([i]);
       }
 
-      expect(chatArray.length).toBe(510);
       pruneChatHistory(doc);
-      expect(chatArray.length).toBe(500);
+
+      expect(chatArray.length).toBe(CHAT_LIMIT);
+    });
+
+    it('should prune oldest messages when exceeding the limit', () => {
+      const doc = new Y.Doc();
+      ensureSharedStructures(doc);
+      const chatArray = doc.getArray('chat');
+
+      // Add more than the limit
+      const excess = 50;
+      for (let i = 0; i < CHAT_LIMIT + excess; i++) {
+        chatArray.push([i]);
+      }
+
+      expect(chatArray.length).toBe(CHAT_LIMIT + excess);
+
+      pruneChatHistory(doc);
+
+      // Should keep exactly CHAT_LIMIT messages
+      expect(chatArray.length).toBe(CHAT_LIMIT);
       
-      // Verify oldest messages were removed
-      const firstMsg = chatArray.get(0) as any;
-      expect(firstMsg.message).toBe('msg10');
-    });
-
-    it('should handle exactly at limit', () => {
-      const doc = new Y.Doc();
-      ensureSharedStructures(doc);
-      const chatArray = doc.getArray('chat');
-
-      for (let i = 0; i < 500; i++) {
-        chatArray.push([{message: `msg${i}`}]);
-      }
-
-      pruneChatHistory(doc);
-      expect(chatArray.length).toBe(500);
+      // The oldest messages (0 through excess-1) should be removed
+      // So the first message should now be message number 'excess'
+      expect(chatArray.get(0)).toBe(excess);
+      
+      // The last message should still be the last one we added
+      expect(chatArray.get(CHAT_LIMIT - 1)).toBe(CHAT_LIMIT + excess - 1);
     });
   });
 });

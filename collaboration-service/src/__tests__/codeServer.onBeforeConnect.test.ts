@@ -1,15 +1,12 @@
-import {describe, expect, it, jest, beforeEach} from '@jest/globals';
+import type * as Party from 'partykit/server';
 
-// Mock all dependencies with proper types
-const mockParseCookies = jest.fn<(cookieHeader: string) => Record<string, string>>();
-const mockCheckRoomExists = jest.fn<(roomId: string) => Promise<boolean>>();
-
+// Mock dependencies
 jest.mock('../utils/cookies', () => ({
-  parseCookies: mockParseCookies,
+  parseCookies: jest.fn(),
 }));
 
 jest.mock('../storage/db', () => ({
-  checkRoomExists: mockCheckRoomExists,
+  checkRoomExists: jest.fn(),
   getDocument: jest.fn(),
   upsertDocument: jest.fn(),
   checkUserVerified: jest.fn(),
@@ -18,112 +15,127 @@ jest.mock('../storage/db', () => ({
   getActiveRoom: jest.fn(),
 }));
 
+import YjsServer from '../party/websocketServer';
+import { parseCookies } from '../utils/cookies';
+import { checkRoomExists } from '../storage/db';
+
+// Mock implementations
+const mockParseCookies = parseCookies as jest.MockedFunction<typeof parseCookies>;
+const mockCheckRoomExists = checkRoomExists as jest.MockedFunction<typeof checkRoomExists>;
+
+// Helper to create mock request
+function createMockRequest(url: string, cookies?: Record<string, string>): Party.Request {
+  const headers = new Map<string, string>();
+  
+  if (cookies) {
+    const cookieString = Object.entries(cookies)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('; ');
+    headers.set('cookie', cookieString);
+  }
+
+  return {
+    url,
+    headers: {
+      get: (name: string) => headers.get(name.toLowerCase()) || null,
+      set: (name: string, value: string) => headers.set(name.toLowerCase(), value),
+    } as any,
+  } as Party.Request;
+}
+
 describe('YjsServer.onBeforeConnect', () => {
+  const mockLobby = {} as Party.Lobby;
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  const createMockRequest = (url: string, cookies?: Record<string, string>) => {
-    const headers = new Map<string, string>();
-    if (cookies) {
-      const cookieString = Object.entries(cookies)
-        .map(([k, v]) => `${k}=${v}`)
-        .join('; ');
-      headers.set('cookie', cookieString);
-    }
+  it('should return 400 when cookie header is missing', async () => {
+    const request = createMockRequest('https://host/parties/code/room-123');
 
-    return {
-      url,
-      headers: {
-        get: (name: string) => headers.get(name.toLowerCase()) || null,
-        set: (name: string, value: string) => headers.set(name.toLowerCase(), value),
-      },
-    };
-  };
+    const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
-  it('should return 400 when no cookie header is present', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    const request = createMockRequest('https://test.com/parties/code/room-123');
-
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
-
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(400);
-    const text = await (result as Response).text();
-    expect(text).toContain('access token');
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
+    
+    const body = await response.text();
+    expect(body).toContain('No access token');
   });
 
   it('should return 400 when accessToken cookie is missing', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    mockParseCookies.mockReturnValue({otherCookie: 'value'});
-    
-    const request = createMockRequest('https://test.com/parties/code/room-123', {
-      otherCookie: 'value',
+    const request = createMockRequest('https://host/parties/code/room-123', {
+      sessionId: 'some-session',
     });
+    
+    mockParseCookies.mockReturnValue({ sessionId: 'some-session' });
 
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
+    const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
+    expect(mockParseCookies).toHaveBeenCalledWith('sessionId=some-session');
   });
 
-  it('should return 400 when room ID cannot be extracted', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    mockParseCookies.mockReturnValue({accessToken: 'token123'});
-    
-    const request = createMockRequest('https://test.com/parties/code/', {
-      accessToken: 'token123',
+  it('should return 400 when room ID cannot be extracted from URL', async () => {
+    const request = createMockRequest('https://host/parties/code/', {
+      accessToken: 'valid-token',
     });
+    
+    mockParseCookies.mockReturnValue({ accessToken: 'valid-token' });
 
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
+    const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(400);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(400);
+    
+    const body = await response.text();
+    expect(body).toContain('Room ID missing');
   });
 
-  it('should return 404 when room does not exist', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    mockParseCookies.mockReturnValue({accessToken: 'token123'});
+  it('should return 404 when room does not exist in database', async () => {
+    const request = createMockRequest('https://host/parties/code/nonexistent-room', {
+      accessToken: 'valid-token',
+    });
+    
+    mockParseCookies.mockReturnValue({ accessToken: 'valid-token' });
     mockCheckRoomExists.mockResolvedValue(false);
-    
-    const request = createMockRequest('https://test.com/parties/code/room-123', {
-      accessToken: 'token123',
-    });
 
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
+    const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(404);
-    expect(mockCheckRoomExists).toHaveBeenCalledWith('room-123');
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(404);
+    expect(mockCheckRoomExists).toHaveBeenCalledWith('nonexistent-room');
   });
 
-  it('should return 500 when database check throws error', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    mockParseCookies.mockReturnValue({accessToken: 'token123'});
-    mockCheckRoomExists.mockRejectedValue(new Error('Database error'));
-    
-    const request = createMockRequest('https://test.com/parties/code/room-123', {
-      accessToken: 'token123',
+  it('should return 500 when database query throws an error', async () => {
+    const request = createMockRequest('https://host/parties/code/room-123', {
+      accessToken: 'valid-token',
     });
+    
+    mockParseCookies.mockReturnValue({ accessToken: 'valid-token' });
+    mockCheckRoomExists.mockRejectedValue(new Error('Database connection failed'));
 
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
+    const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
-    expect(result).toBeInstanceOf(Response);
-    expect((result as Response).status).toBe(500);
+    expect(response).toBeInstanceOf(Response);
+    expect(response.status).toBe(500);
   });
 
-  it('should inject access token header and return request when valid', async () => {
-    const {default: YjsServer} = await import('../party/websocketServer');
-    mockParseCookies.mockReturnValue({accessToken: 'token123'});
+  it('should inject access token into headers and return request when validation passes', async () => {
+    const request = createMockRequest('https://host/parties/code/room-123', {
+      accessToken: 'valid-token-xyz',
+    });
+    
+    mockParseCookies.mockReturnValue({ accessToken: 'valid-token-xyz' });
     mockCheckRoomExists.mockResolvedValue(true);
-    
-    const request = createMockRequest('https://test.com/parties/code/room-123', {
-      accessToken: 'token123',
-    });
 
-    const result = await YjsServer.onBeforeConnect(request as any, {} as any);
+    const result = await YjsServer.onBeforeConnect(request, mockLobby);
 
+    // Should return the modified request, not a Response
     expect(result).toBe(request);
-    expect(request.headers.get('X-Access-Token')).toBe('token123');
+    expect(request.headers.get('X-Access-Token')).toBe('valid-token-xyz');
+    
+    expect(mockParseCookies).toHaveBeenCalled();
+    expect(mockCheckRoomExists).toHaveBeenCalledWith('room-123');
   });
 });
