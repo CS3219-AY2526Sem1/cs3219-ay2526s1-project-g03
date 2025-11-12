@@ -27,6 +27,7 @@ lcov-report/
 .env.*
 *.local
 
+
 # Log files
 *.log
 
@@ -37,3 +38,9 @@ coverage/
 
 # Database files
 /user-service/db
+
+!.env.example
+!./question-service/.env.example
+!./matching-service/.env.example
+!./frontend/.env.example
+!./collaboration-service/.env.example

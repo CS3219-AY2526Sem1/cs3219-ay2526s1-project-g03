@@ -4,7 +4,7 @@
 
 # CS3219 Project (PeerPrep) - AY2526S1
 
-## Group: Gxx
+## Group: G03
 
 ### Note:
 
@@ -12,3 +12,16 @@
   repository.
 - The teaching team should be given access to the repositories as we may require viewing the history
   of the repository in case of any disputes or disagreements.
+
+## Setup
+1. Clone the repository
+1. Configure environment variables in the following folders
+  - Root directory
+  - matching-service
+  - frontend
+  - collaboration-service
+  - Tip: JWT can be generated using `openssl rand -base64 32`
+
+## Running the Application
+1. `docker compose up --build`
+1. Once everything is running, go to the [welcome page](http://localhost:3000)
