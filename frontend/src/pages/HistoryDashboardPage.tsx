@@ -15,7 +15,7 @@ import {
 
 // --- Logic Imports (from Cursor's file) ---
 import useAuth from '../hooks/useAuth';
-import { getHistoryProgress, getAllAttemptSummaries } from '../lib/api';
+import { getHistoryProgress, getAllAttemptSummaries, getOtherUser } from '../lib/api';
 import { formatTimeAgo } from '../lib/timeFormatters';
 
 // --- Main Component ---
@@ -28,6 +28,7 @@ export default function HistoryDashboardPage() {
   const [progress, setProgress] = useState<any>(null);
   const [summaries, setSummaries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usernames, setUsernames] = useState<Map<string, string>>(new Map());
 
   // --- Data Fetching (from Cursor's file) ---
   useEffect(() => {
@@ -48,6 +49,37 @@ export default function HistoryDashboardPage() {
       setLoading(false);
     });
   }, [userId]);
+
+  // Fetch usernames for all unique partner IDs
+  useEffect(() => {
+    if (summaries.length === 0) return;
+
+    const fetchUsernames = async () => {
+      const uniquePartnerIds = [...new Set(summaries.map((s: any) => s.partner_id).filter((id: string) => id))];
+      const usernameMap = new Map<string, string>();
+
+      // Fetch usernames in parallel
+      await Promise.allSettled(
+        uniquePartnerIds.map(async (partnerId: string) => {
+          try {
+            const response = await getOtherUser(partnerId);
+            if (response?.data?.username) {
+              usernameMap.set(partnerId, response.data.username);
+            } else {
+              usernameMap.set(partnerId, partnerId);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch username for partner ${partnerId}:`, error);
+            usernameMap.set(partnerId, partnerId);
+          }
+        })
+      );
+
+      setUsernames(usernameMap);
+    };
+
+    fetchUsernames();
+  }, [summaries]);
 
   // --- Stat Calculation (from Cursor's file, adapted for Lovable's UI) ---
   const totals = useMemo(() => {
@@ -185,7 +217,7 @@ export default function HistoryDashboardPage() {
                         <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <User className="h-3 w-3" />
-                            Partner: {question.partner_id}
+                            Partner: {usernames.get(question.partner_id) || question.partner_id}
                           </span>
                           <span>
                             {/* Real data */}

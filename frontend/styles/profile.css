@@ -167,6 +167,7 @@
 .actions-activity-section {
   display: flex;
   gap: 2rem;
+  align-items: flex-start;
 }
 
 .quick-actions-container {
@@ -180,13 +181,14 @@
   display: flex;
   flex-direction: column;
   flex: 1;
+  gap: 1.5rem;
 }
 
 .section-title {
   font-size: 30px;
   font-weight: 600;
   color: #303030;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
 .action-card {
