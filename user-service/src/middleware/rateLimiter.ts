@@ -32,6 +32,7 @@ export const emailSendLimiter = rateLimit({
   legacyHeaders: false,
   message: 'Too many requests, please try again later!',
   statusCode: HTTP_TOO_MANY_REQUESTS,
+  skipFailedRequests: true,
   handler: (req, res) => {
     res.status(HTTP_TOO_MANY_REQUESTS).json({
       message: RATE_LIMIT_ERROR_MESSAGE,
@@ -46,6 +47,7 @@ export const registerLimiter = rateLimit({
   legacyHeaders: false,
   message: 'Too many requests, please try again later!',
   statusCode: HTTP_TOO_MANY_REQUESTS,
+  skipFailedRequests: true,
   handler: (req, res) => {
     res.status(HTTP_TOO_MANY_REQUESTS).json({
       message: RATE_LIMIT_ERROR_MESSAGE,

@@ -246,6 +246,8 @@ const manageLoginSessionAndSignTokens = async user => {
   }
 
   // Note that all previous sessions are deleted to enforce single login constraint.
+  await Session.deleteMany({userId: user._id.toString()});
+
   const session = await createSession(user._id.toString());
   const {accessToken, refreshToken} = generateTokensForSession(
     user._id.toString(),
