@@ -255,6 +255,7 @@ const config: Config = {
           'ts-jest',
           {
             tsconfig: {
+              target: 'es2020',
               esModuleInterop: true,
               allowSyntheticDefaultImports: true,
               module: 'commonjs',
