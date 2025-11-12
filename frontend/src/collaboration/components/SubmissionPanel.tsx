@@ -1,15 +1,21 @@
 import {Send, Code, Image, Play, Eye, LogOut, Mic, Video} from 'lucide-react';
-import {useState} from 'react';
+import {useEffect, useState} from 'react';
 import ConfirmDialog from '../../components/ConfirmDialog';
+import {ChatPanel} from './ChatPanel';
+import YPartyKitProvider from 'y-partykit/provider';
+import type {AwarenessUser} from '../hooks/useCollabRoom';
 
 export default function SubmissionPanel({
   isPenaltyOver,
   handleLeaveRoom,
+  provider,
 }: {
   isPenaltyOver: boolean;
   handleLeaveRoom: () => void;
+  provider: YPartyKitProvider | null;
 }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [users, setUsers] = useState<AwarenessUser[]>([]);
 
   function handleEndSession() {
     setIsDialogOpen(true);
@@ -25,52 +31,67 @@ export default function SubmissionPanel({
     }
     handleLeaveRoom();
   }
+
+  useEffect(() => {
+    if (!provider) {
+      setUsers([]);
+      return;
+    }
+
+    const awareness = provider.awareness; // Get awareness from the provider
+
+    const updateUsers = () => {
+      const states = Array.from(awareness.getStates().values());
+      const userList = states.map(state => state.user).filter(Boolean) as AwarenessUser[];
+      setUsers(userList);
+    };
+
+    awareness.on('change', updateUsers);
+    updateUsers(); // Initial load
+
+    return () => {
+      awareness.off('change', updateUsers);
+      setUsers([]); // Cleanup state
+    };
+  }, [provider]);
+
+  const localUser = provider?.awareness.getLocalState()?.user as AwarenessUser | undefined;
+
+  // Find the first user in the list who is not the local user
+  const otherUser = users.find(u => u.name !== localUser?.name);
+
   return (
     <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
       {/* User Avatars */}
       <div className="p-4 border-b border-gray-200 flex space-x-3">
-        <div className="flex-1 bg-blue-500 rounded-lg p-4 text-white flex flex-col items-center justify-center">
-          <Mic size={20} className="mb-1" />
-          <Video size={20} className="mb-2" />
-          <span className="font-semibold text-lg">You</span>
-        </div>
-        <div className="flex-1 bg-green-500 rounded-lg p-4 text-white flex items-center justify-center">
-          <span className="font-semibold text-lg">Alex</span>
-        </div>
-      </div>
-
-      {/* Chat Header */}
-      <div className="px-4 py-3 border-b border-gray-200">
-        <h2 className="font-semibold text-lg">Chat</h2>
-      </div>
-
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="text-left">
-          <div className="text-xs text-gray-500 mb-1">Alex · 2:14 PM</div>
-          <div className="inline-block bg-gray-100 rounded-lg px-3 py-2 text-sm">
-            Hey! Ready to chat?
+        {localUser && (
+          <div
+            className="flex-1 rounded-lg p-4 text-white flex flex-col items-center justify-center"
+            style={{backgroundColor: localUser.color}}
+          >
+            <Mic size={20} className="mb-1" />
+            <Video size={20} className="mb-2" />
+            <span className="font-semibold text-lg">{localUser.name} (You)</span>
           </div>
-        </div>
-
-        <div className="text-right">
-          <div className="text-xs text-gray-500 mb-1 text-right">You · 2:15 PM</div>
-          <div className="inline-block bg-blue-500 text-white rounded-lg px-3 py-2 text-sm">
-            Nope! This feature is under construction
+        )}
+        {otherUser && (
+          <div
+            className="flex-1 rounded-lg p-4 text-white flex items-center justify-center"
+            style={{backgroundColor: otherUser.color}}
+          >
+            <span className="font-semibold text-lg">{otherUser.name}</span>
           </div>
-        </div>
+        )}
+        {!otherUser && (
+          <div className="flex-1 bg-gray-200 rounded-lg p-4 text-gray-500 flex items-center justify-center">
+            <span className="font-semibold text-lg">Waiting...</span>
+          </div>
+        )}
       </div>
 
-      {/* Message Input */}
-      <div className="flex items-center space-x-2 mb-3">
-        <input
-          type="text"
-          placeholder="Type a message..."
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg">
-          <Send size={18} />
-        </button>
+      {/*Chat Panel*/}
+      <div className="flex-1 flex flex-col h-0">
+        <ChatPanel provider={provider} />
       </div>
 
       <div className="p-4 border-t border-gray-200">
