@@ -88,7 +88,15 @@ const Login: React.FC = () => {
         <div className="divider">or</div>
 
         <form className="form-section">
-          {isError && <div className="error"> Invalid credentials </div>}
+          {isError && (
+            <div className="error">
+              {error?.status === 429 ? (
+                <div>{error.message || 'Too many attempts. Please try again later.'}</div>
+              ) : (
+                <div> Invalid credentials </div>
+              )}
+            </div>
+          )}
           <div className="form-group">
             <label htmlFor="identifier">Username or Email</label>
             <input
