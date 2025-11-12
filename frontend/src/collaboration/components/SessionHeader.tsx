@@ -11,15 +11,13 @@ export default function SessionHeader({
   sessionStartTime,
   handlePenaltyOver,
 }: {
-  sessionStartTime: number | null;
+  sessionStartTime: number;
   handlePenaltyOver: () => void;
 }) {
   const [time, setTime] = useState(0);
   const [penaltyTime, setPenaltyTime] = useState(INITIAL_PENALTY_TIME);
 
   useEffect(() => {
-    if (!sessionStartTime) return;
-
     const interval = setInterval(() => {
       setTime(Date.now() - sessionStartTime);
     }, 1000);
@@ -62,8 +60,8 @@ export default function SessionHeader({
           <div>
             <div className="text-sm font-semibold text-gray-700">
               Session{` `}
-              {/* {`${Math.floor((time / DAY) % 24)}`.padStart(2, '0')}:
-          {`${Math.floor((time / HOUR) % 60)}`.padStart(2, '0')}: */}
+              {/* {`${Math.floor((time / DAY) % 24)}`.padStart(2, '0')}: */}
+              {`${Math.floor((time / HOUR) % 60)}`.padStart(2, '0')}:
               {`${Math.floor((time / MINUTE) % 60)}`.padStart(2, '0')}:
               {`${Math.floor((time / SECOND) % 60)}`.padStart(2, '0')}
             </div>

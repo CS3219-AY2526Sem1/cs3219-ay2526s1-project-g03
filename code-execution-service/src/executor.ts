@@ -1,3 +1,5 @@
+// solution (dood) adapted from https://medium.com/@blogs4devs/implementing-a-remote-code-execution-engine-from-scratch-4a765a3c7303
+
 import express from 'express';
 import cors from 'cors';
 import {execShellCommand} from './utils.js';
@@ -260,12 +262,12 @@ const prePullDockerImages = async () => {
 
 // Start your server
 const startServer = async () => {
-  try {
-    await prePullDockerImages();
-  } catch (error) {
-    console.error('Error during image pull:', error);
-    // Continue starting server even if image pull fails
-  }
+  // try {
+  //   await prePullDockerImages();
+  // } catch (error) {
+  //   console.error('Error during image pull:', error);
+  //   // Continue starting server even if image pull fails
+  // }
 
   // Start the express app
   app.listen(8086, () => {

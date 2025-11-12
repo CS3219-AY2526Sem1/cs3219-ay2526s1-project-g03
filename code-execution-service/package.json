@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/executor2.ts",
+    "dev": "tsx watch src/executor.ts",
     "lint": "cd .. && npm run lint:service collaboration-service --ext .ts",
     "lint:fix": "cd .. && npm run lint:service collaboration-service --ext .ts --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",

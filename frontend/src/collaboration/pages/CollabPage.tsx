@@ -9,14 +9,15 @@ import {useCollabRoom} from '../hooks/useCollabRoom';
 import {useQuestion} from '../hooks/useQuestion';
 import {useCodeExecution} from '../hooks/useCodeExecution';
 import CodeExecutionPanel from '../components/CodeExecutionPanel';
+import useAuth from '../../hooks/useAuth';
 
 export function CollabPage() {
   const {roomId} = useParams<{roomId: string}>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('code');
   const [isQuestionPanelCollapsed, setIsQuestionPanelCollapsed] = useState(false);
   const [isCodeExecutionPanelCollapsed, setIsCodeExecutionPanelCollapsed] = useState(false);
   const [isSubmissionPanelCollapsed, setIsSubmissionPanelCollapsed] = useState(false);
+
   const {
     sessionStartTime,
     isPenaltyOver,
@@ -32,9 +33,6 @@ export function CollabPage() {
     navigate('/room');
     return null;
   }
-
-  // const {sessionStartTime, isPenaltyOver, handlePenaltyOver, questionId, isLoading, error} =
-  //   useSession(roomId);
 
   const {provider, isReady} = useCollabRoom(roomId);
 
@@ -105,6 +103,7 @@ export function CollabPage() {
             executionResult={executionResult}
             isExecuting={isExecuting}
             executionError={executionError}
+            provider={provider}
           />
         </div>
 
@@ -114,6 +113,9 @@ export function CollabPage() {
           handleLeaveRoom={handleLeaveRoom}
           isCollapsed={isSubmissionPanelCollapsed}
           onToggle={() => setIsSubmissionPanelCollapsed(!isSubmissionPanelCollapsed)}
+          roomId={roomId}
+          executionResult={executionResult}
+          sessionStartTime={sessionStartTime}
           provider={provider}
         />
       </div>
