@@ -420,7 +420,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // --- API & Auth Imports ---
 import useAuth from '../hooks/useAuth';
-import { getTopics, getActiveAttempts, getAllAttemptSummaries, resetQuestions } from '../lib/api';
+import { getTopics, getActiveAttempts, getAllAttemptSummaries, resetQuestions, getOtherUser } from '../lib/api';
 import { formatDuration } from '../lib/timeFormatters';
 
 // --- Types (from API) ---
@@ -467,6 +467,7 @@ const ResetQuestions = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterTopic, setFilterTopic] = useState<string>("all");
   const [filterDifficulty, setFilterDifficulty] = useState<string>("all");
+  const [usernames, setUsernames] = useState<Map<string, string>>(new Map());
 
   const [isAlertOpen, setIsAlertOpen] = useState(false);
 
@@ -496,6 +497,37 @@ const ResetQuestions = () => {
     const matchesDifficulty = filterDifficulty === "all" || question.question_difficulty === filterDifficulty;
     return matchesSearch && matchesTopic && matchesDifficulty;
   });
+
+  // Fetch usernames for all unique partner IDs in filtered questions
+  useEffect(() => {
+    if (filteredQuestions.length === 0) return;
+
+    const fetchUsernames = async () => {
+      const uniquePartnerIds = [...new Set(filteredQuestions.map(q => q.partner_id).filter(id => id))];
+      const usernameMap = new Map<string, string>();
+
+      // Fetch usernames in parallel
+      await Promise.allSettled(
+        uniquePartnerIds.map(async (partnerId: string) => {
+          try {
+            const response = await getOtherUser(partnerId);
+            if (response?.data?.username) {
+              usernameMap.set(partnerId, response.data.username);
+            } else {
+              usernameMap.set(partnerId, partnerId);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch username for partner ${partnerId}:`, error);
+            usernameMap.set(partnerId, partnerId);
+          }
+        })
+      );
+
+      setUsernames(usernameMap);
+    };
+
+    fetchUsernames();
+  }, [filteredQuestions]);
 
   // --- Event Handlers ---
   const handleQuestionToggle = (questionId: string, checked: boolean) => {
@@ -784,7 +816,7 @@ const ResetQuestions = () => {
                               </div>
                               <div>Time: {formatDuration(question.time_taken_ms)}</div>
                               {question.partner_id && (
-                                <div>Partner: {question.partner_id}</div>
+                                <div>Partner: {usernames.get(question.partner_id) || question.partner_id}</div>
                               )}
                             </div>
                           </div>

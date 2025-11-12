@@ -19,7 +19,7 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // --- API & Auth Imports (from Logic) ---
 import useAuth from '../hooks/useAuth';
-import { getQuestionAttempts } from '../lib/api';
+import { getQuestionAttempts, getOtherUser } from '../lib/api';
 import { formatDurationMinutes } from '../lib/timeFormatters';
 
 // ... (interface Attempt definition is correct) ...
@@ -45,6 +45,7 @@ export const QuestionDetail = () => {
   const userId = (user as any)?._id ?? (user as any)?.uid ?? '';
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usernames, setUsernames] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (!userId || !questionId) return;
@@ -61,6 +62,37 @@ export const QuestionDetail = () => {
         setLoading(false);
       });
   }, [userId, questionId]);
+
+  // Fetch usernames for all unique partner IDs
+  useEffect(() => {
+    if (attempts.length === 0) return;
+
+    const fetchUsernames = async () => {
+      const uniquePartnerIds = [...new Set(attempts.map(a => a.partner_id).filter(id => id))];
+      const usernameMap = new Map<string, string>();
+
+      // Fetch usernames in parallel
+      await Promise.allSettled(
+        uniquePartnerIds.map(async (partnerId: string) => {
+          try {
+            const response = await getOtherUser(partnerId);
+            if (response?.data?.username) {
+              usernameMap.set(partnerId, response.data.username);
+            } else {
+              usernameMap.set(partnerId, partnerId);
+            }
+          } catch (error) {
+            console.error(`Failed to fetch username for partner ${partnerId}:`, error);
+            usernameMap.set(partnerId, partnerId);
+          }
+        })
+      );
+
+      setUsernames(usernameMap);
+    };
+
+    fetchUsernames();
+  }, [attempts]);
 
   const questionTitle = attempts[0]?.question_title;
 
@@ -164,7 +196,7 @@ export const QuestionDetail = () => {
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground mb-4">
                 <span className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  Partner: {attempt.partner_id}
+                  Partner: {usernames.get(attempt.partner_id) || attempt.partner_id}
                 </span>
                 <span className="flex items-center gap-1">
                   <Calendar className="h-4 w-4" />
