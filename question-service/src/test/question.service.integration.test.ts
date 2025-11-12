@@ -3,6 +3,9 @@ import app from '../index';
 import { closePool } from '../config/database';
 
 describe('Question Service API (Integration)', () => {
+  // Increase timeout for integration tests that may need database connections
+  jest.setTimeout(15000);
+
   afterAll(async () => {
     await closePool();
   });
@@ -14,7 +17,7 @@ describe('Question Service API (Integration)', () => {
       expect(res.body).toHaveProperty('status');
       expect(res.body).toHaveProperty('database');
       expect(res.body).toHaveProperty('timestamp');
-    });
+    }, 10000); // 10 second timeout for health check
   });
 
   describe('Questions API', () => {
@@ -23,7 +26,7 @@ describe('Question Service API (Integration)', () => {
         const res = await request(app).get('/api/questions');
         expect(res.statusCode).toBe(200);
         expect(Array.isArray(res.body)).toBe(true);
-      });
+      }, 10000);
     });
 
     describe('GET /api/questions/:id', () => {
@@ -124,8 +127,11 @@ describe('Question Service API (Integration)', () => {
             // Your controller logic correctly returns 404 if no question is found
             expect([404]).toContain(res.statusCode);
           }
+        } else {
+          // Skip test if no questions in database (CI might have empty DB)
+          console.warn('Skipping excludedIds test: No questions in database');
         }
-      });
+      }, 15000); // Longer timeout for complex integration test
     });
   });
 });

@@ -146,25 +146,33 @@ import { pool } from '../config/database'; // This is now the *mocked* pool
 // We must cast pool.query once, outside the mock, to the correct Jest mock type.
 const mockedQuery = pool.query as unknown as jest.Mock<Promise<QueryResult<any>>, [string, any[]]>;
 
-// --- Helper: Mock Database Responses ---
-// We mock two responses: one for the question, one for its topics
-const mockQuestion: Question = {
-  question_id: 'q-123', title: 'Test Q', description: 'Test D',
-  difficulty: 'Easy', created_by: 'admin',
-  created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-};
+describe('services/questionService (Unit)', () => {
+  jest.setTimeout(10000);
 
-// --- THIS IS THE FIX ---
-// Cast the mockTopics object to QueryResult<any>
-const mockTopics = { 
-  rows: [{ topic_name: 'Arrays' }, { topic_name: 'Hash Table' }] 
-} as unknown as QueryResult<any>;
-// --- END OF FIX ---
+  // Test constants
+  const TEST_QUESTION_ID = 'q-123';
+  const TEST_QUESTION_TITLE = 'Test Question';
+  const TEST_QUESTION_DESCRIPTION = 'Test Description';
+  const TEST_QUESTION_DIFFICULTY: Difficulty = 'Easy';
+  const TEST_TOPIC = 'Arrays';
+  const TEST_TOPIC_2 = 'Hash Table';
 
-const mockQuestionResult = { rows: [mockQuestion] } as unknown as QueryResult<any>;
-// --- End Helper ---
+  // Mock data
+  const mockQuestion: Question = {
+    question_id: TEST_QUESTION_ID,
+    title: TEST_QUESTION_TITLE,
+    description: TEST_QUESTION_DESCRIPTION,
+    difficulty: TEST_QUESTION_DIFFICULTY,
+    created_by: 'admin',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 
-describe('questionService (Unit)', () => {
+  const mockTopics = { 
+    rows: [{ topic_name: TEST_TOPIC }, { topic_name: TEST_TOPIC_2 }] 
+  } as unknown as QueryResult<any>;
+
+  const mockQuestionResult = { rows: [mockQuestion] } as unknown as QueryResult<any>;
 
   // Reset mocks before each test
   beforeEach(() => {
@@ -173,11 +181,10 @@ describe('questionService (Unit)', () => {
     mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>);
   });
 
-  // Test 1: Check the logic with SINGLE strings
-  it('builds query correctly with single strings and excluded IDs', async () => {
-    
-    const criteria = { topic: 'Arrays', difficulty: 'Easy' as Difficulty };
-    const excludedIds = ['id-1', 'id-2'];
+  describe('selectQuestion', () => {
+    it('should build query correctly with single strings and excluded IDs', async () => {
+      const criteria = { topic: TEST_TOPIC, difficulty: TEST_QUESTION_DIFFICULTY };
+      const excludedIds = ['id-1', 'id-2'];
     
     // Mock the database response
     // First call (selectQuestion)
@@ -189,7 +196,7 @@ describe('questionService (Unit)', () => {
     const result = await selectQuestion(criteria, excludedIds);
 
     // Assert the result (includes topics)
-    expect(result).toEqual({ ...mockQuestion, topics: ['Arrays', 'Hash Table'] });
+    expect(result).toEqual({ ...mockQuestion, topics: [TEST_TOPIC, TEST_TOPIC_2] });
     // Assert the mock query was called twice
     expect(mockedQuery).toHaveBeenCalledTimes(2);
 
@@ -205,18 +212,16 @@ describe('questionService (Unit)', () => {
     expect(queryString).toContain('AND q.question_id NOT IN ($3,$4)'); // Check dynamic placeholders
     expect(queryString).toContain('ORDER BY rand'); // New ORDER BY
 
-    // Check query parameters
-    expect(queryParams).toEqual(['Arrays', 'Easy', 'id-1', 'id-2']);
-  });
+      // Check query parameters
+      expect(queryParams).toEqual([TEST_TOPIC, TEST_QUESTION_DIFFICULTY, 'id-1', 'id-2']);
+    });
 
-  // Test 2: Check the logic with ARRAY inputs
-  it('builds query correctly with ARRAY inputs', async () => {
-    
-    const criteria = { 
-      topic: ['Arrays', 'Strings'], 
-      difficulty: ['Easy', 'Medium'] as Difficulty[] 
-    };
-    const excludedIds: string[] = []; // Empty array
+    it('should build query correctly with ARRAY inputs', async () => {
+      const criteria = { 
+        topic: [TEST_TOPIC, 'Strings'], 
+        difficulty: ['Easy', 'Medium'] as Difficulty[] 
+      };
+      const excludedIds: string[] = [];
     
     // Mock the response
     mockedQuery.mockResolvedValueOnce(mockQuestionResult);
@@ -236,18 +241,16 @@ describe('questionService (Unit)', () => {
     expect(queryString).not.toContain('NOT IN'); // No excluded IDs
     expect(queryString).toContain('ORDER BY rand'); // New ORDER BY
 
-    // Check query parameters
-    expect(queryParams).toEqual(['Arrays', 'Strings', 'Easy', 'Medium']);
-  });
+      // Check query parameters
+      expect(queryParams).toEqual([TEST_TOPIC, 'Strings', 'Easy', 'Medium']);
+    });
 
-  // Test 3: Check the logic with EMPTY ARRAY inputs ("Any")
-  it('builds query correctly with EMPTY ARRAY inputs ("Any")', async () => {
-    
-    const criteria = { 
-      topic: [], // "Any" topic
-      difficulty: 'Hard' as Difficulty // Specific difficulty
-    };
-    const excludedIds: string[] = [];
+    it('should build query correctly with EMPTY ARRAY inputs ("Any")', async () => {
+      const criteria = { 
+        topic: [], // "Any" topic
+        difficulty: 'Hard' as Difficulty
+      };
+      const excludedIds: string[] = [];
     
     // Mock the response
     mockedQuery.mockResolvedValueOnce(mockQuestionResult);
@@ -268,24 +271,36 @@ describe('questionService (Unit)', () => {
     expect(queryString).not.toContain('NOT IN');
     expect(queryString).toContain('ORDER BY rand');
 
-    // Check query parameters
-    expect(queryParams).toEqual(['Hard']);
-  });
+      // Check query parameters
+      expect(queryParams).toEqual(['Hard']);
+    });
 
-  // Test 4: Check for NULL result
-  it('returns null when no question is found', async () => {
-    const criteria = { topic: 'NonExistent', difficulty: 'Easy' as Difficulty };
-    const excludedIds: string[] = [];
-    
-    // Mock an empty database response
-    mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>);
-    
-    // Call the function
-    const result = await selectQuestion(criteria, excludedIds);
+    it('should return null when no question is found', async () => {
+      const criteria = { topic: 'NonExistent', difficulty: TEST_QUESTION_DIFFICULTY };
+      const excludedIds: string[] = [];
+      
+      // Mock an empty database response
+      mockedQuery.mockResolvedValue({ rows: [] } as unknown as QueryResult<any>);
+      
+      const result = await selectQuestion(criteria, excludedIds);
 
-    // Assert the result
-    expect(result).toBeNull();
-    // Assert the mock query
-    expect(mockedQuery).toHaveBeenCalledTimes(1); // Only 1 call, as it exits early
+      expect(result).toBeNull();
+      expect(mockedQuery).toHaveBeenCalledTimes(1);
+    });
+
+    it('should return question with topics when found', async () => {
+      const criteria = { topic: TEST_TOPIC, difficulty: TEST_QUESTION_DIFFICULTY };
+      const excludedIds: string[] = [];
+
+      mockedQuery.mockResolvedValueOnce(mockQuestionResult);
+      mockedQuery.mockResolvedValueOnce(mockTopics);
+
+      const result = await selectQuestion(criteria, excludedIds);
+
+      expect(result).not.toBeNull();
+      expect(result?.question_id).toBe(TEST_QUESTION_ID);
+      expect(result?.topics).toEqual([TEST_TOPIC, TEST_TOPIC_2]);
+      expect(mockedQuery).toHaveBeenCalledTimes(2);
+    });
   });
 });

@@ -24,15 +24,42 @@ process.env.GITHUB_AUTH_REDIR_URI = 'http://localhost:3000/auth/github/callback'
 let mongoServer: MongoMemoryServer;
 
 beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
+  try {
+    // Increase timeout for MongoDB Memory Server (it may need to download binaries)
+    mongoServer = await MongoMemoryServer.create({
+      instance: {
+        dbName: 'test-db',
+      },
+      binary: {
+        version: '7.0.0',
+        skipMD5: true,
+      },
+    });
+    const mongoUri = mongoServer.getUri();
+    console.log('MongoDB Memory Server started at:', mongoUri);
 
-  await mongoose.connect(mongoUri);
-}, 30000);
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 10000,
+    });
+    console.log('Connected to MongoDB Memory Server');
+  } catch (error) {
+    console.error('Failed to start MongoDB Memory Server:', error);
+    throw error;
+  }
+}, 60000); // Increased to 60 seconds
 
 afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
+  try {
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+    }
+    if (mongoServer) {
+      await mongoServer.stop();
+    }
+  } catch (error) {
+    console.error('Error cleaning up MongoDB:', error);
+  }
 }, 30000);
 
 afterEach(async () => {

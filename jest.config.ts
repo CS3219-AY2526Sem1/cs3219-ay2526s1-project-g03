@@ -142,7 +142,10 @@ const config: Config = {
   // setupFilesAfterEnv: [],
 
   // The number of seconds after which a test is considered as slow and reported as such in the results.
-  // slowTestThreshold: 5,
+  slowTestThreshold: 5,
+
+  // Test timeout in milliseconds (default is 5000ms = 5 seconds)
+  testTimeout: 10000, // 10 seconds per test
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],
@@ -244,11 +247,16 @@ const config: Config = {
       // A list of paths to directories that Jest should use to search for files in
       roots: [
         '<rootDir>/collaboration-service',
+        '<rootDir>/history-service',
         '<rootDir>/matching-service',
         '<rootDir>/question-service',
         '<rootDir>/user-service',
       ],
       setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
+
+      // Limit workers to avoid MongoDB Memory Server conflicts
+      // Can increase to 2-4 if MongoDB setup is stable, but 1 is safest
+      maxWorkers: 3,
 
       transform: {
         '^.+\\.tsx?$': [
