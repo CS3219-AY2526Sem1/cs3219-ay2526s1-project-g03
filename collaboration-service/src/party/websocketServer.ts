@@ -5,16 +5,22 @@ import {Buffer} from 'node:buffer';
 import * as Y from 'yjs';
 import {parseCookies} from '../utils/cookies.js';
 import {verifyToken} from '../utils/jwt.js';
-import {getDocument, upsertDocument, checkRoomExists, checkUserVerified} from '../storage/db.js';
+import {
+  getDocument,
+  upsertDocument,
+  checkRoomExists,
+  checkUserVerified,
+  deleteRoom,
+} from '../storage/db.js';
 
 const CHAT_HISTORY_LIMIT = 500;
-const EXECUTION_STATE_KEY = 'executionState';
 
 function ensureSharedStructures(doc: Y.Doc) {
   doc.getText('codemirror');
   doc.getMap<string>('config');
   doc.getArray('chat');
-  doc.getMap(EXECUTION_STATE_KEY);
+  doc.getMap('execution');
+  doc.getMap('submission');
 }
 
 function pruneChatHistory(doc: Y.Doc) {
@@ -114,8 +120,8 @@ export default class YjsServer implements Party.Server {
               console.log(`[${roomId}] No existing document found, creating new document`);
               ensureSharedStructures(doc);
             }
-            
-          // Return the Yjs document to y-partykit to manage
+
+            // Return the Yjs document to y-partykit to manage
             ensureSharedStructures(doc);
             pruneChatHistory(doc);
             return doc;
@@ -140,6 +146,29 @@ export default class YjsServer implements Party.Server {
             }
           },
         },
+      });
+
+      // Track when connection closes
+      connection.addEventListener('close', async () => {
+        // Wait a bit to ensure the connection is fully removed from room.connections
+        // Then check if this was the last connection in the room
+        setTimeout(async () => {
+          const userCount = [...this.room.getConnections()].length;
+          if (userCount === 0) {
+            // All users have disconnected, delete the room
+            console.log(`[${roomId}] All users disconnected, deleting room...`);
+            try {
+              const {error} = await deleteRoom(roomId);
+              if (error) {
+                console.error(`[${roomId}] Failed to delete room:`, error);
+              } else {
+                console.log(`[${roomId}] Room deleted successfully`);
+              }
+            } catch (err) {
+              console.error(`[${roomId}] Error deleting room:`, err);
+            }
+          }
+        }, 20000); // Delay to prevent initial connection to trigger this
       });
     } catch (e) {
       console.error('Connection error:', e);

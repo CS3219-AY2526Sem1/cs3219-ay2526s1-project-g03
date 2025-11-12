@@ -2,12 +2,12 @@ import {useCallback, useState, useEffect, useRef} from 'react';
 import axios from 'axios';
 
 interface UseSessionReturn {
-  sessionStartTime: number | null;
+  sessionStartTime: number;
   isPenaltyOver: boolean;
   handlePenaltyOver: () => void;
   questionId: string;
-  isLoading: boolean;
-  error: string | null;
+  sessionIsLoading: boolean;
+  sessionError: string | null;
 }
 
 /**
@@ -30,7 +30,7 @@ export async function fetchRoomData(roomId: string): Promise<{
 }
 
 export function useSession(roomId: string | undefined): UseSessionReturn {
-  const [sessionStartTime, setSessionStartTime] = useState<number | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now());
   const [isPenaltyOver, setIsPenaltyOver] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +60,7 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
         if (isMounted) {
           // Convert ISO string to timestamp
           const timestamp = new Date(roomData.created_at).getTime();
-          setSessionStartTime(timestamp);
+          timestamp ? setSessionStartTime(timestamp) : setSessionStartTime(Date.now());
         }
       } catch (err) {
         console.error('Failed to fetch room timestamp:', err);
@@ -88,7 +88,7 @@ export function useSession(roomId: string | undefined): UseSessionReturn {
     isPenaltyOver,
     handlePenaltyOver,
     questionId: questionId.current,
-    isLoading,
-    error,
+    sessionIsLoading: isLoading,
+    sessionError: error,
   };
 }
