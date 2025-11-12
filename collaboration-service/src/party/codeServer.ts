@@ -5,7 +5,13 @@ import {Buffer} from 'node:buffer';
 import * as Y from 'yjs';
 import {parseCookies} from '../utils/cookies.js';
 import {verifyToken} from '../utils/jwt.js';
-import {getDocument, upsertDocument, checkRoomExists, checkUserVerified} from '../storage/db.js';
+import {
+  getDocument,
+  upsertDocument,
+  checkRoomExists,
+  checkUserVerified,
+  deleteRoom,
+} from '../storage/db.js';
 
 const CHAT_HISTORY_LIMIT = 500;
 const EXECUTION_STATE_KEY = 'executionState';
@@ -114,8 +120,8 @@ export default class YjsServer implements Party.Server {
               console.log(`[${roomId}] No existing document found, creating new document`);
               ensureSharedStructures(doc);
             }
-            
-          // Return the Yjs document to y-partykit to manage
+
+            // Return the Yjs document to y-partykit to manage
             ensureSharedStructures(doc);
             pruneChatHistory(doc);
             return doc;
@@ -145,5 +151,28 @@ export default class YjsServer implements Party.Server {
       console.error('Connection error:', e);
       connection.close(4000, 'Internal server error');
     }
+
+    // Track when connection closes
+    connection.addEventListener('close', async () => {
+      // Wait a bit to ensure the connection is fully removed from room.connections
+      // Then check if this was the last connection in the room
+      setTimeout(async () => {
+        const userCount = [...this.room.getConnections()].length;
+        if (userCount === 0) {
+          // All users have disconnected, delete the room
+          console.log(`[${this.room.id}] All users disconnected, deleting room...`);
+          try {
+            const {error} = await deleteRoom(this.room.id);
+            if (error) {
+              console.error(`[${this.room.id}] Failed to delete room:`, error);
+            } else {
+              console.log(`[${this.room.id}] Room deleted successfully`);
+            }
+          } catch (err) {
+            console.error(`[${this.room.id}] Error deleting room:`, err);
+          }
+        }
+      }, 100); // Small delay to ensure connection is removed
+    });
   }
 }
