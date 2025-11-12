@@ -147,7 +147,7 @@ const MatchingStatusModal = ({
         <ProgressBar progress={progressPercent} />
         <p className={styles.timerText}>Searching... {timer}s remaining</p>
 
-        <StatsDisplay usersOnline={usersOnline} avgWaitTime={avgWaitTime} />
+        {/*<StatsDisplay usersOnline={usersOnline} avgWaitTime={avgWaitTime} />*/}
 
         <CancelButton onClick={onCancel} disabled={disabled} />
       </div>
