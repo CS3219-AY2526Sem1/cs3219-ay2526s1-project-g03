@@ -412,6 +412,7 @@ const PracticeSessionForm = () => {
       {showMatchModal && partnerDetails && matchData && (
         <MatchFoundModal
           partner={partnerDetails}
+          hasPartnerAccepted={partnerHasAccepted}
           onAccept={() => handleAccept()}
           onDecline={() => handleDecline()}
           criteria={matchData.criteria}

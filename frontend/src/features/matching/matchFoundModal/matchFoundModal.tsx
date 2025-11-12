@@ -14,6 +14,7 @@ interface PartnerDetails {
 
 interface MatchFoundModalProps {
   partner: PartnerDetails;
+  hasPartnerAccepted: boolean;
   onAccept: () => void;
   onDecline: () => void;
   criteria: any;
@@ -23,6 +24,7 @@ interface MatchFoundModalProps {
 
 const MatchFoundModal = ({
                            partner,
+                           hasPartnerAccepted,
                            onAccept,
                            onDecline,
                            criteria,
@@ -141,12 +143,21 @@ const MatchFoundModal = ({
 
 
         {isWaitingForPartner
-          ? (
-            <div className={styles.waitingContainer}>
-              <div className={styles.spinner}></div>
-              <h2>Waiting for partner...</h2>
-              <p className={styles.subtitle}>Your partner has been notified.</p>
-            </div>
+          ? (hasPartnerAccepted
+            ? (
+              <div className={styles.waitingContainer}>
+                <div className={styles.spinner}></div>
+                <h2>Match Confirmed!</h2>
+                <p className={styles.subtitle}>Redirecting to session room...</p>
+              </div>
+            )
+            : (
+                <div className={styles.waitingContainer}>
+                  <div className={styles.spinner}></div>
+                  <h2>Waiting for partner...</h2>
+                  <p className={styles.subtitle}>Your partner has been notified.</p>
+               </div>
+              )
           ) : (
             <>
               <div className={styles.timerContainer}>

@@ -185,16 +185,16 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
   await redisClient.del(cancelKey);
 
   // Check for penalty
-  const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
-  const penaltyTtl = await redisClient.ttl(cooldownKey);
+  // const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
+  // const penaltyTtl = await redisClient.ttl(cooldownKey);
 
-  if (penaltyTtl > 0) {
-    console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
-    return {
-      status: 'penalized',
-      cooldown: penaltyTtl
-    };
-  }
+  // if (penaltyTtl > 0) {
+  //   console.log(`User ${userId} is on cooldown. ${penaltyTtl}s remaining.`);
+  //   return {
+  //     status: 'penalized',
+  //     cooldown: penaltyTtl
+  //   };
+  // }
 
   // Encode the user's criteria into their "Searcher Mask"
   const searcherMask = encodeCriteria(criteria);
@@ -409,8 +409,12 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
 
             if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
               console.log(`Match ${parsedMessage.matchId} confirmed!`);
-
               handleMatchConfirmed(match, parsedMessage.matchId);
+            } else {
+              // match NOT YET confirmed
+              // just notify the other user that this one has accepted
+              const partnerId = currentUserId === match.user1Id ? match.user2Id : match.user1Id;
+              sendWebSocketMessage(partnerId, {type: 'partner_accepted'});
             }
           }
           break;
