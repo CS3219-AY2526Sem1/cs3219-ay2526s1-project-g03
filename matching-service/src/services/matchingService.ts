@@ -21,8 +21,10 @@ const pendingMatches = new Map<string, PendingMatch>(); // session id will be th
 // --- Redis Keys & Timeouts ---
 const WAITING_ROOM_KEY = 'matching:waiting_room';
 const LOCK_KEY_PREFIX = 'lock:match:';
-const LOCK_TIMEOUT_S = 5; // 5 seconds
+const LOCK_TIMEOUT_S = 30;
 const MATCH_ACCEPT_TIMEOUT_MS = 10000; // 10 seconds
+const CANCEL_KEY_PREFIX = 'cancel:search:';
+const CANCEL_TIMEOUT_S = 35; // 30s Lock + 5s buffer
 
 // --- Penalty System Constants ---
 const BASE_PENALTY_SECONDS = 60; // 1 minute base
@@ -178,7 +180,11 @@ const startSession = async (match: PendingMatch): Promise<string | null> => {
  */
 export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) => {
 
-  // 1. Check for penalty
+  // Removes any old, lingering cancel flags
+  const cancelKey = `${CANCEL_KEY_PREFIX}${userId}`;
+  await redisClient.del(cancelKey);
+
+  // Check for penalty
   const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
   const penaltyTtl = await redisClient.ttl(cooldownKey);
 
@@ -190,18 +196,18 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
     };
   }
 
-  // 2. Encode the user's criteria into their "Searcher Mask"
+  // Encode the user's criteria into their "Searcher Mask"
   const searcherMask = encodeCriteria(criteria);
   const searcherDiff = searcherMask & DIFFICULTY_MASK;
   const searcherLang = searcherMask & LANGUAGE_MASK;
   const searcherTopic = searcherMask & TOPIC_MASK;
 
-  // 3. Get ALL users from the waiting room (The O(N) Scan)
+  // Get ALL users from the waiting room (The O(N) Scan)
   const waitingUsers = await redisClient.hgetall(WAITING_ROOM_KEY);
 
   const potentialMatches: { id: string, mask: bigint }[] = [];
 
-  // 4. Loop through all waiting users to find potential matches
+  // Loop through all waiting users to find potential matches
   for (const waiterId in waitingUsers) {
     if (waiterId === userId) continue; // Skip ourselves
 
@@ -222,7 +228,7 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
     }
   }
 
-  // 5. We found potential partners. Try to "lock" one.
+  // We found potential partners. Try to "lock" one.
   if (potentialMatches.length > 0) {
     console.log(`User ${userId} found potential matches: ${potentialMatches.map(p => p.id)}`);
 
@@ -231,15 +237,28 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
 
       // Try to acquire a lock to prevent a race condition
       const lockKey = `${LOCK_KEY_PREFIX}${partnerId}`;
-      const lock = await redisClient.set(lockKey, 'locked', 'EX', LOCK_TIMEOUT_S, 'NX');
+      // This lock token is to handle the edge case where the validation is done after the lock failsafe timeout (30s)
+      const myLockToken = crypto.randomUUID();
+      const lock = await redisClient.set(lockKey, myLockToken, 'EX', LOCK_TIMEOUT_S, 'NX');
 
       if (!lock) {
         console.log(`User ${userId} failed to lock partner ${partnerId}, trying next.`);
         continue; // Another searcher beat us to this partner
       }
 
-      // --- WE GOT A MATCH ---
       console.log(`User ${userId} locked partner ${partnerId}!`);
+
+      // --- Check for cancellation *before* slow validation ---
+      const cancelKey = `${CANCEL_KEY_PREFIX}${userId}`;
+      const didUserCancel = await redisClient.get(cancelKey);
+
+      if (didUserCancel) {
+        console.log(`User ${userId} cancelled search. Releasing lock on ${partnerId}.`);
+        await redisClient.del(lockKey); // Release the lock
+        break; // Stop looping
+      }
+
+      // --- WE GOT A MATCH ---
 
       // Create the intersection criteria for the new session
       const intersectionMask = searcherMask & partner.mask;
@@ -263,6 +282,13 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         validQuestion = null; // Treat API errors as a failed match
       }
 
+      const currentLockToken = await redisClient.get(lockKey);
+      if (currentLockToken !== myLockToken) {
+        console.warn(`User ${userId} LOST lock on ${partnerId} during validation. Aborting match.`);
+        // Our lock expired (or was deleted) and someone else might have locked this user. We must abort.
+        continue; // Try the next partner
+      }
+
       // 4. Check if a valid question was found
       if (!validQuestion) {
         console.log(`No valid question found for match ${userId} & ${partnerId}. Releasing lock.`);
@@ -276,13 +302,20 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         continue;
       }
 
+      // --- Check for cancellation *after* slow validation ---
+      const didUserCancelAfterValidation = await redisClient.get(cancelKey);
+      if (didUserCancelAfterValidation) {
+        console.log(`User ${userId} cancelled search *during* validation. Aborting match.`);
+        await redisClient.del(lockKey); // Release lock
+        break; // Stop looping
+      }
+
       // --- IT'S A FULLY VALIDATED MATCH ---
       console.log(`Match ${userId} & ${partnerId} validated with question: ${validQuestion.id}`);
 
       // Now we can safely remove them from the waiting room
       await removeFromWaitingRoom(partnerId);
-      // await redisClient.del(lockKey);
-      // The lock will just expire on its own, which is fine.
+      await redisClient.del(lockKey);
 
       // Check if partner is still connected
       const partnerConnection = activeConnections.get(partnerId);
@@ -427,6 +460,10 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
  * Removes a user from all queues and closes their connection.
  */
 export const cancelMatch = async (userId: string) => {
+
+  // This tells any in-flight findOrQueueUser process to abort.
+  await redisClient.setex(`${CANCEL_KEY_PREFIX}${userId}`, CANCEL_TIMEOUT_S, '1');
+
   await removeFromWaitingRoom(userId);
 
   const connection = activeConnections.get(userId);
