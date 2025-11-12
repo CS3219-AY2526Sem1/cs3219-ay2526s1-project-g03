@@ -1,4 +1,4 @@
-import { userApi, matchingApi } from '../config/apiClient';
+import { userApi, matchingApi, historyApi, questionApi } from '../config/apiClient';
 
 export const register = async data => userApi.post('/auth/register', data);
 
@@ -44,6 +44,55 @@ export const createAdminAccount = async data => userApi.post('/admin/users', dat
 export const getOtherUser = async data => userApi.get(`/user/${data}`)
 
 // matching-service
-export const findMatch = async data => matchingApi.post('/matches/', data);
+export const findMatch = async data => matchingApi.post('api/matches/', data);
 
-export const cancelMatch = async data => matchingApi.delete(`/matches/${data.userId}`, data);
+// question-service
+export const getTopics = async () => {
+  const response = await questionApi.get('/api/topics');
+  return response.data;
+};
+
+// history-service
+/**
+ * Fetches the aggregated progress stats for a user.
+ * (For the stat bars on Home and Profile)
+ */
+export const getHistoryProgress = async (userId: string) => {
+  const response = await historyApi.get(`/api/history/progress/${userId}`);
+  return response.data;
+};
+
+/**
+ * Fetches the summary list of all unique, most-recent attempts.
+ * (For the main lists on Home and History Dashboard)
+ */
+export const getAllAttemptSummaries = async (userId: string) => {
+  const response = await historyApi.get(`/api/history/all-summaries/${userId}`);
+  return response.data;
+};
+
+/**
+ * Fetches ALL attempts for a SINGLE question.
+ * (For the "Question Detail" page - Pic 3)
+ */
+export const getQuestionAttempts = async (userId: string, questionId: string) => {
+  const response = await historyApi.get(`/api/history/question-attempts/${userId}/${questionId}`);
+  return response.data;
+};
+
+/**
+ * Fetches the list of "active" question IDs for the reset page.
+ */
+export const getActiveAttempts = async (userId: string) => {
+  const response = await historyApi.get(`/api/history/active-attempts/${userId}`);
+  return response.data;
+};
+
+/**
+ * Resets a list of questions, making them available for matching again.
+ */
+export const resetQuestions = async (userId: string, questionIds: string[]) => {
+  const response = await historyApi.post(`/api/history/reset-questions/${userId}`, { questionIds });
+  return response.data;
+};
+export const cancelMatch = async data => matchingApi.delete(`/api/matches/${data.userId}`, data);

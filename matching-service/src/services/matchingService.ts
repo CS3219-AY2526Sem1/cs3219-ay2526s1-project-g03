@@ -21,8 +21,10 @@ const pendingMatches = new Map<string, PendingMatch>(); // session id will be th
 // --- Redis Keys & Timeouts ---
 const WAITING_ROOM_KEY = 'matching:waiting_room';
 const LOCK_KEY_PREFIX = 'lock:match:';
-const LOCK_TIMEOUT_S = 5; // 5 seconds
+const LOCK_TIMEOUT_S = 30;
 const MATCH_ACCEPT_TIMEOUT_MS = 10000; // 10 seconds
+const CANCEL_KEY_PREFIX = 'cancel:search:';
+const CANCEL_TIMEOUT_S = 35; // 30s Lock + 5s buffer
 
 // --- Penalty System Constants ---
 const BASE_PENALTY_SECONDS = 60; // 1 minute base
@@ -39,13 +41,13 @@ const TOPIC_MASK = TOPIC_ANY;
 // --- External API calls ---
 const getAttemptedQuestions = async (uid: string): Promise<string[] | null> => {
   console.log(`Fetching history for user ${uid}...`);
-  const api = `${HISTORY_SERVICE_URL}/api/history/${uid}`;
+  const api = `${HISTORY_SERVICE_URL}/api/history/active-attempts/${uid}`;
   try {
     const response = await axios.get(api)
 
-    if (response.data && response.data.attemptedQuestionIds) {
-      console.log(`Successfully fetch attempted questions for user: ${uid}, attempted question: ${response.data.attemptedQuestionIds}`);
-      return response.data.attemptedQuestionIds;
+    if (response.data && Array.isArray(response.data)) {
+      console.log(`Successfully fetch attempted questions for user: ${uid}, attempted question: ${response.data}`);
+      return response.data;
     }
 
   } catch (error) {
@@ -77,9 +79,10 @@ const getValidQuestion = async (
     if (response.data && response.data.question_id) {
       console.log("Successfully found question:", response.data.question_id);
       return {
-        questionId: response.data.question_id,
+        id: response.data.question_id,
         difficulty: response.data.difficulty,
-        topic: response.data.topic
+        topics: response.data.topics,
+        title: response.data.title
       };
     }
 
@@ -96,44 +99,75 @@ const getValidQuestion = async (
   return null;
 }
 
-const createRoom = async (match: PendingMatch, payload: any): Promise<void> => {
-  const createRoomUrl = `${COLLAB_SERVICE_URL}/parties/main/${payload.sessionId}`;
+const createRoom = async (match: PendingMatch, matchId: string, sessionId: string): Promise<void> => {
+  const createRoomUrl = `${COLLAB_SERVICE_URL}/parties/main/${sessionId}`;
+  const payload = {
+    id: sessionId, // Use the session ID from history service
+    user1: match.user1Id,
+    user2: match.user2Id,
+    question_id: match.question.id,
+  };
 
   try {
     // 1. Await the API call
     await axios.post(createRoomUrl, payload);
 
     // 2. If it succeeds, run the success logic
-    console.log(`Successfully created room ${payload.sessionId}`);
-    sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: payload.sessionId } });
-    sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: payload.sessionId } });
+    console.log(`Successfully created room ${sessionId}`);
+    sendWebSocketMessage(match.user1Id, { type: 'match_confirmed', payload: { sessionId: sessionId } });
+    sendWebSocketMessage(match.user2Id, { type: 'match_confirmed', payload: { sessionId: sessionId } });
 
   } catch (error) {
     // 3. If it fails, run the error logic
-    console.error(`Error creating room ${payload.sessionId}:`, error.message);
+    console.error(`Error creating room ${sessionId}:`, error.message);
     sendWebSocketMessage(match.user1Id, { type: 'room_creation_failed' });
     sendWebSocketMessage(match.user2Id, { type: 'room_creation_failed' });
 
   } finally {
-    pendingMatches.delete(match.sessionId);
+    pendingMatches.delete(matchId);
   }
 }
 
-const logUserQuestionHistory = async (uid: string, questionId: string): Promise<void> => {
+// const logUserQuestionHistory = async (uid: string, questionId: string): Promise<void> => {
+//   const payload = {
+//     userId: uid,
+//     questionId: questionId
+//   };
+//
+//   const api = `${HISTORY_SERVICE_URL}/history`;
+//   try {
+//     await axios.post(api, payload);
+//     // Succeed
+//     console.log(`Successfully logged user ${uid} attempt on question ${questionId}`);
+//   } catch (error) {
+//     console.error(`Error logging user ${uid} attempt on question ${questionId}`);
+//   }
+//
+// }
+
+const startSession = async (match: PendingMatch): Promise<string | null> => {
+  const api = `${HISTORY_SERVICE_URL}/api/history/start-session`;
   const payload = {
-    userId: uid,
-    questionId: questionId
-  };
-
-  const api = `${HISTORY_SERVICE_URL}/history`;
-  try {
-    await axios.post(api, payload);
-    // Succeed
-    console.log(`Successfully logged user ${uid} attempt on question ${questionId}`);
-  } catch (error) {
-    console.error(`Error logging user ${uid} attempt on question ${questionId}`);
+    user1Id: match.user1Id,
+    user2Id: match.user2Id,
+    questionId: match.question.id,
+    questionTitle: match.question.title,
+    questionDifficulty: match.question.difficulty,
+    questionTopics: match.question.topics,
   }
+  try {
+    const response = await axios.post(api, payload);
 
+    if (response.data && response.data.sessionId) {
+      console.log(`Successfully start session: ${response.data.sessionId}`);
+      return response.data.sessionId;
+    }
+
+  } catch (error) {
+    console.error(`Error starting session `)
+    return null;
+  }
+  return null;
 }
 
 // =========================================
@@ -146,7 +180,11 @@ const logUserQuestionHistory = async (uid: string, questionId: string): Promise<
  */
 export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) => {
 
-  // 1. Check for penalty
+  // Removes any old, lingering cancel flags
+  const cancelKey = `${CANCEL_KEY_PREFIX}${userId}`;
+  await redisClient.del(cancelKey);
+
+  // Check for penalty
   const cooldownKey = `${COOLDOWN_KEY_PREFIX}${userId}`;
   const penaltyTtl = await redisClient.ttl(cooldownKey);
 
@@ -158,18 +196,18 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
     };
   }
 
-  // 2. Encode the user's criteria into their "Searcher Mask"
+  // Encode the user's criteria into their "Searcher Mask"
   const searcherMask = encodeCriteria(criteria);
   const searcherDiff = searcherMask & DIFFICULTY_MASK;
   const searcherLang = searcherMask & LANGUAGE_MASK;
   const searcherTopic = searcherMask & TOPIC_MASK;
 
-  // 3. Get ALL users from the waiting room (The O(N) Scan)
+  // Get ALL users from the waiting room (The O(N) Scan)
   const waitingUsers = await redisClient.hgetall(WAITING_ROOM_KEY);
 
   const potentialMatches: { id: string, mask: bigint }[] = [];
 
-  // 4. Loop through all waiting users to find potential matches
+  // Loop through all waiting users to find potential matches
   for (const waiterId in waitingUsers) {
     if (waiterId === userId) continue; // Skip ourselves
 
@@ -190,7 +228,7 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
     }
   }
 
-  // 5. We found potential partners. Try to "lock" one.
+  // We found potential partners. Try to "lock" one.
   if (potentialMatches.length > 0) {
     console.log(`User ${userId} found potential matches: ${potentialMatches.map(p => p.id)}`);
 
@@ -199,15 +237,28 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
 
       // Try to acquire a lock to prevent a race condition
       const lockKey = `${LOCK_KEY_PREFIX}${partnerId}`;
-      const lock = await redisClient.set(lockKey, 'locked', 'EX', LOCK_TIMEOUT_S, 'NX');
+      // This lock token is to handle the edge case where the validation is done after the lock failsafe timeout (30s)
+      const myLockToken = crypto.randomUUID();
+      const lock = await redisClient.set(lockKey, myLockToken, 'EX', LOCK_TIMEOUT_S, 'NX');
 
       if (!lock) {
         console.log(`User ${userId} failed to lock partner ${partnerId}, trying next.`);
         continue; // Another searcher beat us to this partner
       }
 
-      // --- WE GOT A MATCH ---
       console.log(`User ${userId} locked partner ${partnerId}!`);
+
+      // --- Check for cancellation *before* slow validation ---
+      const cancelKey = `${CANCEL_KEY_PREFIX}${userId}`;
+      const didUserCancel = await redisClient.get(cancelKey);
+
+      if (didUserCancel) {
+        console.log(`User ${userId} cancelled search. Releasing lock on ${partnerId}.`);
+        await redisClient.del(lockKey); // Release the lock
+        break; // Stop looping
+      }
+
+      // --- WE GOT A MATCH ---
 
       // Create the intersection criteria for the new session
       const intersectionMask = searcherMask & partner.mask;
@@ -217,8 +268,8 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
       let validQuestion: ValidQuestion | null = null;
       try {
         // 1. Get history for both users
-        const searcherHistory = await getAttemptedQuestions(userId);
-        const partnerHistory = await getAttemptedQuestions(partnerId);
+        const searcherHistory = (await getAttemptedQuestions(userId)) || [];
+        const partnerHistory = (await getAttemptedQuestions(partnerId)) || [];
 
         // 2. Combine and de-duplicate the lists
         const excludedIds = [...new Set([...searcherHistory, ...partnerHistory])];
@@ -229,6 +280,13 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
       } catch (err) {
         console.error("Error during history/question check:", err);
         validQuestion = null; // Treat API errors as a failed match
+      }
+
+      const currentLockToken = await redisClient.get(lockKey);
+      if (currentLockToken !== myLockToken) {
+        console.warn(`User ${userId} LOST lock on ${partnerId} during validation. Aborting match.`);
+        // Our lock expired (or was deleted) and someone else might have locked this user. We must abort.
+        continue; // Try the next partner
       }
 
       // 4. Check if a valid question was found
@@ -244,43 +302,51 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         continue;
       }
 
+      // --- Check for cancellation *after* slow validation ---
+      const didUserCancelAfterValidation = await redisClient.get(cancelKey);
+      if (didUserCancelAfterValidation) {
+        console.log(`User ${userId} cancelled search *during* validation. Aborting match.`);
+        await redisClient.del(lockKey); // Release lock
+        break; // Stop looping
+      }
+
       // --- IT'S A FULLY VALIDATED MATCH ---
-      console.log(`Match ${userId} & ${partnerId} validated with question: ${validQuestion.questionId}`);
+      console.log(`Match ${userId} & ${partnerId} validated with question: ${validQuestion.id}`);
 
       // Now we can safely remove them from the waiting room
       await removeFromWaitingRoom(partnerId);
-      // await redisClient.del(lockKey);
-      // The lock will just expire on its own, which is fine.
+      await redisClient.del(lockKey);
 
       // Check if partner is still connected
       const partnerConnection = activeConnections.get(partnerId);
       if (partnerConnection && partnerConnection.readyState === WebSocket.OPEN) {
         // --- IT'S A VALID MATCH ---
-        const sessionId = crypto.randomUUID();
+        const matchId = `match:${crypto.randomUUID()}`;// diff from the one use to create a room and store in history
 
         const newMatch: PendingMatch = {
           user1Id: userId, user1Status: 'pending',
           user2Id: partnerId, user2Status: 'pending',
+          question: validQuestion
         };
-        pendingMatches.set(sessionId, newMatch);
+
+        pendingMatches.set(matchId, newMatch);
 
         // This is the criteria of the question they get and languages selected (if any)
         const criteriaToShow = {
           difficulty: validQuestion.difficulty, // only 1
-          topic: validQuestion.topic, // only 1
+          topics: validQuestion.topics, // a question may have multiple topics
           languages: matchedCriteria.languages // this can be more than 1
         }
 
         // Timer to accept/decline a match
         const expiryTimestamp = Date.now() + MATCH_ACCEPT_TIMEOUT_MS;
-        setTimeout(() => autoDeclineMatch(sessionId), MATCH_ACCEPT_TIMEOUT_MS);
+        setTimeout(() => autoDeclineMatch(matchId), MATCH_ACCEPT_TIMEOUT_MS);
 
         const matchDetails = {
           status: 'matched',
           partnerId: userId, // Partner needs *our* ID
-          sessionId: sessionId,
+          matchId: matchId,
           criteria: criteriaToShow,
-          questionId: validQuestion.questionId, // Send the question ID
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -292,9 +358,8 @@ export const findOrQueueUser = async (userId: string, criteria: MatchCriteria) =
         return {
           status: 'matched',
           partnerId: partnerId, // We need the *partner's* ID
-          sessionId: sessionId,
+          matchId: matchId,
           criteria: criteriaToShow,
-          questionId: validQuestion.questionId,
           expiryTimestamp: expiryTimestamp,
           totalDuration: MATCH_ACCEPT_TIMEOUT_MS
         };
@@ -334,42 +399,28 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
           break;
 
         case 'accept_match':
-          if (parsedMessage.sessionId && currentUserId ) {
-            const match = pendingMatches.get(parsedMessage.sessionId);
+          if (parsedMessage.matchId && currentUserId ) {
+            const match = pendingMatches.get(parsedMessage.matchId);
             if (!match) break;
 
             if (currentUserId === match.user1Id) match.user1Status = 'accepted';
             if (currentUserId === match.user2Id) match.user2Status = 'accepted';
-            console.log(`Match ${parsedMessage.sessionId} status:`, match);
+            console.log(`Match ${parsedMessage.matchId} status:`, match);
 
             if (match.user1Status === 'accepted' && match.user2Status === 'accepted') {
-              console.log(`Match ${parsedMessage.sessionId} confirmed!`);
+              console.log(`Match ${parsedMessage.matchId} confirmed!`);
 
-              // Log this attempt for both user
-              logUserQuestionHistory(match.user1Id, parsedMessage.questionId);
-              logUserQuestionHistory(match.user2Id, parsedMessage.questionId);
-
-              const payload = {
-                id: parsedMessage.sessionId,
-                user1: match.user1Id,
-                user2: match.user2Id,
-                question_id: parsedMessage.questionId // We have this from the PendingMatch
-              };
-
-              createRoom(match, payload);
-            } else {
-              const partnerId = currentUserId === match.user1Id ? match.user2Id : match.user1Id;
-              sendWebSocketMessage(partnerId, { type: 'partner_accepted' });
+              handleMatchConfirmed(match, parsedMessage.matchId);
             }
           }
           break;
 
         case 'decline_match':
-          const match = pendingMatches.get(parsedMessage.sessionId);
+          const match = pendingMatches.get(parsedMessage.matchId);
           if (!match || !currentUserId) break;
 
           const partnerId = currentUserId === match.user1Id ? match.user2Id : match.user1Id;
-          console.log(`User ${currentUserId} declined match ${parsedMessage.sessionId}`);
+          console.log(`User ${currentUserId} declined match ${parsedMessage.matchId}`);
 
           // Apply penalty to the user who clicked "decline"
           applyPenalty(currentUserId);
@@ -377,7 +428,7 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
           // Notify the partner that we declined
           sendWebSocketMessage(partnerId, { type: 'partner_declined' });
 
-          pendingMatches.delete(parsedMessage.sessionId);
+          pendingMatches.delete(parsedMessage.matchId);
           break;
 
         default:
@@ -409,6 +460,10 @@ export const handleWebSocketConnection = (ws: WebSocket) => {
  * Removes a user from all queues and closes their connection.
  */
 export const cancelMatch = async (userId: string) => {
+
+  // This tells any in-flight findOrQueueUser process to abort.
+  await redisClient.setex(`${CANCEL_KEY_PREFIX}${userId}`, CANCEL_TIMEOUT_S, '1');
+
   await removeFromWaitingRoom(userId);
 
   const connection = activeConnections.get(userId);
@@ -423,6 +478,27 @@ export const cancelMatch = async (userId: string) => {
 // =========================================
 // === INTERNAL & HELPER FUNCTIONS ===
 // =========================================
+
+const handleMatchConfirmed = async (match: PendingMatch, matchId: string) => {
+  pendingMatches.delete(matchId);
+  try {
+    // Log history and get the new session ID
+    const sessionId = await startSession(match);
+    if (!sessionId) {
+      // This will be caught by the catch block
+      throw new Error("Failed to start session, received null session ID.");
+    }
+
+    await createRoom(match, matchId, sessionId);
+
+  } catch (error) {
+    // This catches errors from startSession
+    console.error(`Error in match confirmation flow for ${matchId}:`, error.message);
+    // Tell users it failed
+    sendWebSocketMessage(match.user1Id, { type: 'room_creation_failed' });
+    sendWebSocketMessage(match.user2Id, { type: 'room_creation_failed' });
+  }
+}
 
 /**
  * Encodes user criteria into a 64-bit integer mask.

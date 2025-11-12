@@ -1,38 +1,212 @@
-import { HistoryModel } from '../models/history.model';
+import { Pool } from 'pg';
+import { StartSessionInput, StartSessionOutput, CompleteSessionInput, UserProgress, ParticipantAttempt, SessionSummary } from '../types';
 
 export class HistoryService {
-  
-  public async getAttemptedQuestions(userId: string): Promise<string[]> {
-    const history = await HistoryModel.findOne({ userId: userId });
-    return history ? history.attemptedQuestionIds : [];
-  }
+  // The service now accepts the pool via its constructor.
+  // This is a standard practice called "dependency injection".
+  constructor(private pool: Pool) {}
 
-  // This is the "log on assignment" function
-  public async addQuestionAttempt(userId: string, questionId: string): Promise<void> {
-    await HistoryModel.updateOne(
-      { userId: userId },
-      { $push: { attemptedQuestionIds: questionId } },
-      { upsert: true } // Creates a new document if one doesn't exist
-    );
-  }
+  public async startSession(input: StartSessionInput): Promise<StartSessionOutput> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      const sessionRes = await client.query(
+        `INSERT INTO sessions (question_id, question_title, question_difficulty, question_topics)
+         VALUES ($1, $2, $3, $4) RETURNING session_id`,
+        [input.questionId, input.questionTitle, input.questionDifficulty, input.questionTopics]
+      );
+      const sessionId: string = sessionRes.rows[0].session_id;
 
-  // Function to remove one or more questions from history
-  public async removeQuestionAttempts(userId: string, questionIds: string[]): Promise<void> {
-    if (!Array.isArray(questionIds) || questionIds.length === 0) {
-      return; // Still good to have this check
+      await client.query(
+        `INSERT INTO participants (session_id, user_id, partner_id) VALUES ($1, $2, $3)`,
+        [sessionId, input.user1Id, input.user2Id]
+      );
+      await client.query(
+        `INSERT INTO participants (session_id, user_id, partner_id) VALUES ($1, $2, $3)`,
+        [sessionId, input.user2Id, input.user1Id]
+      );
+
+      await client.query('COMMIT');
+      return { sessionId };
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error in startSession:', error);
+      throw error;
+    } finally {
+      client.release();
     }
-    await HistoryModel.updateOne(
-      { userId: userId },
-      { $pull: { attemptedQuestionIds: { $in: questionIds } } }
+  }
+
+  public async completeSession(input: CompleteSessionInput): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Query 1: Update the participant's row
+      await client.query(
+        `UPDATE participants
+         SET code = $1, is_solved_successfully = $2, has_penalty = $3, time_taken_ms = $6
+         WHERE session_id = $4 AND user_id = $5`,
+        [
+          input.code, 
+          input.isSolvedSuccessfully, 
+          input.hasPenalty, 
+          input.sessionId, 
+          input.userId, 
+          input.timeTakenMs ?? 0 // $6
+        ]
+      );
+
+      
+      // Determine the increments based on the outcome
+      const completedIncrement = input.hasPenalty ? 0 : 1;
+      const solvedIncrement = input.isSolvedSuccessfully ? 1 : 0;
+      const timeIncrement = input.timeTakenMs || 0;
+
+      // Query 2: This query is now robust and calculates all stats correctly.
+      await client.query(
+        `INSERT INTO user_progress (
+            user_id, 
+            total_sessions, 
+            total_sessions_completed, 
+            total_successes, 
+            success_rate, 
+            current_streak, 
+            last_practice_day,
+            total_time_ms
+         )
+         VALUES ($1, 1, $2, $3, $4, 1, CURRENT_DATE, $5)
+         ON CONFLICT (user_id) DO UPDATE SET
+            total_sessions = user_progress.total_sessions + 1,
+            
+            total_sessions_completed = user_progress.total_sessions_completed + $2,
+            
+            total_successes = user_progress.total_successes + $3,
+            
+            success_rate = 
+              -- Calculate new rate based on TOTAL sessions, not just completed ones
+              (user_progress.total_successes + $3)::float / 
+              GREATEST(user_progress.total_sessions + 1, 1),
+            
+            current_streak = 
+              CASE
+                -- If last practice was yesterday, increment streak
+                WHEN user_progress.last_practice_day = (CURRENT_DATE - INTERVAL '1 day') THEN user_progress.current_streak + 1
+                -- If last practice was today, streak is unchanged
+                WHEN user_progress.last_practice_day = CURRENT_DATE THEN user_progress.current_streak
+                -- Otherwise, reset streak to 1
+                ELSE 1
+              END,
+               
+            last_practice_day = CURRENT_DATE,
+
+            total_time_ms = user_progress.total_time_ms + $5
+        `,
+        [
+          input.userId,         // $1
+          completedIncrement,     // $2
+          solvedIncrement,        // $3 (as int)
+          solvedIncrement,        // $4 (as float)
+          timeIncrement           // $5 (as int)
+        ]
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('Error in completeSession:', error);
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  public async getActiveAttemptedQuestionIds(userId: string): Promise<string[]> {
+    const res = await this.pool.query(
+      `SELECT DISTINCT s.question_id
+       FROM participants p
+       JOIN sessions s ON s.session_id = p.session_id
+       WHERE p.user_id = $1 AND p.is_active_in_history = TRUE`,
+      [userId]
+    );
+    return res.rows.map(r => r.question_id);
+  }
+
+  public async getUserProgress(userId: string): Promise<UserProgress | null> {
+    const res = await this.pool.query(`SELECT * FROM user_progress WHERE user_id = $1`, [userId]);
+    return res.rows[0] || null;
+  }
+
+  public async resetQuestions(userId: string, questionIds: string[]): Promise<void> {
+    if (!questionIds || questionIds.length === 0) {
+      return; // Nothing to do
+    }
+    // Your correct query
+    await this.pool.query(
+      `UPDATE participants 
+       SET is_active_in_history = FALSE 
+       WHERE user_id = $1 
+       AND session_id IN (
+         SELECT session_id FROM sessions WHERE question_id = ANY($2::text[])
+       )`,
+      [userId, questionIds]
     );
   }
-  
-  // New function to clear all history for a user
-  public async clearHistory(userId: string): Promise<void> {
-    await HistoryModel.updateOne(
-      { userId: userId },
-      { $set: { attemptedQuestionIds: [] } } // Set the array to empty
+
+  public async getQuestionAttempts(userId: string, questionId: string): Promise<ParticipantAttempt[] | null> {
+    const res = await this.pool.query(
+      `SELECT p.*, s.started_at, s.question_title
+       FROM participants p 
+       JOIN sessions s ON p.session_id = s.session_id 
+       WHERE p.user_id = $1 AND s.question_id = $2 
+       ORDER BY s.started_at DESC`,
+      [userId, questionId]
     );
+    return res.rows.length > 0 ? res.rows : null;
+  }
+
+  public async automaticallyResetOldAttempts(): Promise<void> {
+    console.log('[History Service] Running automatic 30-day reset job...');
+    try {
+      const res = await this.pool.query(
+        `UPDATE participants p 
+         SET is_active_in_history = FALSE 
+         FROM sessions s 
+         WHERE p.session_id = s.session_id 
+         AND p.is_active_in_history = TRUE 
+         AND s.started_at < NOW() - INTERVAL '30 days'`
+      );
+      console.log(`[History Service] Automatic reset completed. ${res.rowCount} participant records deactivated.`);
+    } catch (error) {
+      console.error('[History Service] Error during automatic reset:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * [CORRECTED] Gets the summary list of all unique questions a user has attempted.
+   * This query uses 'DISTINCT ON' to get ONLY the *most recent*
+   * attempt for each unique question_id.
+   */
+  public async getAllSummaries(userId: string): Promise<SessionSummary[]> {
+    const res = await this.pool.query(
+      `SELECT DISTINCT ON (s.question_id)
+          s.session_id,
+          s.question_id,
+          s.question_title,
+          s.question_difficulty,
+          s.question_topics,
+          s.started_at,
+          p.partner_id,
+          p.is_solved_successfully,
+          p.has_penalty,
+          p.time_taken_ms
+       FROM participants p
+       JOIN sessions s ON p.session_id = s.session_id
+       WHERE p.user_id = $1
+       ORDER BY s.question_id, s.started_at DESC`, // The ORDER BY is crucial for DISTINCT ON
+      [userId]
+    );
+    return res.rows as SessionSummary[];
   }
 }
-
