@@ -12,9 +12,10 @@ jest.unstable_mockModule('../storage/db.js', () => ({
   getDocument: jest.fn(),
   upsertDocument: jest.fn(),
   checkUserVerified: jest.fn(),
+  deleteRoom: jest.fn(),
 }));
 
-let YjsServer: typeof import('../party/codeServer.js').default;
+let YjsServer: typeof import('../party/websocketServer.js').default;
 
 class MockHeaders {
   private readonly store = new Map<string, string>();
@@ -41,7 +42,7 @@ const buildRequest = (url: string, headers: Record<string, string> = {}) =>
   }) as unknown as Request;
 
 beforeAll(async () => {
-  ({default: YjsServer} = await import('../party/codeServer.js'));
+  ({default: YjsServer} = await import('../party/websocketServer.js'));
 });
 
 describe('YjsServer.onBeforeConnect', () => {

@@ -10,9 +10,11 @@ import useAuth from '@/hooks/useAuth';
 import * as Y from 'yjs';
 
 // const HISTORY_SERVICE_URL = import.meta.env.VITE_HISTORY_SERVICE_URL || 'http://localhost:8085';
-const HISTORY_SERVICE_URL = 'http://localhost:8085';
-const MATCHING_SERVICE_URL = 'http://localhost:8081';
-const COLLAB_SERVICE_URL = 'http://localhost:8082';
+const HISTORY_SERVICE_URL = import.meta.env['VITE_HISTORY_SERVICE_URL'] || 'http://localhost:8085';
+const MATCHING_SERVICE_URL =
+  import.meta.env['VITE_MATCHING_SERVICE_URL'] || 'http://localhost:8081';
+const COLLAB_SERVICE_URL =
+  `http://${import.meta.env['VITE_NGROK_COLLAB_HOST']}` || 'http://localhost:8082';
 
 export default function SubmissionPanel({
   isPenaltyOver,
@@ -309,11 +311,6 @@ export default function SubmissionPanel({
           >
             <span>↑</span>
             <span>{isSubmitting ? 'Submitting...' : 'Submit Solution'}</span>
-          </button>
-
-          <button className="w-full border border-gray-300 hover:bg-gray-50 py-3 rounded-lg font-semibold flex items-center justify-center space-x-2">
-            <Eye size={18} />
-            <span>View Solution</span>
           </button>
 
           <button
