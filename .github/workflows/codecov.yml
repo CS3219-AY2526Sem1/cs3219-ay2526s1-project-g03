@@ -91,7 +91,7 @@ jobs:
           PGDATABASE: ${{ env.POSTGRES_DB }}
 
       - name: Run question-service tests
-        run: npm test --workspace=question-service
+        run: npm test --workspace=question-service -- --coverage
         # Environment variables (POSTGRES_*) are inherited from job-level env above
         # This avoids duplicating credentials in multiple steps
 
@@ -107,3 +107,5 @@ jobs:
           files: ./coverage/lcov.info,./question-service/coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
+          fail_ci_if_error: false
+          verbose: true
