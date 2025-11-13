@@ -32,7 +32,6 @@ beforeAll(async () => {
       },
       binary: {
         version: '7.0.0',
-        skipMD5: true,
       },
     });
     const mongoUri = mongoServer.getUri();

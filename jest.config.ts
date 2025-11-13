@@ -212,24 +212,21 @@ const config: Config = {
 
       setupFilesAfterEnv: ['<rootDir>/frontend/src/test/setup.ts'],
 
+      // File extensions Jest should look for when resolving modules
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+
       transform: {
         '^.+\\.tsx?$': [
           'ts-jest',
           {
-            tsconfig: {
-              jsx: 'react-jsx',
-              esModuleInterop: true,
-              allowSyntheticDefaultImports: true,
-              module: 'commonjs',
-            },
+            tsconfig: '<rootDir>/frontend/tsconfig.app.json',
             diagnostics: false, // Disables TypeScript errors
-            babelConfig: true,
-            useESM: true,
           },
         ],
       },
 
       moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/frontend/src/$1',
         '\\.css$': 'identity-obj-proxy',
         '\\.svg$': '<rootDir>/frontend/src/test/__mocks__/fileMock.ts',
       },
