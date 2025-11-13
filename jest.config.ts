@@ -38,14 +38,16 @@ const config: Config = {
     'frontend/src/**/*.{ts,js,tsx,jsx}',
     // Backend services
     'collaboration-service/src/**/*.{ts,js}',
+    'history-service/src/**/*.{ts,js}',
     'matching-service/src/**/*.{ts,js}',
     'question-service/src/**/*.{ts,js}',
     'user-service/src/**/*.{ts,js}',
     // Exclusions
     '!**/src/**/*.d.ts',
     '!**/src/**/__tests__/**',
-    '!**/src/**/*.test.{ts,js}',
-    '!**/src/**/*.spec.{ts,js}',
+    '!**/src/**/*.test.{ts,js,tsx,jsx}',
+    '!**/src/**/*.spec.{ts,js,tsx,jsx}',
+    '!**/src/test/**',
     '!**/node_modules/**',
     '!**/dist/**',
     '!**/build/**',
@@ -53,8 +55,9 @@ const config: Config = {
 
   // Force coverage collection from ignored files using an array of glob patterns
   forceCoverageMatch: [
-    '<rootDir>/frontend/src/**/*.{ts,js, tsx}',
+    '<rootDir>/frontend/src/**/*.{ts,js,tsx,jsx}',
     '<rootDir>/collaboration-service/src/**/*.{ts,js}',
+    '<rootDir>/history-service/src/**/*.{ts,js}',
     '<rootDir>/matching-service/src/**/*.{ts,js}',
     '<rootDir>/question-service/src/**/*.{ts,js}',
     '<rootDir>/user-service/src/**/*.{ts,js}',
@@ -219,7 +222,13 @@ const config: Config = {
         '^.+\\.tsx?$': [
           'ts-jest',
           {
-            tsconfig: '<rootDir>/frontend/tsconfig.app.json',
+            tsconfig: {
+              jsx: 'react-jsx',
+              esModuleInterop: true,
+              allowSyntheticDefaultImports: true,
+              module: 'commonjs',
+              moduleResolution: 'node',
+            },
             diagnostics: false, // Disables TypeScript errors
           },
         ],
