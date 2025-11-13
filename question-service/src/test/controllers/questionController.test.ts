@@ -98,7 +98,10 @@ describe('controllers/questionController', () => {
       const error = new Error('Database error');
       (questionService.getAllQuestions as jest.Mock).mockRejectedValue(error);
 
-      await questionController.getAllQuestions(mockRequest as Request, mockResponse as Response, mockNext);
+      questionController.getAllQuestions(mockRequest as Request, mockResponse as Response, mockNext);
+
+      // asyncHandler catches errors asynchronously, so we need to wait
+      await new Promise(resolve => setImmediate(resolve));
 
       expect(mockNext).toHaveBeenCalledWith(error);
     });
