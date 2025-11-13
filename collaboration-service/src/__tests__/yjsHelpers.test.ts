@@ -1,3 +1,19 @@
+// Mock jwt BEFORE any imports that might use it
+jest.mock('../utils/jwt', () => ({
+  verifyToken: jest.fn(),
+}));
+
+// Mock db to prevent any side effects
+jest.mock('../storage/db', () => ({
+  checkUserVerified: jest.fn(),
+  getDocument: jest.fn(),
+  upsertDocument: jest.fn(),
+  checkRoomExists: jest.fn(),
+  deleteRoom: jest.fn(),
+  createRoom: jest.fn(),
+  getActiveRoom: jest.fn(),
+}));
+
 import * as Y from 'yjs';
 import { ensureSharedStructures, pruneChatHistory } from '../party/websocketServer';
 
@@ -72,14 +88,8 @@ describe('Yjs Helper Utilities', () => {
 
       pruneChatHistory(doc);
 
-      // Should keep exactly CHAT_LIMIT messages
       expect(chatArray.length).toBe(CHAT_LIMIT);
-      
-      // The oldest messages (0 through excess-1) should be removed
-      // So the first message should now be message number 'excess'
       expect(chatArray.get(0)).toBe(excess);
-      
-      // The last message should still be the last one we added
       expect(chatArray.get(CHAT_LIMIT - 1)).toBe(CHAT_LIMIT + excess - 1);
     });
   });

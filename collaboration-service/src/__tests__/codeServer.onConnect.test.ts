@@ -2,11 +2,12 @@ import { Buffer } from 'node:buffer';
 import type * as Party from 'partykit/server';
 import * as Y from 'yjs';
 
-// Mock all dependencies
+// Mock jwt FIRST - this is critical!
 jest.mock('../utils/jwt', () => ({
   verifyToken: jest.fn(),
 }));
 
+// Mock db
 jest.mock('../storage/db', () => ({
   checkUserVerified: jest.fn(),
   getDocument: jest.fn(),
@@ -17,23 +18,33 @@ jest.mock('../storage/db', () => ({
   getActiveRoom: jest.fn(),
 }));
 
+// Mock y-partykit
 jest.mock('y-partykit', () => ({
   onConnect: jest.fn(),
 }));
 
+// NOW import the modules
 import YjsServer from '../party/websocketServer';
 import { verifyToken } from '../utils/jwt';
 import { checkUserVerified, getDocument, upsertDocument } from '../storage/db';
 import { onConnect as yOnConnect } from 'y-partykit';
 
-// Type the mocked functions
 const mockVerifyToken = verifyToken as jest.MockedFunction<typeof verifyToken>;
 const mockCheckUserVerified = checkUserVerified as jest.MockedFunction<typeof checkUserVerified>;
 const mockGetDocument = getDocument as jest.MockedFunction<typeof getDocument>;
 const mockUpsertDocument = upsertDocument as jest.MockedFunction<typeof upsertDocument>;
 const mockYOnConnect = yOnConnect as jest.MockedFunction<typeof yOnConnect>;
 
-// Helper to create mock connection
+function createSupabaseResponse<T>(data: T | null, error: any = null) {
+  return {
+    data,
+    error,
+    count: null,
+    status: error ? 500 : 200,
+    statusText: error ? 'Error' : 'OK'
+  };
+}
+
 function createMockConnection(): Party.Connection {
   const eventListeners = new Map<string, Function>();
   
@@ -42,15 +53,9 @@ function createMockConnection(): Party.Connection {
     addEventListener: jest.fn((event: string, handler: Function) => {
       eventListeners.set(event, handler);
     }),
-    // Helper to trigger events
-    _triggerEvent: (event: string) => {
-      const handler = eventListeners.get(event);
-      if (handler) handler();
-    },
   } as any;
 }
 
-// Helper to create mock context
 function createMockContext(accessToken?: string): Party.ConnectionContext {
   return {
     request: {
@@ -64,7 +69,6 @@ function createMockContext(accessToken?: string): Party.ConnectionContext {
   } as any;
 }
 
-// Helper to create mock room
 function createMockRoom(roomId: string): Party.Room {
   const connections = new Set<Party.Connection>();
   
@@ -155,16 +159,14 @@ describe('YjsServer.onConnect', () => {
       const connection = createMockConnection();
       const context = createMockContext('valid-token');
 
-      mockGetDocument.mockResolvedValue({ data: null, error: null });
-      mockUpsertDocument.mockResolvedValue({ data: null, error: null });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
 
       let capturedDoc: Y.Doc | null = null;
 
       mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
         capturedDoc = await options.load();
-        // Simulate adding content
         capturedDoc.getArray('chat').push(['test message']);
-        // Trigger the callback to persist
         if (options.callback?.handler) {
           await options.callback.handler(capturedDoc);
         }
@@ -175,12 +177,8 @@ describe('YjsServer.onConnect', () => {
       expect(mockYOnConnect).toHaveBeenCalled();
       expect(mockGetDocument).toHaveBeenCalledWith('test-room-123');
       expect(capturedDoc).not.toBeNull();
-      
-      // Verify structures were initialized
       expect(capturedDoc!.getText('codemirror')).toBeInstanceOf(Y.Text);
       expect(capturedDoc!.getArray('chat').length).toBe(1);
-      
-      // Verify document was persisted
       expect(mockUpsertDocument).toHaveBeenCalledWith(
         'test-room-123',
         expect.any(Uint8Array)
@@ -191,17 +189,14 @@ describe('YjsServer.onConnect', () => {
       const connection = createMockConnection();
       const context = createMockContext('valid-token');
 
-      // Create a document with existing content
       const existingDoc = new Y.Doc();
       existingDoc.getText('codemirror').insert(0, 'console.log("hello");');
       const encodedDoc = Y.encodeStateAsUpdate(existingDoc);
       const base64Doc = Buffer.from(encodedDoc).toString('base64');
 
-      mockGetDocument.mockResolvedValue({
-        data: { document: base64Doc },
-        error: null,
-      });
-      mockUpsertDocument.mockResolvedValue({ data: null, error: null });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: base64Doc }));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
 
       let loadedDoc: Y.Doc | null = null;
 
@@ -219,12 +214,8 @@ describe('YjsServer.onConnect', () => {
       const connection = createMockConnection();
       const context = createMockContext('valid-token');
 
-      // Provide invalid base64 data
-      mockGetDocument.mockResolvedValue({
-        data: { document: 'not-valid-base64-!!!!' },
-        error: null,
-      });
-      mockUpsertDocument.mockResolvedValue({ data: null, error: null });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: 'not-valid-base64-!!!!' }));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
 
       let loadedDoc: Y.Doc | null = null;
 
@@ -234,7 +225,6 @@ describe('YjsServer.onConnect', () => {
 
       await server.onConnect(connection, context);
 
-      // Should create a fresh document despite the corrupted data
       expect(loadedDoc).not.toBeNull();
       expect(loadedDoc!.getText('codemirror').toString()).toBe('');
     });
@@ -243,13 +233,11 @@ describe('YjsServer.onConnect', () => {
       const connection = createMockConnection();
       const context = createMockContext('valid-token');
 
-      mockGetDocument.mockResolvedValue({
-        data: null,
-        error: { message: 'Database unavailable' },
-      });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null, { message: 'Database unavailable' }));
+
 
       mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
-        await options.load(); // This should throw
+        await options.load();
       });
 
       await server.onConnect(connection, context);
@@ -265,15 +253,14 @@ describe('YjsServer.onConnect', () => {
         payload: { userId: 'user-123', sessionId: 'session-456' },
       });
       mockCheckUserVerified.mockResolvedValue(true);
-      mockGetDocument.mockResolvedValue({ data: null, error: null });
-      mockUpsertDocument.mockResolvedValue({ data: null, error: null });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
     });
 
     it('should prune chat history when loading document with excessive messages', async () => {
       const connection = createMockConnection();
       const context = createMockContext('valid-token');
 
-      // Create document with too many messages
       const docWithTooManyMessages = new Y.Doc();
       const chatArray = docWithTooManyMessages.getArray('chat');
       for (let i = 0; i < 550; i++) {
@@ -282,10 +269,7 @@ describe('YjsServer.onConnect', () => {
       const encodedDoc = Y.encodeStateAsUpdate(docWithTooManyMessages);
       const base64Doc = Buffer.from(encodedDoc).toString('base64');
 
-      mockGetDocument.mockResolvedValue({
-        data: { document: base64Doc },
-        error: null,
-      });
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: base64Doc }));
 
       let loadedDoc: Y.Doc | null = null;
 
@@ -296,7 +280,7 @@ describe('YjsServer.onConnect', () => {
       await server.onConnect(connection, context);
 
       expect(loadedDoc).not.toBeNull();
-      expect(loadedDoc!.getArray('chat').length).toBe(500); // Should be pruned to limit
+      expect(loadedDoc!.getArray('chat').length).toBe(500);
     });
   });
 });

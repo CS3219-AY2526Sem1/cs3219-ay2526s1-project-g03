@@ -11,7 +11,7 @@ import {
   checkRoomExists,
   checkUserVerified,
   deleteRoom,
-} from '../storage/db.js';
+} from '../storage/db';
 
 const CHAT_HISTORY_LIMIT = 500;
 

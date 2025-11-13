@@ -1,10 +1,16 @@
 import type * as Party from 'partykit/server';
 
-// Mock dependencies
+// Mock jwt FIRST
+jest.mock('../utils/jwt', () => ({
+  verifyToken: jest.fn(),
+}));
+
+// Mock cookies
 jest.mock('../utils/cookies', () => ({
   parseCookies: jest.fn(),
 }));
 
+// Mock db
 jest.mock('../storage/db', () => ({
   checkRoomExists: jest.fn(),
   getDocument: jest.fn(),
@@ -15,15 +21,19 @@ jest.mock('../storage/db', () => ({
   getActiveRoom: jest.fn(),
 }));
 
+// Mock y-partykit
+jest.mock('y-partykit', () => ({
+  onConnect: jest.fn(),
+}));
+
+// NOW import the modules
 import YjsServer from '../party/websocketServer';
 import { parseCookies } from '../utils/cookies';
 import { checkRoomExists } from '../storage/db';
 
-// Mock implementations
 const mockParseCookies = parseCookies as jest.MockedFunction<typeof parseCookies>;
 const mockCheckRoomExists = checkRoomExists as jest.MockedFunction<typeof checkRoomExists>;
 
-// Helper to create mock request
 function createMockRequest(url: string, cookies?: Record<string, string>): Party.Request {
   const headers = new Map<string, string>();
   
@@ -56,7 +66,7 @@ describe('YjsServer.onBeforeConnect', () => {
     const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(400);
+    expect((response as Response).status).toBe(400);
     
     const body = await response.text();
     expect(body).toContain('No access token');
@@ -72,7 +82,7 @@ describe('YjsServer.onBeforeConnect', () => {
     const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(400);
+    expect((response as Response).status).toBe(400);
     expect(mockParseCookies).toHaveBeenCalledWith('sessionId=some-session');
   });
 
@@ -86,7 +96,7 @@ describe('YjsServer.onBeforeConnect', () => {
     const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(400);
+    expect((response as Response).status).toBe(400);
     
     const body = await response.text();
     expect(body).toContain('Room ID missing');
@@ -103,7 +113,7 @@ describe('YjsServer.onBeforeConnect', () => {
     const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(404);
+    expect((response as Response).status).toBe(404);
     expect(mockCheckRoomExists).toHaveBeenCalledWith('nonexistent-room');
   });
 
@@ -118,7 +128,7 @@ describe('YjsServer.onBeforeConnect', () => {
     const response = await YjsServer.onBeforeConnect(request, mockLobby);
 
     expect(response).toBeInstanceOf(Response);
-    expect(response.status).toBe(500);
+    expect((response as Response).status).toBe(500);
   });
 
   it('should inject access token into headers and return request when validation passes', async () => {
@@ -131,7 +141,6 @@ describe('YjsServer.onBeforeConnect', () => {
 
     const result = await YjsServer.onBeforeConnect(request, mockLobby);
 
-    // Should return the modified request, not a Response
     expect(result).toBe(request);
     expect(request.headers.get('X-Access-Token')).toBe('valid-token-xyz');
     
