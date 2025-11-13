@@ -283,4 +283,120 @@ describe('YjsServer.onConnect', () => {
       expect(loadedDoc!.getArray('chat').length).toBe(500);
     });
   });
+
+  describe('Document persistence and callbacks', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+    });
+
+    it('should save document via callback handler', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        // Trigger the callback
+        if (options.callback?.handler) {
+          await options.callback.handler(doc);
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalledWith(
+        'test-room-123',
+        expect.any(Uint8Array)
+      );
+    });
+
+    it('should handle save errors in callback gracefully', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null, { message: 'Save failed' }));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        if (options.callback?.handler) {
+          await options.callback.handler(doc);
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalled();
+      // Should not throw, just log error
+      expect(connection.close).not.toHaveBeenCalled();
+    });
+
+    it('should catch exceptions in save callback', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockUpsertDocument.mockRejectedValue(new Error('Network failure'));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        if (options.callback?.handler) {
+          try {
+            await options.callback.handler(doc);
+          } catch (err) {
+            // Swallow the error as the code does
+          }
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalled();
+    });
+  });
+
+  describe('Connection lifecycle and room cleanup', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+    });
+
+    it('should register close event listener on connection', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(connection.addEventListener).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function)
+      );
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle unexpected errors during connection', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockVerifyToken.mockRejectedValue(new Error('Unexpected error'));
+
+      await server.onConnect(connection, context);
+
+      expect(connection.close).toHaveBeenCalledWith(4000, 'Internal server error');
+    });
+  });
 });

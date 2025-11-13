@@ -147,4 +147,47 @@ describe('YjsServer.onBeforeConnect', () => {
     expect(mockParseCookies).toHaveBeenCalled();
     expect(mockCheckRoomExists).toHaveBeenCalledWith('room-123');
   });
+
+  describe('edge cases and error paths', () => {
+    it('should handle malformed cookie strings gracefully', async () => {
+      const request = createMockRequest('https://host/parties/code/room-123', {
+        accessToken: '',
+      });
+      
+      mockParseCookies.mockReturnValue({ accessToken: '' });
+
+      const response = await YjsServer.onBeforeConnect(request, mockLobby);
+
+      expect((response as Response).status).toBe(400);
+    });
+
+    it('should handle URLs with query parameters', async () => {
+      const request = createMockRequest('https://host/parties/code/room-123?foo=bar', {
+        accessToken: 'token',
+      });
+      
+      mockParseCookies.mockReturnValue({ accessToken: 'token' });
+      mockCheckRoomExists.mockResolvedValue(true);
+
+      const result = await YjsServer.onBeforeConnect(request, mockLobby);
+
+      expect(result).toBe(request);
+      expect(mockCheckRoomExists).toHaveBeenCalledWith('room-123');
+    });
+
+    it('should handle very long room IDs', async () => {
+      const longRoomId = 'a'.repeat(500);
+      const request = createMockRequest(`https://host/parties/code/${longRoomId}`, {
+        accessToken: 'token',
+      });
+      
+      mockParseCookies.mockReturnValue({ accessToken: 'token' });
+      mockCheckRoomExists.mockResolvedValue(true);
+
+      const result = await YjsServer.onBeforeConnect(request, mockLobby);
+
+      expect(result).toBe(request);
+      expect(mockCheckRoomExists).toHaveBeenCalledWith(longRoomId);
+    });
+  });
 });

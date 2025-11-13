@@ -93,4 +93,29 @@ describe('Yjs Helper Utilities', () => {
       expect(chatArray.get(CHAT_LIMIT - 1)).toBe(CHAT_LIMIT + excess - 1);
     });
   });
+
+  describe('edge cases', () => {
+    it('should handle empty chat array during pruning', () => {
+      const doc = new Y.Doc();
+      ensureSharedStructures(doc);
+      const chatArray = doc.getArray('chat');
+
+      expect(chatArray.length).toBe(0);
+      pruneChatHistory(doc);
+      expect(chatArray.length).toBe(0);
+    });
+
+    it('should preserve data types in initialized structures', () => {
+      const doc = new Y.Doc();
+      ensureSharedStructures(doc);
+
+      doc.getText('codemirror').insert(0, 'test');
+      doc.getMap('config').set('language', 'javascript');
+      doc.getArray('chat').push(['hello']);
+
+      expect(doc.getText('codemirror').toString()).toBe('test');
+      expect(doc.getMap('config').get('language')).toBe('javascript');
+      expect(doc.getArray('chat').length).toBe(1);
+    });
+  });
 });
