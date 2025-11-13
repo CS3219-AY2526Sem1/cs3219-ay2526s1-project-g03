@@ -1,12 +1,47 @@
 name: Run tests and upload coverage
 
-on: 
-  push
+on: push
 
 jobs:
   test:
     name: Run tests and collect coverage
     runs-on: ubuntu-latest
+
+    # PostgreSQL service container for question-service tests
+    # SECURITY NOTE: These are test-only credentials for ephemeral CI databases
+    # - Database is only accessible within the GitHub Actions runner (localhost)
+    # - Credentials are for temporary test databases that are destroyed after tests
+    # - Credentials are stored in GitHub Secrets (never commit real credentials)
+    services:
+      postgres:
+        image: postgres:14-alpine
+        env:
+          # Test database credentials from GitHub Secrets
+          # Must match job-level env vars below
+          POSTGRES_USER: ${{ secrets.POSTGRES_TEST_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_TEST_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_TEST_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+
+    # Job-level environment variables - shared across all steps
+    # SECURITY IMPROVEMENTS:
+    # 1. ✅ Password removed from command-line arguments (using PGPASSWORD env var)
+    # 2. ✅ Credentials defined once at job level (avoid duplication)
+    # 3. ✅ Credentials stored in GitHub Secrets (not hardcoded)
+    # 4. ✅ Test credentials are clearly documented as test-only
+    # NOTE: These must match the service container credentials above
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      # Test database credentials from GitHub Secrets
+      POSTGRES_USER: ${{ secrets.POSTGRES_TEST_USER }}
+      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_TEST_PASSWORD }}
+      POSTGRES_DB: ${{ secrets.POSTGRES_TEST_DB }}
+      NODE_ENV: test
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,11 +56,54 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Run tests
-        run: npx jest --coverage
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL to be ready
+        # SECURITY: Using environment variables instead of hardcoded values
+        # This allows credentials to be overridden via GitHub Secrets
+        run: |
+          until pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER"; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+
+      - name: Initialize PostgreSQL database
+        # SECURITY IMPROVEMENT: Using environment variables (PGPASSWORD) instead of command-line arguments
+        # This prevents the password from appearing in:
+        # - Process lists (ps aux) - password is in env var, not command line
+        # - Command logs - password is not visible in psql command
+        # - Shell history - password is not in command string
+        # The PGPASSWORD env var is used automatically by psql (not visible in ps)
+        run: |
+          psql -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -f question-service/db/init.db.sql
+        env:
+          # PostgreSQL client uses these environment variables automatically
+          # PGPASSWORD is read from env (not passed as command-line argument)
+          # Values are inherited from job-level env above
+          PGHOST: ${{ env.POSTGRES_HOST }}
+          PGPORT: ${{ env.POSTGRES_PORT }}
+          PGUSER: ${{ env.POSTGRES_USER }}
+          PGPASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          PGDATABASE: ${{ env.POSTGRES_DB }}
+
+      - name: Run question-service tests
+        run: npm test --workspace=question-service
+        # Environment variables (POSTGRES_*) are inherited from job-level env above
+        # This avoids duplicating credentials in multiple steps
+
+      - name: Run other tests
+        run: npx jest --coverage --testPathIgnorePatterns="question-service"
+        # NODE_ENV is inherited from job-level env above
 
       - name: Upload results to Codecov
         if: always()
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info,./question-service/coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella

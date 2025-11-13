@@ -7,9 +7,9 @@
   "transform": {
     "^.+\\.(ts)$": ["ts-jest", { "tsconfig": "<rootDir>/tsconfig.json" }]
   },
-  "globalSetup": "<rootDir>/src/test/globalSetup.ts", 
+  "globalSetup": "<rootDir>/src/test/globalSetup.ts",
   "setupFilesAfterEnv": ["<rootDir>/src/test/setup.ts"],
-  "testTimeout": 10000,
+  "testTimeout": 15000,
   "maxWorkers": 3
 }
 

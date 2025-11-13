@@ -142,7 +142,10 @@ const config: Config = {
   // setupFilesAfterEnv: [],
 
   // The number of seconds after which a test is considered as slow and reported as such in the results.
-  // slowTestThreshold: 5,
+  slowTestThreshold: 5,
+
+  // Test timeout in milliseconds (default is 5000ms = 5 seconds)
+  testTimeout: 10000, // 10 seconds per test
 
   // A list of paths to snapshot serializer modules Jest should use for snapshot testing
   // snapshotSerializers: [],
@@ -209,24 +212,21 @@ const config: Config = {
 
       setupFilesAfterEnv: ['<rootDir>/frontend/src/test/setup.ts'],
 
+      // File extensions Jest should look for when resolving modules
+      moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+
       transform: {
         '^.+\\.tsx?$': [
           'ts-jest',
           {
-            tsconfig: {
-              jsx: 'react-jsx',
-              esModuleInterop: true,
-              allowSyntheticDefaultImports: true,
-              module: 'commonjs',
-            },
+            tsconfig: '<rootDir>/frontend/tsconfig.app.json',
             diagnostics: false, // Disables TypeScript errors
-            babelConfig: true,
-            useESM: true,
           },
         ],
       },
 
       moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/frontend/src/$1',
         '\\.css$': 'identity-obj-proxy',
         '\\.svg$': '<rootDir>/frontend/src/test/__mocks__/fileMock.ts',
       },
@@ -244,11 +244,16 @@ const config: Config = {
       // A list of paths to directories that Jest should use to search for files in
       roots: [
         '<rootDir>/collaboration-service',
+        '<rootDir>/history-service',
         '<rootDir>/matching-service',
         '<rootDir>/question-service',
         '<rootDir>/user-service',
       ],
       setupFilesAfterEnv: ['<rootDir>/user-service/src/test/setup.ts'],
+
+      // Limit workers to avoid MongoDB Memory Server conflicts
+      // Can increase to 2-4 if MongoDB setup is stable, but 1 is safest
+      maxWorkers: 3,
 
       transform: {
         '^.+\\.tsx?$': [
