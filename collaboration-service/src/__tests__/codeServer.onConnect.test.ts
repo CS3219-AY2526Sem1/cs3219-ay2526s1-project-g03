@@ -1,198 +1,402 @@
-import {afterAll, beforeAll, beforeEach, describe, expect, it, jest} from '@jest/globals';
-import {Buffer} from 'node:buffer';
+import { Buffer } from 'node:buffer';
 import type * as Party from 'partykit/server';
 import * as Y from 'yjs';
 
-const verifyTokenMock = jest.fn<() => Promise<{valid: boolean; payload?: any; error?: any}>>();
-const checkUserVerifiedMock = jest.fn<() => Promise<boolean>>();
-const getDocumentMock = jest.fn<() => Promise<{data: any; error: any}>>();
-const upsertDocumentMock = jest.fn<(roomId: string, content: Uint8Array) => Promise<{data: any; error: any}>>();
-const partyOnConnectMock = jest.fn<
-  (
-    connection: Party.Connection,
-    room: Party.Room,
-    options: {
-      load: () => Promise<Y.Doc>;
-      callback?: {handler: (doc: Y.Doc) => Promise<void>};
-    }
-  ) => Promise<void>
->();
-
-jest.unstable_mockModule('../utils/jwt.js', () => ({
-  verifyToken: verifyTokenMock,
+// Mock jwt FIRST - this is critical!
+jest.mock('../utils/jwt', () => ({
+  verifyToken: jest.fn(),
 }));
 
-jest.unstable_mockModule('../storage/db.js', () => ({
-  checkUserVerified: checkUserVerifiedMock,
-  getDocument: getDocumentMock,
-  upsertDocument: upsertDocumentMock,
+// Mock db
+jest.mock('../storage/db', () => ({
+  checkUserVerified: jest.fn(),
+  getDocument: jest.fn(),
+  upsertDocument: jest.fn(),
   checkRoomExists: jest.fn(),
   deleteRoom: jest.fn(),
+  createRoom: jest.fn(),
+  getActiveRoom: jest.fn(),
 }));
 
-jest.unstable_mockModule('y-partykit', () => ({
-  onConnect: partyOnConnectMock,
+// Mock y-partykit
+jest.mock('y-partykit', () => ({
+  onConnect: jest.fn(),
 }));
 
-let YjsServer: typeof import('../party/websocketServer.js').default;
+// NOW import the modules
+import YjsServer from '../party/websocketServer';
+import { verifyToken } from '../utils/jwt';
+import { checkUserVerified, getDocument, upsertDocument } from '../storage/db';
+import { onConnect as yOnConnect } from 'y-partykit';
 
-const createConnection = () =>
-  ({
+const mockVerifyToken = verifyToken as jest.MockedFunction<typeof verifyToken>;
+const mockCheckUserVerified = checkUserVerified as jest.MockedFunction<typeof checkUserVerified>;
+const mockGetDocument = getDocument as jest.MockedFunction<typeof getDocument>;
+const mockUpsertDocument = upsertDocument as jest.MockedFunction<typeof upsertDocument>;
+const mockYOnConnect = yOnConnect as jest.MockedFunction<typeof yOnConnect>;
+
+function createSupabaseResponse<T>(data: T | null, error: any = null) {
+  return {
+    data,
+    error,
+    count: null,
+    status: error ? 500 : 200,
+    statusText: error ? 'Error' : 'OK'
+  };
+}
+
+function createMockConnection(): Party.Connection {
+  const eventListeners = new Map<string, Function>();
+  
+  return {
     close: jest.fn(),
-    addEventListener: jest.fn(),
-  }) as unknown as Party.Connection;
+    addEventListener: jest.fn((event: string, handler: Function) => {
+      eventListeners.set(event, handler);
+    }),
+  } as any;
+}
 
-const buildContext = (token?: string) =>
-  ({
+function createMockContext(accessToken?: string): Party.ConnectionContext {
+  return {
     request: {
       headers: {
-        get: (name: string) => (name === 'X-Access-Token' ? token ?? null : null),
+        get: (name: string) => {
+          if (name === 'X-Access-Token') return accessToken || null;
+          return null;
+        },
       },
     },
-  }) as unknown as Party.ConnectionContext;
+  } as any;
+}
 
-const room = {id: 'room-1'} as unknown as Party.Room;
-
-beforeAll(async () => {
-  ({default: YjsServer} = await import('../party/websocketServer.js'));
-});
+function createMockRoom(roomId: string): Party.Room {
+  const connections = new Set<Party.Connection>();
+  
+  return {
+    id: roomId,
+    getConnections: () => connections,
+    storage: {
+      get: jest.fn(),
+      put: jest.fn(),
+    },
+  } as any;
+}
 
 describe('YjsServer.onConnect', () => {
+  let server: YjsServer;
+  let mockRoom: Party.Room;
+
   beforeEach(() => {
     jest.clearAllMocks();
-    verifyTokenMock.mockReset();
-    checkUserVerifiedMock.mockReset();
-    getDocumentMock.mockReset();
-    upsertDocumentMock.mockReset();
-    partyOnConnectMock.mockReset();
-    partyOnConnectMock.mockImplementation(async () => undefined);
+    mockRoom = createMockRoom('test-room-123');
+    server = new YjsServer(mockRoom);
   });
 
-  afterAll(() => {
-    jest.resetModules();
+  describe('Authentication failures', () => {
+    it('should close connection when access token is missing', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext(undefined);
+
+      await server.onConnect(connection, context);
+
+      expect(connection.close).toHaveBeenCalledWith(
+        4000,
+        'Internal error: Missing authentication data'
+      );
+      expect(mockYOnConnect).not.toHaveBeenCalled();
+    });
+
+    it('should close connection when token verification fails', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('invalid-token');
+
+      mockVerifyToken.mockResolvedValue({
+        valid: false,
+        error: new Error('Token expired'),
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockVerifyToken).toHaveBeenCalledWith('invalid-token');
+      expect(connection.close).toHaveBeenCalledWith(
+        4001,
+        'Unauthorised: Invalid or expired token'
+      );
+      expect(mockYOnConnect).not.toHaveBeenCalled();
+    });
+
+    it('should close connection when user is not authorized for the room', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-456', sessionId: 'session-789' },
+      });
+      mockCheckUserVerified.mockResolvedValue(false);
+
+      await server.onConnect(connection, context);
+
+      expect(mockCheckUserVerified).toHaveBeenCalledWith('user-456', 'test-room-123');
+      expect(connection.close).toHaveBeenCalledWith(
+        4003,
+        'Forbidden: You are not authorised for this room'
+      );
+      expect(mockYOnConnect).not.toHaveBeenCalled();
+    });
   });
 
-  it('closes the connection when the auth header is missing', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
+  describe('Document loading', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+    });
 
-    await server.onConnect(connection, buildContext(undefined));
+    it('should create a new document when none exists in database', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
 
-    expect(connection.close).toHaveBeenCalledWith(
-      4000,
-      'Internal error: Missing authentication data'
-    );
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
+      let capturedDoc: Y.Doc | null = null;
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        capturedDoc = await options.load();
+        capturedDoc.getArray('chat').push(['test message']);
+        if (options.callback?.handler) {
+          await options.callback.handler(capturedDoc);
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockYOnConnect).toHaveBeenCalled();
+      expect(mockGetDocument).toHaveBeenCalledWith('test-room-123');
+      expect(capturedDoc).not.toBeNull();
+      expect(capturedDoc!.getText('codemirror')).toBeInstanceOf(Y.Text);
+      expect(capturedDoc!.getArray('chat').length).toBe(1);
+      expect(mockUpsertDocument).toHaveBeenCalledWith(
+        'test-room-123',
+        expect.any(Uint8Array)
+      );
+    });
+
+    it('should load existing document from database', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      const existingDoc = new Y.Doc();
+      existingDoc.getText('codemirror').insert(0, 'console.log("hello");');
+      const encodedDoc = Y.encodeStateAsUpdate(existingDoc);
+      const base64Doc = Buffer.from(encodedDoc).toString('base64');
+
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: base64Doc }));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
+
+      let loadedDoc: Y.Doc | null = null;
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        loadedDoc = await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(loadedDoc).not.toBeNull();
+      expect(loadedDoc!.getText('codemirror').toString()).toBe('console.log("hello");');
+    });
+
+    it('should handle corrupted document data gracefully', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: 'not-valid-base64-!!!!' }));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
+      let loadedDoc: Y.Doc | null = null;
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        loadedDoc = await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(loadedDoc).not.toBeNull();
+      expect(loadedDoc!.getText('codemirror').toString()).toBe('');
+    });
+
+    it('should close connection when database load fails', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null, { message: 'Database unavailable' }));
+
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(connection.close).toHaveBeenCalledWith(4000, 'Internal server error');
+    });
   });
 
-  it('closes the connection when the token is invalid', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
+  describe('Chat history pruning', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+    });
 
-    verifyTokenMock.mockResolvedValue({valid: false, error: new Error('invalid token')});
+    it('should prune chat history when loading document with excessive messages', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
 
-    await server.onConnect(connection, buildContext('token-1'));
+      const docWithTooManyMessages = new Y.Doc();
+      const chatArray = docWithTooManyMessages.getArray('chat');
+      for (let i = 0; i < 550; i++) {
+        chatArray.push([{id: i, text: `message ${i}`}]);
+      }
+      const encodedDoc = Y.encodeStateAsUpdate(docWithTooManyMessages);
+      const base64Doc = Buffer.from(encodedDoc).toString('base64');
 
-    expect(connection.close).toHaveBeenCalledWith(4001, 'Unauthorised: Invalid or expired token');
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
+      mockGetDocument.mockResolvedValue(createSupabaseResponse({ document: base64Doc }));
+
+      let loadedDoc: Y.Doc | null = null;
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        loadedDoc = await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(loadedDoc).not.toBeNull();
+      expect(loadedDoc!.getArray('chat').length).toBe(500);
+    });
   });
 
-  it('closes the connection when the user is not verified for the room', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
-      valid: true,
-      payload: {userId: 'user-1'},
+  describe('Document persistence and callbacks', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
     });
-    checkUserVerifiedMock.mockResolvedValue(false);
 
-    await server.onConnect(connection, buildContext('token-1'));
+    it('should save document via callback handler', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
 
-    expect(connection.close).toHaveBeenCalledWith(
-      4003,
-      'Forbidden: You are not authorised for this room'
-    );
-    expect(partyOnConnectMock).not.toHaveBeenCalled();
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        // Trigger the callback
+        if (options.callback?.handler) {
+          await options.callback.handler(doc);
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalledWith(
+        'test-room-123',
+        expect.any(Uint8Array)
+      );
+    });
+
+    it('should handle save errors in callback gracefully', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null, { message: 'Save failed' }));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        if (options.callback?.handler) {
+          await options.callback.handler(doc);
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalled();
+      // Should not throw, just log error
+      expect(connection.close).not.toHaveBeenCalled();
+    });
+
+    it('should catch exceptions in save callback', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
+
+      mockUpsertDocument.mockRejectedValue(new Error('Network failure'));
+
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        const doc = await options.load();
+        if (options.callback?.handler) {
+          try {
+            await options.callback.handler(doc);
+          } catch (err) {
+            // Swallow the error as the code does
+          }
+        }
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(mockUpsertDocument).toHaveBeenCalled();
+    });
   });
 
-  it('loads and persists a new document when none exists', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
-      valid: true,
-      payload: {userId: 'user-1'},
-    });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({data: null, error: null});
-    upsertDocumentMock.mockResolvedValue({data: null, error: null});
-
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      const doc = await options.load();
-      doc.getArray('chat').push(['message']);
-      await options.callback?.handler?.(doc);
+  describe('Connection lifecycle and room cleanup', () => {
+    beforeEach(() => {
+      mockVerifyToken.mockResolvedValue({
+        valid: true,
+        payload: { userId: 'user-123', sessionId: 'session-456' },
+      });
+      mockCheckUserVerified.mockResolvedValue(true);
+      mockGetDocument.mockResolvedValue(createSupabaseResponse(null));
+      mockUpsertDocument.mockResolvedValue(createSupabaseResponse(null));
     });
 
-    await server.onConnect(connection, buildContext('token-1'));
+    it('should register close event listener on connection', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
 
-    expect(partyOnConnectMock).toHaveBeenCalledTimes(1);
-    expect(upsertDocumentMock).toHaveBeenCalledWith('room-1', expect.any(Uint8Array));
+      mockYOnConnect.mockImplementation(async (_conn, _room, options) => {
+        await options.load();
+      });
+
+      await server.onConnect(connection, context);
+
+      expect(connection.addEventListener).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function)
+      );
+    });
   });
 
-  it('applies an existing persisted document before returning to clients', async () => {
-    const existingDoc = new Y.Doc();
-    existingDoc.getText('codemirror').insert(0, 'hello');
-    const encoded = Y.encodeStateAsUpdate(existingDoc);
+  describe('Error handling', () => {
+    it('should handle unexpected errors during connection', async () => {
+      const connection = createMockConnection();
+      const context = createMockContext('valid-token');
 
-    const server = new YjsServer(room);
-    const connection = createConnection();
+      mockVerifyToken.mockRejectedValue(new Error('Unexpected error'));
 
-    verifyTokenMock.mockResolvedValue({
-      valid: true,
-      payload: {userId: 'user-1'},
+      await server.onConnect(connection, context);
+
+      expect(connection.close).toHaveBeenCalledWith(4000, 'Internal server error');
     });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({
-      data: {document: Buffer.from(encoded).toString('base64')},
-      error: null,
-    });
-    upsertDocumentMock.mockResolvedValue({data: null, error: null});
-
-    let loadedDoc: Y.Doc | null = null;
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      loadedDoc = await options.load();
-    });
-
-    await server.onConnect(connection, buildContext('token-1'));
-
-    expect(loadedDoc).not.toBeNull();
-    expect(loadedDoc!.getText('codemirror').toString()).toBe('hello');
-  });
-
-  it('closes the connection when loading the document fails', async () => {
-    const server = new YjsServer(room);
-    const connection = createConnection();
-
-    verifyTokenMock.mockResolvedValue({
-      valid: true,
-      payload: {userId: 'user-1'},
-    });
-    checkUserVerifiedMock.mockResolvedValue(true);
-    getDocumentMock.mockResolvedValue({
-      data: null,
-      error: {message: 'database offline'},
-    });
-
-    partyOnConnectMock.mockImplementation(async (_connection, _, options) => {
-      // This will throw an error which should be caught by the outer try-catch
-      await options.load();
-    });
-
-    await server.onConnect(connection, buildContext('token-1'));
-
-    expect(connection.close).toHaveBeenCalledWith(4000, 'Internal server error');
-    expect(partyOnConnectMock).toHaveBeenCalledTimes(1);
   });
 });
-

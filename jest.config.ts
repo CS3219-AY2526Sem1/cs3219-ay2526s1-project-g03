@@ -268,6 +268,9 @@ const config: Config = {
           },
         ],
       },
+      transformIgnorePatterns: [
+        'node_modules/(?!(jose)/)',  // Transform jose library
+      ],
     },
   ],
 };

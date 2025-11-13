@@ -3,15 +3,15 @@ import {onConnect as y_onConnect} from 'y-partykit';
 import {Buffer} from 'node:buffer';
 
 import * as Y from 'yjs';
-import {parseCookies} from '../utils/cookies.js';
-import {verifyToken} from '../utils/jwt.js';
+import {parseCookies} from '../utils/cookies';
+import {verifyToken} from '../utils/jwt';
 import {
   getDocument,
   upsertDocument,
   checkRoomExists,
   checkUserVerified,
   deleteRoom,
-} from '../storage/db.js';
+} from '../storage/db';
 
 const CHAT_HISTORY_LIMIT = 500;
 

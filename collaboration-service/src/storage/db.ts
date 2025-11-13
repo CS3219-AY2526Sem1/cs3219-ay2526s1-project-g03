@@ -1,6 +1,6 @@
 import {createClient} from '@supabase/supabase-js';
-import {SUPABASE_URL, SUPABASE_KEY} from '../config/config.js';
-import type {RoomSchema} from '../schema/roomSchema.js';
+import {SUPABASE_URL, SUPABASE_KEY} from '../config/config';
+import type {RoomSchema} from '../schema/roomSchema';
 import {Buffer} from 'node:buffer';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
